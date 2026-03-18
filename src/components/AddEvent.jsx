@@ -105,7 +105,7 @@ export default function AddEvent({ onBack, onNext }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 [&_button]:cursor-pointer">
       <div className="w-full max-w-3xl bg-gray-100 rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="bg-[#008000] px-6 py-4 flex items-center justify-between">

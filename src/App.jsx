@@ -3,6 +3,7 @@ import LoginDashboard from "./components/LoginDashboard";
 import MainDashboard from "./components/MainDashboard";
 import Attendance from "./components/Attendance";
 import Events from "./components/Events";
+import Students from "./components/Students";
 
 const AUTH_KEY = "csg_logged_in";
 const PAGE_KEY = "csg_current_page";
@@ -49,6 +50,10 @@ function App() {
 
   if (currentPage === "attendance") {
     return <Attendance onLogout={handleLogout} onNavigate={setCurrentPage} />;
+  }
+
+  if (currentPage === "students") {
+    return <Students onLogout={handleLogout} onNavigate={setCurrentPage} />;
   }
 
   return <MainDashboard onLogout={handleLogout} onNavigate={setCurrentPage} />;

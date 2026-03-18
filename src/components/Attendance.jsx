@@ -19,6 +19,8 @@ const ATTENDANCE_LOG = [
 
 export default function Attendance({ onLogout, onNavigate }) {
   const [showLogout, setShowLogout] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportMode, setReportMode] = useState("export");
   const [selectedEvent, setSelectedEvent] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -32,11 +34,12 @@ export default function Attendance({ onLogout, onNavigate }) {
     { id: "dashboard", label: "Dashboard", icon: "▣" },
     { id: "attendance", label: "Attendance", icon: "☑" },
     { id: "events", label: "Events", icon: "◉" },
-    { id: "students", label: "Students", icon: "☺" },
+    { id: "students", label: "Department", icon: "☺" },
   ];
 
   const reportItems = [
     { id: "export", label: "Export" },
+    { id: "import", label: "Import" },
     { id: "settings", label: "Settings" },
   ];
 
@@ -52,7 +55,7 @@ export default function Attendance({ onLogout, onNavigate }) {
   const totalSessions = filteredLog.length;
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 [&_button]:cursor-pointer">
       {/* Sidebar */}
       <aside className="w-64 shrink-0 bg-[#008000] text-white flex flex-col">
         <div className="p-6 space-y-4">
@@ -75,7 +78,14 @@ export default function Attendance({ onLogout, onNavigate }) {
           <div className="pt-4">
             <p className="px-4 text-xs font-medium text-green-200 uppercase tracking-wider">Reports</p>
             {reportItems.map((item) => (
-              <button key={item.id} className="w-full flex items-center gap-3 px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-green-600/50">
+              <button
+                key={item.id}
+                onClick={() => {
+                  setReportMode(item.id);
+                  setShowReportModal(true);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-green-600/50"
+              >
                 {item.label}
               </button>
             ))}
@@ -95,19 +105,14 @@ export default function Attendance({ onLogout, onNavigate }) {
             <span className="text-sm text-gray-600">View & manage attendance records</span>
             <div className="relative">
               <button
-                onMouseEnter={() => setShowLogout(true)}
-                onMouseLeave={() => setShowLogout(false)}
+                onClick={() => setShowLogout((prev) => !prev)}
                 className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-300"
               >
                 <span className="text-sm">👤</span>
               </button>
               {showLogout && (
-                <div
-                  onMouseEnter={() => setShowLogout(true)}
-                  onMouseLeave={() => setShowLogout(false)}
-                  className="absolute right-0 top-full mt-1 py-1 bg-white rounded-lg shadow-lg border border-gray-200 min-w-[100px]"
-                >
-                  <button onClick={onLogout} className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">
+                <div className="absolute right-0 top-full mt-1 py-1 bg-white rounded-lg shadow-lg border border-gray-200 min-w-[100px]">
+                  <button onClick={() => { setShowLogout(false); onLogout(); }} className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">
                     Logout
                   </button>
                 </div>
@@ -178,9 +183,6 @@ export default function Attendance({ onLogout, onNavigate }) {
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-800">Attendance Log by Event</h3>
-              <button className="px-3 py-1.5 bg-[#008000] text-white text-xs font-medium rounded-lg hover:bg-green-700">
-                Export CSV
-              </button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -220,6 +222,56 @@ export default function Attendance({ onLogout, onNavigate }) {
           </div>
         </main>
       </div>
+
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl overflow-hidden">
+            <div className="bg-[#008000] px-5 py-3">
+              <h3 className="text-white font-semibold">{reportMode === "import" ? "Import Data" : "Export Data"}</h3>
+            </div>
+            <div className="p-5 space-y-4 text-sm">
+              <p className="text-gray-600">
+                {reportMode === "import" ? "Choose what you want to import." : "Choose what you want to export."}
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  className="rounded-xl border border-gray-300 p-4 text-left hover:border-[#008000] hover:bg-green-50 transition-colors"
+                  onClick={() => setShowReportModal(false)}
+                >
+                  <p className="font-semibold text-gray-900">
+                    {reportMode === "import" ? "Import Attendance" : "Export Attendance"}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {reportMode === "import"
+                      ? "Import attendance records into the system."
+                      : "Download attendance records for reports."}
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  className="rounded-xl border border-gray-300 p-4 text-left hover:border-[#008000] hover:bg-green-50 transition-colors"
+                  onClick={() => setShowReportModal(false)}
+                >
+                  <p className="font-semibold text-gray-900">
+                    {reportMode === "import" ? "Import Students" : "Export Students"}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {reportMode === "import"
+                      ? "Import student records into the system."
+                      : "Download student or department records."}
+                  </p>
+                </button>
+              </div>
+            </div>
+            <div className="px-4 py-3 border-t border-gray-200 flex justify-end">
+              <button type="button" onClick={() => setShowReportModal(false)} className="px-4 py-2 rounded-lg bg-[#008000] text-white cursor-pointer">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

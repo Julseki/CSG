@@ -13,14 +13,6 @@ export default function Navbar() {
                             Northern Mindanao Colleges, Inc.
                         </span>
                     </div>
-
-                    <button
-                        type="button"
-                        className="inline-flex items-center gap-2 rounded-full border border-green-500 px-3 py-1.5 text-xs sm:text-sm font-medium text-green-700 hover:bg-green-50 transition-colors"
-                    >
-                        <span className="w-4 h-4 rounded-full border-2 border-green-600 border-dashed animate-spin-slow" />
-                        <span>Settings</span>
-                    </button>
                 </div>
             </div>
         </nav>

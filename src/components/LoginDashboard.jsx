@@ -20,13 +20,13 @@ export default function LoginDashboard({ onLoginSuccess }) {
             setLoading(false);
             onLoginSuccess();
         } else {
-            setError("Invalid username or password. Use admin / admin123");
+            setError("Invalid username or password.");
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 flex flex-col">
+        <div className="min-h-screen bg-gray-100 flex flex-col [&_button]:cursor-pointer">
             <Navbar />
 
             <main className="relative flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
@@ -110,6 +110,7 @@ export default function LoginDashboard({ onLoginSuccess }) {
                                         {error}
                                     </div>
                                 )}
+
                                 <div className="space-y-1">
                                     <label className="block text-xs font-medium text-gray-700">
                                         Username

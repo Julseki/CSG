@@ -52,6 +52,8 @@ function getCustomEventsFromStorage() {
 
 export default function Events({ onLogout, onNavigate }) {
   const [showLogout, setShowLogout] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportMode, setReportMode] = useState("export");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Status");
   const [viewMode, setViewMode] = useState("list"); // list | grid
@@ -83,11 +85,12 @@ export default function Events({ onLogout, onNavigate }) {
     { id: "dashboard", label: "Dashboard", icon: "▣" },
     { id: "attendance", label: "Attendance", icon: "☑" },
     { id: "events", label: "Events", icon: "◉" },
-    { id: "students", label: "Students", icon: "☺" },
+    { id: "students", label: "Department", icon: "☺" },
   ];
 
   const reportItems = [
     { id: "export", label: "Export" },
+    { id: "import", label: "Import" },
     { id: "settings", label: "Settings" },
   ];
 
@@ -130,7 +133,7 @@ export default function Events({ onLogout, onNavigate }) {
   });
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 [&_button]:cursor-pointer">
       {/* Sidebar */}
       <aside className="w-64 shrink-0 bg-[#008000] text-white flex flex-col">
         <div className="p-6 space-y-4">
@@ -153,7 +156,14 @@ export default function Events({ onLogout, onNavigate }) {
           <div className="pt-4">
             <p className="px-4 text-xs font-medium text-green-200 uppercase tracking-wider">Reports</p>
             {reportItems.map((item) => (
-              <button key={item.id} className="w-full flex items-center gap-3 px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-green-600/50">
+              <button
+                key={item.id}
+                onClick={() => {
+                  setReportMode(item.id);
+                  setShowReportModal(true);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-green-600/50"
+              >
                 {item.label}
               </button>
             ))}
@@ -176,19 +186,14 @@ export default function Events({ onLogout, onNavigate }) {
             </span>
             <div className="relative flex items-center gap-2">
               <button
-                onMouseEnter={() => setShowLogout(true)}
-                onMouseLeave={() => setShowLogout(false)}
+                onClick={() => setShowLogout((prev) => !prev)}
                 className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-300"
               >
                 <span className="text-sm">👤</span>
               </button>
               {showLogout && (
-                <div
-                  onMouseEnter={() => setShowLogout(true)}
-                  onMouseLeave={() => setShowLogout(false)}
-                  className="absolute right-0 top-full mt-1 py-1 bg-white rounded-lg shadow-lg border border-gray-200 min-w-[100px]"
-                >
-                  <button onClick={onLogout} className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">
+                <div className="absolute right-0 top-full mt-1 py-1 bg-white rounded-lg shadow-lg border border-gray-200 min-w-[100px]">
+                  <button onClick={() => { setShowLogout(false); onLogout(); }} className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">
                     Logout
                   </button>
                 </div>
@@ -265,8 +270,6 @@ export default function Events({ onLogout, onNavigate }) {
                       <th className="text-left py-3 px-4 font-medium text-gray-700">Duration</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-700">Venue</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-700">Time Slots</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Reg.</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Att. Rate</th>
                       <th className="sticky right-0 z-10 bg-gray-50 text-left py-3 px-4 font-medium text-gray-700">Fines</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
                     </tr>
@@ -291,22 +294,6 @@ export default function Events({ onLogout, onNavigate }) {
                         <td className="py-3 px-4">{ev.duration}</td>
                         <td className="py-3 px-4">📍 {ev.venue}</td>
                         <td className="py-3 px-4 text-gray-600">{ev.timeSlots}</td>
-                        <td className="py-3 px-4">{ev.reg}</td>
-                        <td className="py-3 px-4">
-                          {ev.attRate != null ? (
-                            <div className="flex items-center gap-2">
-                              <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-[#008000] rounded-full"
-                                  style={{ width: `${ev.attRate}%` }}
-                                />
-                              </div>
-                              <span>{ev.attRate}%</span>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">Not yet held</span>
-                          )}
-                        </td>
                         <td className="sticky right-0 z-10 bg-white py-3 px-4" title={`Edit fines for: ${ev.name}`}>
                           {ev.attRate != null ? (
                             <input
@@ -348,22 +335,6 @@ export default function Events({ onLogout, onNavigate }) {
                     <p className="text-xs text-gray-500 mb-1">📍 {ev.venue}</p>
                     <p className="text-xs text-gray-600 mb-2">{ev.duration}</p>
                     <p className="text-xs text-gray-500 mb-2">{ev.timeSlots}</p>
-                    <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100">
-                      <span className="text-gray-600">Reg: {ev.reg}</span>
-                      {ev.attRate != null ? (
-                        <div className="flex items-center gap-1">
-                          <div className="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-[#008000] rounded-full"
-                              style={{ width: `${ev.attRate}%` }}
-                            />
-                          </div>
-                          <span className="font-medium text-[#008000]">{ev.attRate}%</span>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">Not yet held</span>
-                      )}
-                    </div>
                     {/* Fines - editable by event name */}
                     <div className="pt-2 border-t border-gray-100">
                       <label className="block text-xs font-medium text-amber-700 mb-1">Fines ({ev.name})</label>
@@ -395,18 +366,62 @@ export default function Events({ onLogout, onNavigate }) {
       </div>
       {showAddEvent && <AddEvent onBack={() => setShowAddEvent(false)} />}
 
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl overflow-hidden">
+            <div className="bg-[#008000] px-5 py-3">
+              <h3 className="text-white font-semibold">{reportMode === "import" ? "Import Data" : "Export Data"}</h3>
+            </div>
+            <div className="p-5 space-y-4 text-sm">
+              <p className="text-gray-600">
+                {reportMode === "import" ? "Choose what you want to import." : "Choose what you want to export."}
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  className="rounded-xl border border-gray-300 p-4 text-left hover:border-[#008000] hover:bg-green-50 transition-colors"
+                  onClick={() => setShowReportModal(false)}
+                >
+                  <p className="font-semibold text-gray-900">
+                    {reportMode === "import" ? "Import Attendance" : "Export Attendance"}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {reportMode === "import"
+                      ? "Import attendance records into the system."
+                      : "Download attendance records for reports."}
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  className="rounded-xl border border-gray-300 p-4 text-left hover:border-[#008000] hover:bg-green-50 transition-colors"
+                  onClick={() => setShowReportModal(false)}
+                >
+                  <p className="font-semibold text-gray-900">
+                    {reportMode === "import" ? "Import Students" : "Export Students"}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {reportMode === "import"
+                      ? "Import student records into the system."
+                      : "Download student or department records."}
+                  </p>
+                </button>
+              </div>
+            </div>
+            <div className="px-4 py-3 border-t border-gray-200 flex justify-end">
+              <button type="button" onClick={() => setShowReportModal(false)} className="px-4 py-2 rounded-lg bg-[#008000] text-white cursor-pointer">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Event details / edit modal */}
       {selectedEvent && editableEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-xl bg-white rounded-2xl shadow-2xl overflow-hidden">
-            <div className="bg-[#008000] px-6 py-3 flex items-center justify-between">
+            <div className="bg-[#008000] px-6 py-3">
               <h2 className="text-sm sm:text-base font-semibold text-white">Event Details</h2>
-              <button
-                onClick={closeEventModal}
-                className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center text-gray-800 hover:bg-yellow-300 text-lg font-bold"
-              >
-                ×
-              </button>
             </div>
             <div className="p-6 space-y-4 text-sm">
               <div>
@@ -494,16 +509,6 @@ export default function Events({ onLogout, onNavigate }) {
                     <option value="Completed">Completed</option>
                     <option value="Upcoming">Upcoming</option>
                   </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Registered</label>
-                  <input
-                    type="number"
-                    min="0"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                    value={editableEvent.reg ?? ""}
-                    onChange={(e) => setEditableEvent({ ...editableEvent, reg: Number(e.target.value) || 0 })}
-                  />
                 </div>
               </div>
             </div>
