@@ -69,6 +69,9 @@ export default function MainDashboard({ onLogout, onNavigate }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const activeNav = "dashboard";
+  const role = (localStorage.getItem("csg_role") || "user").toLowerCase();
+  const roleLabel = role === "admin" ? "Admin" : "User";
+  const isAdmin = role === "admin";
 
   const now = new Date();
   const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
@@ -83,8 +86,7 @@ export default function MainDashboard({ onLogout, onNavigate }) {
 
   const reportItems = [
     { id: "export", label: "Export" },
-    { id: "import", label: "Import" },
-    { id: "settings", label: "Settings" },
+    ...(isAdmin ? [{ id: "import", label: "Import" }, { id: "settings", label: "Settings" }] : []),
   ];
 
   const filteredStudents = STUDENTS.filter((s) => {
@@ -138,7 +140,14 @@ export default function MainDashboard({ onLogout, onNavigate }) {
                 }}
                 className="w-full flex items-center gap-3 px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-green-600/50"
               >
-                {item.label}
+                <span className="flex items-center gap-2">
+                  <span>{item.label}</span>
+                  {item.id === "settings" && (
+                    <span className="inline-flex items-center rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold text-white">
+                      {roleLabel}
+                    </span>
+                  )}
+                </span>
               </button>
             ))}
           </div>
@@ -288,42 +297,54 @@ export default function MainDashboard({ onLogout, onNavigate }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl overflow-hidden">
             <div className="bg-[#008000] px-5 py-3">
-              <h3 className="text-white font-semibold">{reportMode === "import" ? "Import Data" : "Export Data"}</h3>
+              <h3 className="text-white font-semibold">
+                {reportMode === "settings"
+                  ? "Admin Settings"
+                  : reportMode === "import"
+                    ? "Import Data"
+                    : "Export Data"}
+              </h3>
             </div>
             <div className="p-5 space-y-4 text-sm">
               <p className="text-gray-600">
-                {reportMode === "import" ? "Choose what you want to import." : "Choose what you want to export."}
+                {reportMode === "settings"
+                  ? "Settings are not implemented yet (this is a placeholder)."
+                  : reportMode === "import"
+                    ? "Choose what you want to import."
+                    : "Choose what you want to export."}
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  className="rounded-xl border border-gray-300 p-4 text-left hover:border-[#008000] hover:bg-green-50 transition-colors"
-                  onClick={() => setShowReportModal(false)}
-                >
-                  <p className="font-semibold text-gray-900">
-                    {reportMode === "import" ? "Import Attendance" : "Export Attendance"}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {reportMode === "import"
-                      ? "Import attendance records into the system."
-                      : "Download attendance records for reports."}
-                  </p>
-                </button>
-                <button
-                  type="button"
-                  className="rounded-xl border border-gray-300 p-4 text-left hover:border-[#008000] hover:bg-green-50 transition-colors"
-                  onClick={() => setShowReportModal(false)}
-                >
-                  <p className="font-semibold text-gray-900">
-                    {reportMode === "import" ? "Import Students" : "Export Students"}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {reportMode === "import"
-                      ? "Import student records into the system."
-                      : "Download student or department records."}
-                  </p>
-                </button>
-              </div>
+              {reportMode !== "settings" && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    className="rounded-xl border border-gray-300 p-4 text-left hover:border-[#008000] hover:bg-green-50 transition-colors"
+                    onClick={() => setShowReportModal(false)}
+                  >
+                    <p className="font-semibold text-gray-900">
+                      {reportMode === "import" ? "Import Attendance" : "Export Attendance"}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {reportMode === "import"
+                        ? "Import attendance records into the system."
+                        : "Download attendance records for reports."}
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-gray-300 p-4 text-left hover:border-[#008000] hover:bg-green-50 transition-colors"
+                    onClick={() => setShowReportModal(false)}
+                  >
+                    <p className="font-semibold text-gray-900">
+                      {reportMode === "import" ? "Import Students" : "Export Students"}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {reportMode === "import"
+                        ? "Import student records into the system."
+                        : "Download student or department records."}
+                    </p>
+                  </button>
+                </div>
+              )}
             </div>
             <div className="px-4 py-3 border-t border-gray-200 flex justify-end">
               <button type="button" onClick={() => setShowReportModal(false)} className="px-4 py-2 rounded-lg bg-[#008000] text-white cursor-pointer">

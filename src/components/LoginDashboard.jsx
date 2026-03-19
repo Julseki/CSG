@@ -3,6 +3,23 @@ import Navbar from "./Navbar";
 
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";
+const ROLE_KEY = "csg_role";
+const USERS_KEY = "csg_users";
+
+function getUsersFromStorage() {
+    try {
+        const raw = localStorage.getItem(USERS_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+}
+
+function saveUsersToStorage(users) {
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+}
 
 export default function LoginDashboard({ onLoginSuccess }) {
     const [showPassword, setShowPassword] = useState(false);
@@ -10,6 +27,12 @@ export default function LoginDashboard({ onLoginSuccess }) {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [showSignup, setShowSignup] = useState(false);
+    const [signupUsername, setSignupUsername] = useState("");
+    const [signupPassword, setSignupPassword] = useState("");
+    const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
+    const [signupError, setSignupError] = useState("");
+    const [signupLoading, setSignupLoading] = useState(false);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -18,11 +41,83 @@ export default function LoginDashboard({ onLoginSuccess }) {
 
         if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
             setLoading(false);
+            localStorage.setItem(ROLE_KEY, "admin");
             onLoginSuccess();
         } else {
-            setError("Invalid username or password.");
+            const u = username.trim();
+            const p = password.trim();
+            if (!u || !p) {
+                setError("Please enter username and password.");
+                setLoading(false);
+                return;
+            }
+            const users = getUsersFromStorage();
+            const match = users.some((usr) => usr?.username === u && usr?.password === p);
+            if (!match) {
+                setError("Invalid username or password.");
+                setLoading(false);
+                return;
+            }
+            const normalizedUsername = u.toLowerCase();
+            const isGovIt =
+                normalizedUsername === "gov-it" ||
+                normalizedUsername === "gov_it" ||
+                (normalizedUsername.includes("gov") && normalizedUsername.includes("it"));
+
+            localStorage.setItem(ROLE_KEY, isGovIt ? "gov_it" : "user");
             setLoading(false);
+            onLoginSuccess();
         }
+    };
+
+    const handleSignup = (e) => {
+        e.preventDefault();
+        setSignupError("");
+        setSignupLoading(true);
+
+        const u = signupUsername.trim();
+        const p = signupPassword;
+        const cp = signupConfirmPassword;
+
+        if (!u || !p || !cp) {
+            setSignupError("Please fill out all fields.");
+            setSignupLoading(false);
+            return;
+        }
+        if (u.toLowerCase() === ADMIN_USERNAME) {
+            setSignupError("That username is reserved.");
+            setSignupLoading(false);
+            return;
+        }
+        if (p.length < 6) {
+            setSignupError("Password must be at least 6 characters.");
+            setSignupLoading(false);
+            return;
+        }
+        if (p !== cp) {
+            setSignupError("Passwords do not match.");
+            setSignupLoading(false);
+            return;
+        }
+
+        const users = getUsersFromStorage();
+        const exists = users.some((usr) => (usr?.username || "").toLowerCase() === u.toLowerCase());
+        if (exists) {
+            setSignupError("Username already exists.");
+            setSignupLoading(false);
+            return;
+        }
+
+        const nextUsers = [...users, { username: u, password: p }];
+        saveUsersToStorage(nextUsers);
+
+        setUsername(u);
+        setPassword(p);
+        setShowSignup(false);
+        setSignupUsername("");
+        setSignupPassword("");
+        setSignupConfirmPassword("");
+        setSignupLoading(false);
     };
 
     return (
@@ -41,22 +136,9 @@ export default function LoginDashboard({ onLoginSuccess }) {
                         <div className="absolute -left-10 -top-10 w-40 h-40 border-4 border-green-500 rounded-full opacity-40" />
                         <div className="absolute -right-20 bottom-0 w-56 h-56 border-4 border-green-500 rounded-full opacity-40" />
 
-                        <div className="relative z-10 h-full flex flex-col justify-between px-8 sm:px-10 py-10 space-y-10">
-                            <div className="space-y-6">
+                        <div className="relative z-10 h-full flex flex-col justify-center items-center px-8 sm:px-10 py-8 sm:py-10 space-y-8 sm:space-y-10 text-center">
+                            <div className="space-y-6 w-full max-w-md">
                                 <div className="flex items-center gap-3">
-                                    <img
-                                        src="/logo.png"
-                                        alt="Northern Mindanao Colleges, Inc."
-                                        className="w-12 h-12 rounded-full bg-white/10 object-contain"
-                                    />
-                                    <div>
-                                        <p className="text-xs uppercase tracking-[0.2em] text-green-100">
-                                            Northern Mindanao Colleges, Inc.
-                                        </p>
-                                        <p className="text-sm text-green-50">
-                                            Real-Time Attendance Monitoring System
-                                        </p>
-                                    </div>
                                 </div>
 
                                 <div className="mt-6 space-y-2">
@@ -69,21 +151,31 @@ export default function LoginDashboard({ onLoginSuccess }) {
                                 </div>
                             </div>
 
-                            <div className="space-y-6">
+                            <div className="space-y-6 w-full max-w-md text-left">
                                 <FeatureItem
-                                    icon="✅"
-                                    title="Webcam Verification"
-                                    description="Photo capture per student for secure attendance validation."
+                                    icon="🕒"
+                                    title="Time In / Time Out Tracking"
+                                    description="Record attendance in real time for every session."
                                 />
                                 <FeatureItem
-                                    icon="📊"
-                                    title="College Dashboard"
-                                    description="Monitor all departments at once with a unified dashboard."
+                                    icon="🎫"
+                                    title="Event Management"
+                                    description="Create and monitor events with attendance overview."
                                 />
                                 <FeatureItem
-                                    icon="📁"
-                                    title="Export Reports"
-                                    description="Download CSV or PDF attendance logs instantly."
+                                    icon="🏫"
+                                    title="Department & Student Records"
+                                    description="Browse departments and quickly find student details."
+                                />
+                                <FeatureItem
+                                    icon="🔐"
+                                    title="Role-Based Access"
+                                    description="Admin and User roles to keep actions controlled."
+                                />
+                                <FeatureItem
+                                    icon="📤"
+                                    title="Import & Export"
+                                    description="Move data in and out for reporting and backup."
                                 />
                             </div>
                         </div>
@@ -91,17 +183,15 @@ export default function LoginDashboard({ onLoginSuccess }) {
 
                     {/* Right side - login form */}
                     <section className="md:w-1/2 bg-gray-50">
-                        <div className="h-full px-8 sm:px-12 py-10 flex flex-col justify-center">
+                        <div className="h-full px-8 sm:px-12 py-8 sm:py-10 flex flex-col justify-center">
                             <div className="space-y-2 mb-8">
                                 <p className="text-xs uppercase tracking-[0.2em] text-green-600">
                                     Welcome Back
                                 </p>
                                 <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900">
-                                    Sign in to Admin Dashboard
+                                    Sign in to Dashboard
                                 </h2>
-                                <p className="text-xs text-gray-500">
-                                    Use your administrator account to access the system.
-                                </p>
+                               
                             </div>
 
                             <form className="space-y-6" onSubmit={handleSubmit}>
@@ -120,7 +210,6 @@ export default function LoginDashboard({ onLoginSuccess }) {
                                         value={username}
                                         onChange={(e) => setUsername(e.target.value)}
                                         className="w-full rounded-full border border-green-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                        placeholder="Admin"
                                     />
                                 </div>
 
@@ -134,7 +223,6 @@ export default function LoginDashboard({ onLoginSuccess }) {
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
                                             className="w-full rounded-full border border-green-300 bg-white px-4 py-2.5 pr-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                            placeholder="••••••••"
                                         />
                                         <button
                                             type="button"
@@ -162,6 +250,16 @@ export default function LoginDashboard({ onLoginSuccess }) {
                                 >
                                     Forgot password?
                                 </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSignupError("");
+                                        setShowSignup(true);
+                                    }}
+                                    className="text-green-600 hover:text-green-700 font-medium"
+                                >
+                                    Sign up
+                                </button>
                                 <p className="text-gray-400">
                                     © {new Date().getFullYear()} NORMI
                                 </p>
@@ -170,6 +268,84 @@ export default function LoginDashboard({ onLoginSuccess }) {
                     </section>
                 </div>
             </main>
+
+            {showSignup && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
+                    <div
+                        className="absolute inset-0 bg-black/40"
+                        onClick={() => !signupLoading && setShowSignup(false)}
+                    />
+                    <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl border border-gray-200 overflow-hidden">
+                        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                            <h3 className="text-sm font-semibold text-gray-900">Create account</h3>
+                            <button
+                                type="button"
+                                disabled={signupLoading}
+                                onClick={() => setShowSignup(false)}
+                                className="text-gray-500 hover:text-gray-700 text-sm"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSignup} className="px-6 py-5 space-y-4">
+                            {signupError && (
+                                <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-xs text-red-700">
+                                    {signupError}
+                                </div>
+                            )}
+
+                            <div className="space-y-1">
+                                <label className="block text-xs font-medium text-gray-700">Username</label>
+                                <input
+                                    type="text"
+                                    value={signupUsername}
+                                    onChange={(e) => setSignupUsername(e.target.value)}
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="block text-xs font-medium text-gray-700">Password</label>
+                                <input
+                                    type="password"
+                                    value={signupPassword}
+                                    onChange={(e) => setSignupPassword(e.target.value)}
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="block text-xs font-medium text-gray-700">Confirm password</label>
+                                <input
+                                    type="password"
+                                    value={signupConfirmPassword}
+                                    onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    disabled={signupLoading}
+                                    onClick={() => setShowSignup(false)}
+                                    className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={signupLoading}
+                                    className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-60"
+                                >
+                                    {signupLoading ? "Creating…" : "Create account"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
