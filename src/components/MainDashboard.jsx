@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useCreateDepartmentUser } from "../hooks/auth";
 
 const ADMIN_CREDENTIALS = { username: "admin", password: "admin123" };
 
@@ -61,17 +62,117 @@ function getStatusBadgeClass(status) {
 }
 
 const PAGE_SIZE = 10;
+const DEPARTMENT_OPTIONS = [
+  {
+    value: "College of Information Technology",
+    majors: [],
+  },
+  {
+    value: "College of Business Administration",
+    majors: ["Marketing Management", "Financial Management", "Human Resource Management"],
+  },
+  {
+    value: "College of Education and Arts and Science",
+    majors: ["English", "Filipino", "Mathematics", "BEED"],
+  },
+  {
+    value: "College of Criminology",
+    majors: [],
+  },
+  {
+    value: "College of Hospitality Management",
+    majors: [],
+  },
+];
 
-export default function MainDashboard({ onLogout, onNavigate }) {
+const DEPARTMENT_USERNAME_BASE = {
+  "College of Information Technology": "gov-IT",
+  "College of Business Administration": "gov-CBA",
+  "College of Education and Arts and Science": "gov-CEAS",
+  "College of Criminology": "gov-CRIM",
+  "College of Hospitality Management": "gov-CHM",
+};
+
+function isValidAllowedEmail(value) {
+  const email = value.trim().toLowerCase();
+  return /^[a-z0-9._-]+@(normi\.edu\.ph|gmail\.com)$/.test(email);
+}
+
+export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, isCreateUserOpen }) {
   const [showLogout, setShowLogout] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [showCreateConfirmPassword, setShowCreateConfirmPassword] = useState(false);
   const [reportMode, setReportMode] = useState("export");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [createUserError, setCreateUserError] = useState("");
+  const [createdAccount, setCreatedAccount] = useState(null);
+  const [createUserForm, setCreateUserForm] = useState({
+    department: "",
+    major: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    accountType: "department",
+  });
   const activeNav = "dashboard";
-  const role = (localStorage.getItem("csg_role") || "user").toLowerCase();
-  const roleLabel = role === "admin" ? "Admin" : "User";
-  const isAdmin = role === "admin";
+  const roleLabel = "Admin";
+  const isAdmin = true;
+  const { mutate: createDepartmentUser, isPending: isCreatingDepartmentUser } =
+    useCreateDepartmentUser();
+
+  const normalizedDepartment = createUserForm.department
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  const normalizedMajor = createUserForm.major
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  const generatedUsername = useMemo(() => {
+    if (createUserForm.accountType === "csg_president") {
+      return "csg-president".slice(0, 28);
+    }
+    const selectedDepartment = DEPARTMENT_OPTIONS.find(
+      (item) => item.value === createUserForm.department,
+    );
+    const requiresMajor = (selectedDepartment?.majors?.length || 0) > 0;
+    const departmentBase =
+      DEPARTMENT_USERNAME_BASE[createUserForm.department] ||
+      (normalizedDepartment ? `gov-${normalizedDepartment}` : "");
+
+    if (!departmentBase) return "";
+    if (!requiresMajor) return departmentBase.slice(0, 28);
+    if (!normalizedMajor) return "";
+    return `${departmentBase}-${normalizedMajor}`.slice(0, 28);
+  }, [normalizedDepartment, normalizedMajor, createUserForm.department, createUserForm.accountType]);
+
+  const emailValue = (createUserForm.email || "").trim();
+  const isEmailValid = !emailValue || isValidAllowedEmail(emailValue);
+  const passwordValue = createUserForm.password || "";
+  const confirmPasswordValue = createUserForm.confirmPassword || "";
+  const isPasswordValid = !passwordValue || passwordValue.length >= 6;
+  const doPasswordsMatch =
+    !passwordValue || !confirmPasswordValue || passwordValue === confirmPasswordValue;
+  const isCreateUserDisabled =
+    isCreatingDepartmentUser ||
+    !emailValue ||
+    !isEmailValid ||
+    !passwordValue ||
+    !confirmPasswordValue ||
+    !isPasswordValid ||
+    !doPasswordsMatch;
+  const majorOptions = useMemo(() => {
+    const selected = DEPARTMENT_OPTIONS.find(
+      (item) => item.value === createUserForm.department,
+    );
+    return selected?.majors || [];
+  }, [createUserForm.department]);
 
   const now = new Date();
   const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
@@ -108,6 +209,87 @@ export default function MainDashboard({ onLogout, onNavigate }) {
   const goPrev = () => setPage((p) => Math.max(1, p - 1));
   const goNext = () => setPage((p) => Math.min(totalPages, p + 1));
 
+  const closeCreateUserModal = () => {
+    if (isCreatingDepartmentUser) return;
+    setShowCreateUserModal(false);
+    setCreateUserError("");
+  };
+
+  // Create user modal is controlled globally from App.jsx (CreateUserModal).
+
+  const handleCreateDepartmentUser = (e) => {
+    e.preventDefault();
+    setCreateUserError("");
+    setCreatedAccount(null);
+
+    const isPresident = createUserForm.accountType === "csg_president";
+    const requiresMajor = !isPresident && majorOptions.length > 0;
+
+    if (!isPresident) {
+      if (!createUserForm.department.trim()) {
+        setCreateUserError("Department is required.");
+        return;
+      }
+
+      if (requiresMajor && !createUserForm.major.trim()) {
+        setCreateUserError("Major is required for the selected department.");
+        return;
+      }
+    }
+
+    if (!generatedUsername) {
+      setCreateUserError("Unable to generate credentials. Check your inputs.");
+      return;
+    }
+
+    const finalEmail = emailValue;
+    if (!finalEmail) {
+      setCreateUserError("Email is required.");
+      return;
+    }
+    if (!isValidAllowedEmail(finalEmail)) {
+      setCreateUserError("Email must end with @normi.edu.ph or @gmail.com.");
+      return;
+    }
+    if (!passwordValue || !confirmPasswordValue) {
+      setCreateUserError("Password and confirm password are required.");
+      return;
+    }
+    if (passwordValue.length < 6) {
+      setCreateUserError("Password must be at least 6 characters.");
+      return;
+    }
+    if (passwordValue !== confirmPasswordValue) {
+      setCreateUserError("Password and confirm password do not match.");
+      return;
+    }
+    createDepartmentUser(
+      {
+        username: generatedUsername,
+        password: passwordValue,
+        email: finalEmail,
+        department: isPresident ? "" : createUserForm.department.trim(),
+        major: isPresident ? "" : requiresMajor ? createUserForm.major.trim() : "",
+        role: createUserForm.accountType,
+      },
+      {
+        onSuccess: () => {
+          setCreatedAccount({
+            username: generatedUsername,
+            email: finalEmail,
+            password: passwordValue,
+            role: createUserForm.accountType,
+          });
+        },
+        onError: (err) => {
+          setCreateUserError(
+            err?.response?.data?.message || "Failed to create department user.",
+          );
+        },
+      },
+    );
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-50 [&_button]:cursor-pointer">
       {/* Sidebar */}
@@ -129,6 +311,18 @@ export default function MainDashboard({ onLogout, onNavigate }) {
               {item.label}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => onOpenCreateUser?.()}
+            className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left text-sm font-semibold text-white transition-colors ${
+              isCreateUserOpen
+                ? "bg-white/15 hover:bg-white/25"
+                : "bg-transparent hover:bg-white/15"
+            }`}
+          >
+            <span className="text-base">＋</span>
+            Create User
+          </button>
           <div className="pt-4">
             <p className="px-4 text-xs font-medium text-green-200 uppercase tracking-wider">Reports</p>
             {reportItems.map((item) => (
@@ -351,6 +545,251 @@ export default function MainDashboard({ onLogout, onNavigate }) {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {false && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden">
+            <div className="bg-[#008000] px-5 py-3">
+              <h3 className="text-white font-semibold">Create User</h3>
+            </div>
+            <form
+              onSubmit={handleCreateDepartmentUser}
+              className="p-5 space-y-4 text-sm"
+            >
+              {createUserError && (
+                <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-xs text-red-700">
+                  {createUserError}
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Account Type
+                  </label>
+                  <select
+                    value={createUserForm.accountType}
+                    onChange={(e) => {
+                      const nextType = e.target.value;
+                      setCreateUserForm((prev) => ({
+                        ...prev,
+                        accountType: nextType,
+                        ...(nextType === "csg_president"
+                          ? { department: "", major: "" }
+                          : null),
+                      }));
+                    }}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white"
+                  >
+                    <option value="department">Department User</option>
+                    <option value="csg_president">CSG President</option>
+                  </select>
+                </div>
+                {createUserForm.accountType !== "csg_president" && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Department
+                      </label>
+                      <select
+                        value={createUserForm.department}
+                        onChange={(e) =>
+                          setCreateUserForm((prev) => ({
+                            ...prev,
+                            department: e.target.value,
+                            major: "",
+                          }))
+                        }
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white"
+                      >
+                        <option value="">Select Department</option>
+                        {DEPARTMENT_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.value}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Major
+                      </label>
+                      <select
+                        value={createUserForm.major}
+                        onChange={(e) =>
+                          setCreateUserForm((prev) => ({
+                            ...prev,
+                            major: e.target.value,
+                          }))
+                        }
+                        disabled={!createUserForm.department || majorOptions.length === 0}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white disabled:bg-gray-100"
+                      >
+                        <option value="">
+                          {createUserForm.department && majorOptions.length === 0
+                            ? "No Major Required"
+                            : createUserForm.department
+                            ? "Select Major"
+                            : "Select Department First"}
+                        </option>
+                        {majorOptions.map((major) => (
+                          <option key={major} value={major}>
+                            {major}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={createUserForm.email}
+                    onChange={(e) =>
+                      setCreateUserForm((prev) => ({ ...prev, email: e.target.value }))
+                    }
+                    className={`w-full border rounded-lg px-3 py-2 bg-white ${
+                      isEmailValid ? "border-gray-300" : "border-red-400"
+                    }`}
+                    placeholder="Enter email (e.g. gov-it@normi.edu.ph)"
+                    inputMode="email"
+                  />
+                  {!isEmailValid && (
+                    <p className="text-[11px] text-red-600 mt-1">
+                      Invalid email. Use @normi.edu.ph or @gmail.com only.
+                    </p>
+                  )}
+                  {emailValue && (
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      Allowed domains:{" "}
+                      <span className="font-medium text-gray-700">
+                        @normi.edu.ph, @gmail.com
+                      </span>
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showCreatePassword ? "text" : "password"}
+                      value={createUserForm.password}
+                      onChange={(e) =>
+                        setCreateUserForm((prev) => ({
+                          ...prev,
+                          password: e.target.value,
+                        }))
+                      }
+                      className={`w-full border rounded-lg px-3 py-2 pr-14 bg-white ${
+                        isPasswordValid ? "border-gray-300" : "border-red-400"
+                      }`}
+                      placeholder="Enter password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCreatePassword((prev) => !prev)}
+                      className="absolute inset-y-0 right-3 text-[11px] text-green-700 hover:text-green-800"
+                    >
+                      {showCreatePassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                  {!isPasswordValid && (
+                    <p className="text-[11px] text-red-600 mt-1">
+                      Password must be at least 6 characters.
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Confirm Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showCreateConfirmPassword ? "text" : "password"}
+                      value={createUserForm.confirmPassword}
+                      onChange={(e) =>
+                        setCreateUserForm((prev) => ({
+                          ...prev,
+                          confirmPassword: e.target.value,
+                        }))
+                      }
+                      className={`w-full border rounded-lg px-3 py-2 pr-14 bg-white ${
+                        doPasswordsMatch ? "border-gray-300" : "border-red-400"
+                      }`}
+                      placeholder="Confirm password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateConfirmPassword((prev) => !prev)}
+                      className="absolute inset-y-0 right-3 text-[11px] text-green-700 hover:text-green-800"
+                    >
+                      {showCreateConfirmPassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                  {!doPasswordsMatch && (
+                    <p className="text-[11px] text-red-600 mt-1">
+                      Passwords do not match.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-1">
+                <p className="text-xs text-gray-600">
+                  Generated username:{" "}
+                  <span className="font-semibold text-gray-800">
+                    {generatedUsername || "—"}
+                  </span>
+                </p>
+              </div>
+              {createdAccount && (
+                <div className="rounded-lg border border-green-200 bg-green-50 p-3 space-y-1">
+                  <p className="text-xs font-semibold text-green-700">
+                    {createdAccount.role === "csg_president"
+                      ? "CSG President created successfully."
+                      : "User created successfully."}
+                  </p>
+                  <p className="text-xs text-green-700">
+                    Email: {createdAccount.email}
+                  </p>
+                  <p className="text-xs text-green-700">
+                    Username: {createdAccount.username}
+                  </p>
+                  <p className="text-xs text-green-700">
+                    Password: {createdAccount.password}
+                  </p>
+                  <p className="text-xs text-green-700">
+                    Role: {createdAccount.role}
+                  </p>
+                </div>
+              )}
+              <div className="px-1 pt-1 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={closeCreateUserModal}
+                  disabled={isCreatingDepartmentUser}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreateUserDisabled}
+                  className={`px-4 py-2 rounded-lg ${
+                    isCreateUserDisabled
+                      ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                      : "bg-[#008000] text-white"
+                  }`}
+                >
+                  {isCreatingDepartmentUser ? "Creating..." : "Create User"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

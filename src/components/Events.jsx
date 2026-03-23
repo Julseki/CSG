@@ -50,7 +50,7 @@ function getCustomEventsFromStorage() {
   }
 }
 
-export default function Events({ onLogout, onNavigate }) {
+export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreateUserOpen }) {
   const [showLogout, setShowLogout] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportMode, setReportMode] = useState("export");
@@ -63,9 +63,8 @@ export default function Events({ onLogout, onNavigate }) {
   const [editableEvent, setEditableEvent] = useState(null);
   const [halfSession, setHalfSession] = useState("AM"); // for Half Day in modal
   const activeNav = "events";
-  const role = (localStorage.getItem("csg_role") || "user").toLowerCase();
-  const roleLabel = role === "admin" ? "Admin" : "User";
-  const isAdmin = role === "admin";
+  const roleLabel = "Admin";
+  const isAdmin = true;
 
   const getFinesForEvent = (ev) => {
     if (ev.attRate == null) return null;
@@ -86,7 +85,7 @@ export default function Events({ onLogout, onNavigate }) {
   const dateStr = now.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
   const navItems = [
-    { id: "dashboard", label: role === "gov_it" ? "Governor Dashboard" : "Dashboard", icon: "▣" },
+    { id: "dashboard", label: "Dashboard", icon: "▣" },
     { id: "attendance", label: "Attendance", icon: "☑" },
     { id: "events", label: "Events", icon: "◉" },
     { id: "students", label: "Department", icon: "☺" },
@@ -158,6 +157,16 @@ export default function Events({ onLogout, onNavigate }) {
               {item.label}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => onOpenCreateUser?.()}
+            className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left text-sm font-semibold text-white transition-colors ${
+              isCreateUserOpen ? "bg-white/15 hover:bg-white/25" : "bg-transparent hover:bg-white/15"
+            }`}
+          >
+            <span className="text-base">＋</span>
+            Create User
+          </button>
           <div className="pt-4">
             <p className="px-4 text-xs font-medium text-green-200 uppercase tracking-wider">Reports</p>
             {reportItems.map((item) => (

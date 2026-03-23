@@ -17,7 +17,7 @@ const ATTENDANCE_LOG = [
   { id: 8, eventName: "Founding Anniversary", date: "Jun 12, 2024", present: 120, absent: 25, status: "Completed" },
 ];
 
-export default function Attendance({ onLogout, onNavigate }) {
+export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isCreateUserOpen }) {
   const [showLogout, setShowLogout] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportMode, setReportMode] = useState("export");
@@ -25,16 +25,15 @@ export default function Attendance({ onLogout, onNavigate }) {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const activeNav = "attendance";
-  const role = (localStorage.getItem("csg_role") || "user").toLowerCase();
-  const roleLabel = role === "admin" ? "Admin" : "User";
-  const isAdmin = role === "admin";
+  const roleLabel = "Admin";
+  const isAdmin = true;
 
   const now = new Date();
   const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   const dateStr = now.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
   const navItems = [
-    { id: "dashboard", label: role === "gov_it" ? "Governor Dashboard" : "Dashboard", icon: "▣" },
+    { id: "dashboard", label: "Dashboard", icon: "▣" },
     { id: "attendance", label: "Attendance", icon: "☑" },
     { id: "events", label: "Events", icon: "◉" },
     { id: "students", label: "Department", icon: "☺" },
@@ -77,6 +76,16 @@ export default function Attendance({ onLogout, onNavigate }) {
               {item.label}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => onOpenCreateUser?.()}
+            className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left text-sm font-semibold text-white transition-colors ${
+              isCreateUserOpen ? "bg-white/15 hover:bg-white/25" : "bg-transparent hover:bg-white/15"
+            }`}
+          >
+            <span className="text-base">＋</span>
+            Create User
+          </button>
           <div className="pt-4">
             <p className="px-4 text-xs font-medium text-green-200 uppercase tracking-wider">Reports</p>
             {reportItems.map((item) => (

@@ -24,7 +24,7 @@ function getBadgeClass(status) {
   return "bg-red-100 text-red-800";
 }
 
-export default function Students({ onNavigate }) {
+export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpen }) {
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("All Departments");
   const [year, setYear] = useState("All Years");
@@ -35,9 +35,8 @@ export default function Students({ onNavigate }) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportMode, setReportMode] = useState("export");
-  const role = (localStorage.getItem("csg_role") || "user").toLowerCase();
-  const roleLabel = role === "admin" ? "Admin" : "User";
-  const isAdmin = role === "admin";
+  const roleLabel = "Admin";
+  const isAdmin = true;
   const [newStudent, setNewStudent] = useState({
     id: "",
     name: "",
@@ -91,7 +90,7 @@ export default function Students({ onNavigate }) {
         <nav className="flex-1 px-4 space-y-1">
           <button onClick={() => onNavigate?.("dashboard")} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-green-600/50">
             <span className="text-lg">▣</span>
-            {role === "gov_it" ? "Governor Dashboard" : "Dashboard"}
+            Dashboard
           </button>
           <button onClick={() => onNavigate?.("attendance")} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-green-600/50">
             <span className="text-lg">☑</span>
@@ -104,6 +103,16 @@ export default function Students({ onNavigate }) {
           <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors bg-green-600 text-white">
             <span className="text-lg">☺</span>
             Department
+          </button>
+          <button
+            type="button"
+            onClick={() => onOpenCreateUser?.()}
+            className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left text-sm font-semibold text-white transition-colors ${
+              isCreateUserOpen ? "bg-white/15 hover:bg-white/25" : "bg-transparent hover:bg-white/15"
+            }`}
+          >
+            <span className="text-base">＋</span>
+            Create User
           </button>
           <div className="pt-4">
             <p className="px-4 text-xs font-medium text-green-200 uppercase tracking-wider">Reports</p>

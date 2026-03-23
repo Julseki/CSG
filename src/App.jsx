@@ -1,82 +1,143 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import LoginDashboard from "./components/LoginDashboard";
-import MainDashboard from "./components/MainDashboard";
+import Dashboard from "./components/Dashboard";
 import Attendance from "./components/Attendance";
 import Events from "./components/Events";
 import Students from "./components/Students";
-import UserDashboard from "./components/UserDashboard";
-
-const AUTH_KEY = "csg_logged_in";
-const PAGE_KEY = "csg_current_page";
-const ROLE_KEY = "csg_role";
+import CreateUserModal from "./components/CreateUserModal";
+import { useAuthSession, useLogout } from "./hooks/auth";
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem(AUTH_KEY));
-  const [currentPage, setCurrentPage] = useState(() => localStorage.getItem(PAGE_KEY) || "dashboard");
-  const role = (localStorage.getItem(ROLE_KEY) || "user").toLowerCase();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const defaultRoute = "/dashboard";
+  const { mutate: logout } = useLogout();
+  const { data: session, isLoading: isSessionLoading, refetch: refetchSession } = useAuthSession();
+  const [loginPayload, setLoginPayload] = useState(null);
+  const isLoggedIn = !!session || !!loginPayload;
+  const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
 
   useEffect(() => {
-    if (isLoggedIn) {
-      localStorage.setItem(AUTH_KEY, "1");
-    } else {
-      localStorage.removeItem(AUTH_KEY);
-      localStorage.removeItem(PAGE_KEY);
-      localStorage.removeItem(ROLE_KEY);
-    }
-  }, [isLoggedIn]);
+    if (!isCreateUserOpen) return;
 
-  useEffect(() => {
-    if (isLoggedIn) {
-      localStorage.setItem(PAGE_KEY, currentPage);
-    }
-  }, [isLoggedIn, currentPage]);
+    const prevOverflow = document.body.style.overflow;
+    const prevPaddingRight = document.body.style.paddingRight;
 
-  const handleLoginSuccess = () => {
-    setIsLoggedIn(true);
+    // Prevent layout shift from scrollbar changes while modal is open.
+    const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = "hidden";
+    if (scrollBarWidth > 0) {
+      document.body.style.paddingRight = `${scrollBarWidth}px`;
+    }
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.paddingRight = prevPaddingRight;
+    };
+  }, [isCreateUserOpen]);
+
+  const handleLoginSuccess = (data) => {
+    setLoginPayload(data ?? { authenticated: true });
+    refetchSession().finally(() => {
+      navigate(defaultRoute, { replace: true });
+    });
   };
 
   const handleLogout = () => {
-    setIsLoggedIn(false);
-    setCurrentPage("dashboard");
+    logout(undefined, {
+      onSettled: () => {
+        setLoginPayload(null);
+        queryClient.setQueryData(["auth", "session"], null);
+        navigate("/login", { replace: true });
+      },
+    });
   };
 
   const handleNavigate = (page) => {
-    // Non-admin users should not access the admin dashboard (MainDashboard).
-    // gov_it users are allowed to use UserDashboard.
-    if (role !== "admin" && role !== "gov_it" && page === "dashboard") {
-      setCurrentPage("attendance");
-      return;
-    }
-    setCurrentPage(page);
+    const pageRoutes = {
+      dashboard: "/dashboard",
+      attendance: "/attendance",
+      events: "/events",
+      students: "/students",
+    };
+    const normalizedPage = String(page || "").toLowerCase().trim();
+    navigate(pageRoutes[normalizedPage] || defaultRoute);
   };
 
-  if (!isLoggedIn) {
-    return <LoginDashboard onLoginSuccess={handleLoginSuccess} />;
+  const openCreateUser = () => {
+    setIsCreateUserOpen(true);
+  };
+  const closeCreateUser = () => setIsCreateUserOpen(false);
+
+  if (isSessionLoading) {
+    return <div className="min-h-screen grid place-items-center text-sm text-gray-600">Checking session...</div>;
   }
 
-  // gov-IT landing page
-  if (role === "gov_it" && currentPage === "dashboard") {
-    return <UserDashboard onLogout={handleLogout} onNavigate={handleNavigate} />;
-  }
-
-  // Users should not access the admin dashboard (MainDashboard)
-  if (role !== "admin" && role !== "gov_it" && currentPage === "dashboard") {
-    return <Attendance onLogout={handleLogout} onNavigate={handleNavigate} />;
-  }
-
-  if (currentPage === "events") {
-    return <Events onLogout={handleLogout} onNavigate={handleNavigate} />;
-  }
-
-  if (currentPage === "attendance") {
-    return <Attendance onLogout={handleLogout} onNavigate={handleNavigate} />;
-  }
-
-  if (currentPage === "students") {
-    return <Students onLogout={handleLogout} onNavigate={handleNavigate} />;
-  }
-
-  return <MainDashboard onLogout={handleLogout} onNavigate={handleNavigate} />;
+  return (
+    <>
+      <Routes>
+      {!isLoggedIn ? (
+        <>
+          <Route path="/login" element={<LoginDashboard onLoginSuccess={handleLoginSuccess} />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </>
+      ) : (
+        <>
+          <Route path="/login" element={<Navigate to={defaultRoute} replace />} />
+          <Route
+            path="/dashboard"
+            element={
+              <Dashboard
+                onLogout={handleLogout}
+                onNavigate={handleNavigate}
+                onOpenCreateUser={openCreateUser}
+                isCreateUserOpen={isCreateUserOpen}
+              />
+            }
+          />
+          <Route
+            path="/attendance"
+            element={
+              <Attendance
+                onLogout={handleLogout}
+                onNavigate={handleNavigate}
+                onOpenCreateUser={openCreateUser}
+                isCreateUserOpen={isCreateUserOpen}
+              />
+            }
+          />
+          <Route
+            path="/events"
+            element={
+              <Events
+                onLogout={handleLogout}
+                onNavigate={handleNavigate}
+                onOpenCreateUser={openCreateUser}
+                isCreateUserOpen={isCreateUserOpen}
+              />
+            }
+          />
+          <Route
+            path="/students"
+            element={
+              <Students
+                onLogout={handleLogout}
+                onNavigate={handleNavigate}
+                onOpenCreateUser={openCreateUser}
+                isCreateUserOpen={isCreateUserOpen}
+              />
+            }
+          />
+          <Route path="/" element={<Navigate to={defaultRoute} replace />} />
+          <Route path="*" element={<Navigate to={defaultRoute} replace />} />
+        </>
+      )}
+      </Routes>
+      <CreateUserModal open={isCreateUserOpen} onClose={closeCreateUser} />
+    </>
+  );
 }
 
 export default App;
