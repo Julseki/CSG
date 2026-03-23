@@ -12,16 +12,26 @@ function useCreateUserDebugMutation() {
       major,
       role = "department",
     }) => {
-      const requestBody = { username, password, email, department, major, role };
+      const requestBody = {
+        username,
+        password,
+        email,
+        department,
+        major,
+        role,
+      };
 
       // Debug logging: show exactly what we're sending (mask password for safety).
       console.log("[CreateUserModal] POST /signup request body:", {
         ...requestBody,
         password: requestBody.password ? "[REDACTED]" : requestBody.password,
       });
-      console.log("[CreateUserModal] password length:", requestBody.password?.length ?? 0);
+      console.log(
+        "[CreateUserModal] password length:",
+        requestBody.password?.length ?? 0,
+      );
 
-      const response = await api.post("/signup", requestBody);
+      const response = await api.post("/create-account", requestBody);
       return response.data;
     },
   });
@@ -86,7 +96,8 @@ export default function CreateUserModal({ open, onClose }) {
   });
 
   const [showCreatePassword, setShowCreatePassword] = useState(false);
-  const [showCreateConfirmPassword, setShowCreateConfirmPassword] = useState(false);
+  const [showCreateConfirmPassword, setShowCreateConfirmPassword] =
+    useState(false);
 
   const selectedDepartment = useMemo(
     () =>
@@ -180,10 +191,8 @@ export default function CreateUserModal({ open, onClose }) {
     return majorOptions.length > 0;
   }, [createUserForm.accountType, majorOptions.length]);
 
-  const {
-    mutate: createUser,
-    isPending: isCreatingUser,
-  } = useCreateUserDebugMutation();
+  const { mutate: createUser, isPending: isCreatingUser } =
+    useCreateUserDebugMutation();
 
   const isCreateDisabled =
     isCreatingUser ||
@@ -194,10 +203,18 @@ export default function CreateUserModal({ open, onClose }) {
     !isPasswordValid ||
     (requiresMajor && !createUserForm.major.trim());
 
+  const DEPARTMENT_ROLE_MAP = {
+    "College of Information Technology": "it_governor",
+    "College of Business Administration": "cba_governor",
+    "College of Education and Arts and Science": "ceas_governor",
+    "College of Criminology": "coc_governor",
+    "College of Hospitality Management": "chm_governor",
+  };
+
   const roleToSend =
     createUserForm.accountType === "csg_president"
       ? "csg_president"
-      : "governor";
+      : (DEPARTMENT_ROLE_MAP[createUserForm.department] ?? "it_governor");
 
   const resetForm = () => {
     setCreateUserError("");
@@ -239,13 +256,17 @@ export default function CreateUserModal({ open, onClose }) {
                 return;
               }
               if (requiresMajor && !createUserForm.major.trim()) {
-                setCreateUserError("Major is required for the selected department.");
+                setCreateUserError(
+                  "Major is required for the selected department.",
+                );
                 return;
               }
             }
 
             if (!generatedUsername) {
-              setCreateUserError("Unable to generate username. Check your inputs.");
+              setCreateUserError(
+                "Unable to generate username. Check your inputs.",
+              );
               return;
             }
 
@@ -255,11 +276,16 @@ export default function CreateUserModal({ open, onClose }) {
             }
 
             if (!isValidAllowedEmail(createUserForm.email)) {
-              setCreateUserError("Email must end with @normi.edu.ph or @gmail.com.");
+              setCreateUserError(
+                "Email must end with @normi.edu.ph or @gmail.com.",
+              );
               return;
             }
 
-            if (!createUserForm.password || createUserForm.password.length < 6) {
+            if (
+              !createUserForm.password ||
+              createUserForm.password.length < 6
+            ) {
               setCreateUserError("Password must be at least 6 characters.");
               return;
             }
@@ -297,8 +323,7 @@ export default function CreateUserModal({ open, onClose }) {
                 },
                 onError: (err) => {
                   setCreateUserError(
-                    err?.response?.data?.message ||
-                      "Failed to create user.",
+                    err?.response?.data?.message || "Failed to create user.",
                   );
                 },
               },
@@ -374,7 +399,9 @@ export default function CreateUserModal({ open, onClose }) {
                         major: e.target.value,
                       }))
                     }
-                    disabled={!createUserForm.department || majorOptions.length === 0}
+                    disabled={
+                      !createUserForm.department || majorOptions.length === 0
+                    }
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white disabled:bg-gray-100"
                   >
                     <option value="">
@@ -402,7 +429,10 @@ export default function CreateUserModal({ open, onClose }) {
                 type="email"
                 value={createUserForm.email}
                 onChange={(e) =>
-                  setCreateUserForm((prev) => ({ ...prev, email: e.target.value }))
+                  setCreateUserForm((prev) => ({
+                    ...prev,
+                    email: e.target.value,
+                  }))
                 }
                 className={`w-full border rounded-lg px-3 py-2 bg-white ${
                   isEmailValid ? "border-gray-300" : "border-red-400"
@@ -472,9 +502,7 @@ export default function CreateUserModal({ open, onClose }) {
                 />
                 <button
                   type="button"
-                  onClick={() =>
-                    setShowCreateConfirmPassword((prev) => !prev)
-                  }
+                  onClick={() => setShowCreateConfirmPassword((prev) => !prev)}
                   className="absolute inset-y-0 right-3 text-[11px] text-green-700 hover:text-green-800"
                 >
                   {showCreateConfirmPassword ? "Hide" : "Show"}
@@ -504,7 +532,9 @@ export default function CreateUserModal({ open, onClose }) {
                   ? "CSG President created successfully."
                   : "User created successfully."}
               </p>
-              <p className="text-xs text-green-700">Email: {createdAccount.email}</p>
+              <p className="text-xs text-green-700">
+                Email: {createdAccount.email}
+              </p>
               <p className="text-xs text-green-700">
                 Username: {createdAccount.username}
               </p>
@@ -539,4 +569,3 @@ export default function CreateUserModal({ open, onClose }) {
     </div>
   );
 }
-
