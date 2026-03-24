@@ -43,6 +43,7 @@ export default function AddEvent({ onBack, onNext }) {
   const [eventName, setEventName] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [venue, setVenue] = useState("");
+  const [fineAmount, setFineAmount] = useState("");
   const [duration, setDuration] = useState("whole"); // whole | half
   const [amTimeIn, setAmTimeIn] = useState("");
   const [amTimeOut, setAmTimeOut] = useState("");
@@ -92,6 +93,18 @@ export default function AddEvent({ onBack, onNext }) {
     if (!eventName.trim()) e.eventName = "Event name is required";
     if (!eventDate.trim()) e.eventDate = "Event date is required";
     if (!venue.trim()) e.venue = "Venue is required";
+    if (fineAmount === "" || Number(fineAmount) < 0) e.fineAmount = "Fines is required";
+
+    if (duration === "whole" || (duration === "half" && useAmHalf)) {
+      if (!amTimeIn) e.amTimeIn = "AM Time In is required";
+      if (!amTimeOut) e.amTimeOut = "AM Time Out is required";
+    }
+
+    if (duration === "whole" || (duration === "half" && usePmHalf)) {
+      if (!pmTimeIn) e.pmTimeIn = "PM Time In is required";
+      if (!pmTimeOut) e.pmTimeOut = "PM Time Out is required";
+    }
+
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -119,6 +132,7 @@ export default function AddEvent({ onBack, onNext }) {
       timeSlots: slots.join(", "),
       reg: 0,
       attRate: null,
+      fine: fineAmount === "" ? null : Number(fineAmount),
       status: "Upcoming",
     };
   };
@@ -272,6 +286,26 @@ export default function AddEvent({ onBack, onNext }) {
               </div>
             </div>
 
+            <div>
+              <label className="block text-sm font-semibold text-[#008000] mb-1">Fines</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={fineAmount}
+                  onChange={(e) => {
+                    setFineAmount(e.target.value);
+                    setErrors((prev) => ({ ...prev, fineAmount: null }));
+                  }}
+                  placeholder="0"
+                  className={`w-full pl-8 pr-4 py-2.5 border rounded-lg bg-gray-50 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000] ${errors.fineAmount ? "border-red-500" : "border-gray-300"}`}
+                />
+              </div>
+              {errors.fineAmount && <p className="text-xs text-red-600 mt-1">{errors.fineAmount}</p>}
+            </div>
+
             {/* Event Duration */}
             <div>
               <label className="block text-sm font-semibold text-[#008000] mb-2">Event Duration *</label>
@@ -313,7 +347,13 @@ export default function AddEvent({ onBack, onNext }) {
                     <input
                       type="checkbox"
                       checked={useAmHalf}
-                      onChange={(e) => setUseAmHalf(e.target.checked)}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setUseAmHalf(checked);
+                        // Half-day should show only one session at a time.
+                        if (checked) setUsePmHalf(false);
+                        if (!checked && !usePmHalf) setUsePmHalf(true);
+                      }}
                     />
                     <span>AM Session</span>
                   </label>
@@ -321,7 +361,13 @@ export default function AddEvent({ onBack, onNext }) {
                     <input
                       type="checkbox"
                       checked={usePmHalf}
-                      onChange={(e) => setUsePmHalf(e.target.checked)}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setUsePmHalf(checked);
+                        // Half-day should show only one session at a time.
+                        if (checked) setUseAmHalf(false);
+                        if (!checked && !useAmHalf) setUseAmHalf(true);
+                      }}
                     />
                     <span>PM Session</span>
                   </label>
@@ -339,8 +385,11 @@ export default function AddEvent({ onBack, onNext }) {
                   <div className="flex gap-2">
                     <select
                       value={amTimeIn}
-                      onChange={(e) => setAmTimeIn(e.target.value)}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000]"
+                      onChange={(e) => {
+                        setAmTimeIn(e.target.value);
+                        setErrors((prev) => ({ ...prev, amTimeIn: null }));
+                      }}
+                      className={`flex-1 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000] ${errors.amTimeIn ? "border-red-500" : "border-gray-300"}`}
                     >
                       <option value="">Select time</option>
                       {AM_SESSION_TIME_OPTIONS.map((timeOption) => (
@@ -351,14 +400,18 @@ export default function AddEvent({ onBack, onNext }) {
                     </select>
                     <span className="flex items-center px-2 text-gray-500">🕐</span>
                   </div>
+                  {errors.amTimeIn && <p className="text-xs text-red-600 mt-1">{errors.amTimeIn}</p>}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Time Out</label>
                   <div className="flex gap-2">
                     <select
                       value={amTimeOut}
-                      onChange={(e) => setAmTimeOut(e.target.value)}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000]"
+                      onChange={(e) => {
+                        setAmTimeOut(e.target.value);
+                        setErrors((prev) => ({ ...prev, amTimeOut: null }));
+                      }}
+                      className={`flex-1 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000] ${errors.amTimeOut ? "border-red-500" : "border-gray-300"}`}
                     >
                       <option value="">Select time</option>
                       {AM_SESSION_TIME_OPTIONS.map((timeOption) => (
@@ -369,6 +422,7 @@ export default function AddEvent({ onBack, onNext }) {
                     </select>
                     <span className="flex items-center px-2 text-gray-500">🕐</span>
                   </div>
+                  {errors.amTimeOut && <p className="text-xs text-red-600 mt-1">{errors.amTimeOut}</p>}
                 </div>
               </div>
             </div>
@@ -384,8 +438,11 @@ export default function AddEvent({ onBack, onNext }) {
                   <div className="flex gap-2">
                     <select
                       value={pmTimeIn}
-                      onChange={(e) => setPmTimeIn(e.target.value)}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000]"
+                      onChange={(e) => {
+                        setPmTimeIn(e.target.value);
+                        setErrors((prev) => ({ ...prev, pmTimeIn: null }));
+                      }}
+                      className={`flex-1 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000] ${errors.pmTimeIn ? "border-red-500" : "border-gray-300"}`}
                     >
                       <option value="">Select time</option>
                       {PM_SESSION_TIME_OPTIONS.map((timeOption) => (
@@ -396,14 +453,18 @@ export default function AddEvent({ onBack, onNext }) {
                     </select>
                     <span className="flex items-center px-2 text-gray-500">🕐</span>
                   </div>
+                  {errors.pmTimeIn && <p className="text-xs text-red-600 mt-1">{errors.pmTimeIn}</p>}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Time Out</label>
                   <div className="flex gap-2">
                     <select
                       value={pmTimeOut}
-                      onChange={(e) => setPmTimeOut(e.target.value)}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000]"
+                      onChange={(e) => {
+                        setPmTimeOut(e.target.value);
+                        setErrors((prev) => ({ ...prev, pmTimeOut: null }));
+                      }}
+                      className={`flex-1 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000] ${errors.pmTimeOut ? "border-red-500" : "border-gray-300"}`}
                     >
                       <option value="">Select time</option>
                       {PM_SESSION_TIME_OPTIONS.map((timeOption) => (
@@ -414,6 +475,7 @@ export default function AddEvent({ onBack, onNext }) {
                     </select>
                     <span className="flex items-center px-2 text-gray-500">🕐</span>
                   </div>
+                  {errors.pmTimeOut && <p className="text-xs text-red-600 mt-1">{errors.pmTimeOut}</p>}
                 </div>
               </div>
             </div>
@@ -533,6 +595,10 @@ export default function AddEvent({ onBack, onNext }) {
                 <span className="text-gray-900">
                   {duration === "whole" ? "Whole Day (AM + PM)" : "Half Day (AM or PM only)"}
                 </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="font-semibold text-gray-700">Fines</span>
+                <span className="text-gray-900">{fineAmount ? `₱${fineAmount}` : "-"}</span>
               </div>
               <div className="mt-3 border-t border-gray-100 pt-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-700">
                 <div>

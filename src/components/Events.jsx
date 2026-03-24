@@ -46,7 +46,10 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
   const isAdmin = true;
 
   const getFinesForEvent = (ev) => {
-    if (ev.attRate == null) return null;
+    if (ev.attRate == null) {
+      if (ev.fine != null && ev.fine !== "") return Number(ev.fine) || 0;
+      return null;
+    }
     if (eventFines[ev.name] !== undefined && eventFines[ev.name] !== "") {
       const val = Number(eventFines[ev.name]);
       return isNaN(val) ? getDefaultFinesForEvent(ev) : val;
@@ -347,15 +350,17 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
                         <td className="py-3 px-4">📍 {ev.venue}</td>
                         <td className="py-3 px-4 text-gray-600">{ev.timeSlots}</td>
                         <td className="sticky right-0 z-10 bg-white py-3 px-4" title={`Edit fines for: ${ev.name}`}>
-                          {ev.attRate != null ? (
+                          <div className="relative w-28">
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
                             <input
-                              type="text"
+                              type="number"
+                              min="0"
+                              step="1"
+                              className="w-full rounded border border-gray-300 py-1 pl-6 pr-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#008000]"
                               value={eventFines[ev.name] !== undefined ? eventFines[ev.name] : fineVal ?? ""}
                               onChange={(e) => setFineForEvent(ev.name, e.target.value)}
                             />
-                          ) : (
-                            <span className="text-gray-400">N/A</span>
-                          )}
+                          </div>
                         </td>
                         <td className="py-3 px-4">
                           <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getEventStatusClass(ev.status)}`}>
@@ -389,16 +394,19 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
                     <p className="text-xs text-gray-500 mb-2">{ev.timeSlots}</p>
                     {/* Fines - editable by event name */}
                     <div className="pt-2 border-t border-gray-100">
-                      <label className="block text-xs font-medium text-amber-700 mb-1">Fines ({ev.name})</label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        title={`Edit fines for ${ev.name}`}
-                        value={eventFines[ev.name] ?? (getFinesForEvent(ev) ?? "")}
-                        onChange={(e) => setFineForEvent(ev.name, e.target.value)}
-                        disabled={ev.attRate == null}
-                      />
+                      <label className="block text-xs font-medium text-amber-700 mb-1">Fines</label>
+                      <div className="relative">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">₱</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          title={`Edit fines for ${ev.name}`}
+                          className="w-full rounded border border-gray-300 py-1 pl-6 pr-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#008000]"
+                          value={eventFines[ev.name] ?? (getFinesForEvent(ev) ?? "")}
+                          onChange={(e) => setFineForEvent(ev.name, e.target.value)}
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}
