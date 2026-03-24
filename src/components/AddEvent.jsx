@@ -149,7 +149,7 @@ export default function AddEvent({ onBack, onNext }) {
         venue: payload.venue,
         status: payload.status,
         yearLevel,
-        department,
+        course_code: department,
         major: shouldShowMajorSelection ? major : "",
         isMandatory,
         audienceNotes: audienceNotes?.trim() || "",
