@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import api from "../api/axiosInstance";
+import { useAuthSession } from "../hooks/auth";
 
 function useCreateUserDebugMutation() {
   return useMutation({
@@ -53,7 +54,7 @@ const DEPARTMENT_OPTIONS = [
     ],
   },
   {
-    value: "College of Education and Arts and Science",
+    value: "College of Education, Arts and Sciences",
     code: "CEAS",
     majors: ["English", "Filipino", "Mathematics", "BEED"],
   },
@@ -72,9 +73,17 @@ const DEPARTMENT_OPTIONS = [
 const DEPARTMENT_USERNAME_BASE = {
   "College of Information Technology": "gov-IT",
   "College of Business Administration": "gov-CBA",
-  "College of Education and Arts and Science": "gov-CEAS",
+  "College of Education, Arts and Sciences": "gov-CEAS",
   "College of Criminology": "gov-CRIM",
   "College of Hospitality Management": "gov-CHM",
+};
+
+const ROLE_DEPARTMENT_MAP = {
+  it_governor: "College of Information Technology",
+  cba_governor: "College of Business Administration",
+  ceas_governor: "College of Education, Arts and Sciences",
+  coc_governor: "College of Criminology",
+  chm_governor: "College of Hospitality Management",
 };
 
 function isValidAllowedEmail(value) {
@@ -83,6 +92,7 @@ function isValidAllowedEmail(value) {
 }
 
 export default function CreateUserModal({ open, onClose }) {
+  const { data: session } = useAuthSession();
   const [createUserError, setCreateUserError] = useState("");
   const [createdAccount, setCreatedAccount] = useState(null);
 
@@ -109,6 +119,18 @@ export default function CreateUserModal({ open, onClose }) {
 
   const majorOptions = selectedDepartment?.majors || [];
 
+  const currentRole = String(
+    session?.role ??
+      session?.user?.role ??
+      session?.data?.role ??
+      session?.profile?.role ??
+      "",
+  )
+    .toLowerCase()
+    .trim();
+  const governorDepartmentFromRole = ROLE_DEPARTMENT_MAP[currentRole] ?? "";
+  const isGovernorLoggedIn = !!governorDepartmentFromRole;
+
   const resetForOpen = () => {
     setCreateUserError("");
     setCreatedAccount(null);
@@ -128,6 +150,16 @@ export default function CreateUserModal({ open, onClose }) {
     if (!open) return;
     resetForOpen();
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !isGovernorLoggedIn) return;
+    setCreateUserForm((prev) => ({
+      ...prev,
+      accountType: "department",
+      department: governorDepartmentFromRole,
+      major: "",
+    }));
+  }, [open, isGovernorLoggedIn, governorDepartmentFromRole]);
 
   const isEmailValid = !createUserForm.email.trim()
     ? true
@@ -167,6 +199,8 @@ export default function CreateUserModal({ open, onClose }) {
       (normalizedDepartment ? `gov-${normalizedDepartment}` : "");
 
     if (!departmentBase) return "";
+    // Admin flow: no major selection in create-user modal.
+    if (!isGovernorLoggedIn) return departmentBase.slice(0, 28);
     if (!requiresMajor) return departmentBase.slice(0, 28);
     if (!normalizedMajor) return "";
 
@@ -188,8 +222,9 @@ export default function CreateUserModal({ open, onClose }) {
 
   const requiresMajor = useMemo(() => {
     if (createUserForm.accountType === "csg_president") return false;
+    if (!isGovernorLoggedIn) return false;
     return majorOptions.length > 0;
-  }, [createUserForm.accountType, majorOptions.length]);
+  }, [createUserForm.accountType, majorOptions.length, isGovernorLoggedIn]);
 
   const { mutate: createUser, isPending: isCreatingUser } =
     useCreateUserDebugMutation();
@@ -206,7 +241,7 @@ export default function CreateUserModal({ open, onClose }) {
   const DEPARTMENT_ROLE_MAP = {
     "College of Information Technology": "it_governor",
     "College of Business Administration": "cba_governor",
-    "College of Education and Arts and Science": "ceas_governor",
+    "College of Education, Arts and Sciences": "ceas_governor",
     "College of Criminology": "coc_governor",
     "College of Hospitality Management": "chm_governor",
   };
@@ -307,7 +342,7 @@ export default function CreateUserModal({ open, onClose }) {
                 major:
                   createUserForm.accountType === "csg_president"
                     ? ""
-                    : requiresMajor
+                    : isGovernorLoggedIn && requiresMajor
                       ? createUserForm.major.trim()
                       : "",
                 role: roleToSend,
@@ -344,6 +379,7 @@ export default function CreateUserModal({ open, onClose }) {
               </label>
               <select
                 value={createUserForm.accountType}
+                disabled={isGovernorLoggedIn}
                 onChange={(e) => {
                   const nextType = e.target.value;
                   setCreateUserForm((prev) => ({
@@ -354,7 +390,7 @@ export default function CreateUserModal({ open, onClose }) {
                       : null),
                   }));
                 }}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white disabled:bg-gray-100"
               >
                 <option value="department">Department User</option>
                 <option value="csg_president">CSG President</option>
@@ -367,57 +403,65 @@ export default function CreateUserModal({ open, onClose }) {
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Department
                   </label>
-                  <select
-                    value={createUserForm.department}
-                    onChange={(e) =>
-                      setCreateUserForm((prev) => ({
-                        ...prev,
-                        department: e.target.value,
-                        major: "",
-                      }))
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white"
-                  >
-                    <option value="">Select Department</option>
-                    {DEPARTMENT_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.value}
-                      </option>
-                    ))}
-                  </select>
+                  {isGovernorLoggedIn ? (
+                    <div className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100 text-gray-700">
+                      {governorDepartmentFromRole}
+                    </div>
+                  ) : (
+                    <select
+                      value={createUserForm.department}
+                      onChange={(e) =>
+                        setCreateUserForm((prev) => ({
+                          ...prev,
+                          department: e.target.value,
+                          major: "",
+                        }))
+                      }
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white"
+                    >
+                      <option value="">Select Department</option>
+                      {DEPARTMENT_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.value}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Major
-                  </label>
-                  <select
-                    value={createUserForm.major}
-                    onChange={(e) =>
-                      setCreateUserForm((prev) => ({
-                        ...prev,
-                        major: e.target.value,
-                      }))
-                    }
-                    disabled={
-                      !createUserForm.department || majorOptions.length === 0
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white disabled:bg-gray-100"
-                  >
-                    <option value="">
-                      {createUserForm.department && majorOptions.length === 0
-                        ? "No Major Required"
-                        : createUserForm.department
-                          ? "Select Major"
-                          : "Select Department First"}
-                    </option>
-                    {majorOptions.map((major) => (
-                      <option key={major} value={major}>
-                        {major}
+                {isGovernorLoggedIn && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Major
+                    </label>
+                    <select
+                      value={createUserForm.major}
+                      onChange={(e) =>
+                        setCreateUserForm((prev) => ({
+                          ...prev,
+                          major: e.target.value,
+                        }))
+                      }
+                      disabled={
+                        !createUserForm.department || majorOptions.length === 0
+                      }
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white disabled:bg-gray-100"
+                    >
+                      <option value="">
+                        {createUserForm.department && majorOptions.length === 0
+                          ? "No Major Required"
+                          : createUserForm.department
+                            ? "Select Major"
+                            : "Select Department First"}
                       </option>
-                    ))}
-                  </select>
-                </div>
+                      {majorOptions.map((major) => (
+                        <option key={major} value={major}>
+                          {major}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </>
             )}
 

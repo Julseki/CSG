@@ -72,7 +72,7 @@ const DEPARTMENT_OPTIONS = [
     majors: ["Marketing Management", "Financial Management", "Human Resource Management"],
   },
   {
-    value: "College of Education and Arts and Science",
+    value: "College of Education, Arts and Sciences",
     majors: ["English", "Filipino", "Mathematics", "BEED"],
   },
   {
@@ -88,7 +88,7 @@ const DEPARTMENT_OPTIONS = [
 const DEPARTMENT_USERNAME_BASE = {
   "College of Information Technology": "gov-IT",
   "College of Business Administration": "gov-CBA",
-  "College of Education and Arts and Science": "gov-CEAS",
+  "College of Education, Arts and Sciences": "gov-CEAS",
   "College of Criminology": "gov-CRIM",
   "College of Hospitality Management": "gov-CHM",
 };

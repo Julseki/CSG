@@ -1,30 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import AddEvent from "./AddEvent";
 
 const FINE_PER_ABSENT = 50; // Pesos per absent student
 
-const SUMMARY_DATA = [
-  { label: "Total Events", value: 10, sub: "AY 2025/2026", color: "text-gray-800" },
-  { label: "Completed", value: 7, sub: "Successfully Held", color: "text-green-600" },
-  { label: "Active", value: 4, sub: "Currently Ongoing", color: "text-red-600" },
-  { label: "Upcoming", value: 2, sub: "Scheduled Ahead", color: "text-gray-800" },
-  { label: "Avg. Attendance", value: 7, sub: "Across All Events", color: "text-gray-800" },
-];
-
 const CUSTOM_EVENTS_KEY = "csg_custom_events";
-
-const EVENTS_LIST = [
-  { name: "Founding Anniversary", icon: "🏛", date: "Jun 12, 2024", duration: "Whole Day", venue: "Main Auditorium", timeSlots: "AM: 8:00 AM-12:00 PM", reg: 145, attRate: 83, status: "Completed" },
-  { name: "Enrollment Orientation", icon: "🎓", date: "Aug 5, 2024", duration: "Half Day", venue: "City Gym", timeSlots: "PM: 2:00 PM-6:00 PM", reg: 145, attRate: 90, status: "Completed" },
-  { name: "Teachers Day", icon: "👨‍🏫", date: "Oct 5, 2024", duration: "Half Day", venue: "Main Auditorium", timeSlots: "AM: 8:00 AM-12:00 PM", reg: 145, attRate: 70, status: "Completed" },
-  { name: "Foundation Day", icon: "🌳", date: "Mar 14, 2025", duration: "Whole Day", venue: "Covered Court", timeSlots: "AM: 8:00 AM-12:00 PM, PM: 2:00 PM-8:00 PM", reg: 145, attRate: 75, status: "Completed" },
-  { name: "Christmas Party", icon: "🎄", date: "Dec 20, 2024", duration: "Half Day", venue: "Library Hall", timeSlots: "PM: 2:00 PM-8:00 PM", reg: 145, attRate: 88, status: "Completed" },
-  { name: "Research Symposium", icon: "📚", date: "Feb 10, 2025", duration: "Half Day", venue: "Main Auditorium", timeSlots: "AM: 8:00 AM-12:00 PM", reg: 145, attRate: 65, status: "Completed" },
-  { name: "Sports Fest Opening", icon: "⚽", date: "Mar 1, 2025", duration: "Half Day", venue: "City Gym", timeSlots: "AM: 8:00 AM-12:00 PM", reg: 145, attRate: 92, status: "Completed" },
-  { name: "General Assembly", icon: "📋", date: "Mar 14, 2025", duration: "Half Day", venue: "City Gym", timeSlots: "AM: 8:00 AM-12:00 PM", reg: 145, attRate: 78, status: "Active" },
-  { name: "Leadership Summit", icon: "🎤", date: "Apr 5, 2025", duration: "Whole Day", venue: "Main Auditorium", timeSlots: "AM: 8:00 AM-12:00 PM, PM: 2:00 PM-6:00 PM", reg: 145, attRate: null, status: "Upcoming" },
-  { name: "Graduation Ceremony", icon: "🎓", date: "May 15, 2025", duration: "Half Day", venue: "Covered Court", timeSlots: "AM: 8:00 AM-12:00 PM", reg: 145, attRate: null, status: "Upcoming" },
-];
 
 function getEventStatusClass(status) {
   if (status === "Completed") return "bg-green-100 text-green-800";
@@ -96,7 +75,55 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
     ...(isAdmin ? [{ id: "import", label: "Import" }, { id: "settings", label: "Settings" }] : []),
   ];
 
-  const allEvents = [...EVENTS_LIST, ...getCustomEventsFromStorage()];
+  const allEvents = getCustomEventsFromStorage();
+  const firstEvent = allEvents[0] || null;
+  const summaryData = useMemo(() => {
+    const total = allEvents.length;
+    const completed = allEvents.filter((e) => e.status === "Completed").length;
+    const active = allEvents.filter((e) => e.status === "Active").length;
+    const upcoming = allEvents.filter((e) => e.status === "Upcoming").length;
+    const attRates = allEvents
+      .map((e) => Number(e.attRate))
+      .filter((val) => Number.isFinite(val));
+    const avgAttendance = attRates.length
+      ? Math.round(
+          attRates.reduce((sum, val) => sum + val, 0) / attRates.length,
+        )
+      : 0;
+
+    return [
+      {
+        label: "Total Events",
+        value: total,
+        sub: "From saved records",
+        color: "text-gray-800",
+      },
+      {
+        label: "Completed",
+        value: completed,
+        sub: "Successfully held",
+        color: "text-green-600",
+      },
+      {
+        label: "Active",
+        value: active,
+        sub: "Currently ongoing",
+        color: "text-red-600",
+      },
+      {
+        label: "Upcoming",
+        value: upcoming,
+        sub: "Scheduled ahead",
+        color: "text-gray-800",
+      },
+      {
+        label: "Avg. Attendance",
+        value: `${avgAttendance}%`,
+        sub: "Across events with attendance",
+        color: "text-gray-800",
+      },
+    ];
+  }, [allEvents]);
 
   const openEventModal = (ev) => {
     if (!isAdmin) return;
@@ -203,7 +230,9 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
           <h1 className="text-lg font-semibold text-[#008000]">Events</h1>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">
-              Event: General Assembly 2025 | Start: 8:00 AM
+              {firstEvent
+                ? `Event: ${firstEvent.name} | Date: ${firstEvent.date || "-"}`
+                : "No events available"}
             </span>
             <div className="relative flex items-center gap-2">
               <button
@@ -226,7 +255,7 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
         <main className="flex-1 p-6 overflow-auto">
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-            {SUMMARY_DATA.map((item, i) => (
+            {summaryData.map((item, i) => (
               <div key={i} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
                 <p className={`text-2xl font-bold ${item.color}`}>{item.value}</p>
                 <p className="text-xs font-medium text-gray-700">{item.label}</p>

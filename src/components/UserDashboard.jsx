@@ -48,7 +48,7 @@ const COLLEGES = [
   {
     key: "CEAS",
     iconText: "CEAS",
-    title: "College of Education and Arts and Science",
+    title: "College of Education, Arts and Sciences",
     footerBadge: "4 COURSES",
     logoSrc: "/cte.png",
     courses: [

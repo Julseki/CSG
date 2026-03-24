@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useGovernorScope } from "../hooks/useGovernorScope";
 
 const STUDENT_STATS = [
   { label: "Total Departments", value: 248, },
@@ -25,6 +26,7 @@ function getBadgeClass(status) {
 }
 
 export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpen }) {
+  const { isGovernor, governorScope } = useGovernorScope();
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("All Departments");
   const [year, setYear] = useState("All Years");
@@ -44,6 +46,15 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
     year: "",
   });
 
+  useEffect(() => {
+    if (!isGovernor || !governorScope) return;
+    if (governorScope.courses.length === 1) {
+      setDepartment(governorScope.courses[0]);
+    } else {
+      setDepartment("All Departments");
+    }
+  }, [isGovernor, governorScope]);
+
   const filteredStudents = useMemo(() => {
     const q = search.toLowerCase().trim();
     return students.filter((student) => {
@@ -53,11 +64,13 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
         student.id.toLowerCase().includes(q) ||
         student.course.toLowerCase().includes(q) ||
         student.dept.toLowerCase().includes(q);
-      const matchesDepartment = department === "All Departments" || student.course === department;
+      const matchesDepartment = isGovernor && governorScope
+        ? governorScope.courses.includes(student.course)
+        : department === "All Departments" || student.course === department;
       const matchesYear = year === "All Years" || student.year === year;
       return matchesSearch && matchesDepartment && matchesYear;
     });
-  }, [search, department, year, students]);
+  }, [search, department, year, students, isGovernor, governorScope]);
 
   const handleAddStudent = () => {
     if (!newStudent.id.trim() || !newStudent.name.trim() || !newStudent.course.trim() || !newStudent.year.trim()) {
@@ -197,14 +210,21 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000]"
                   />
                 </div>
-                <select value={department} onChange={(e) => setDepartment(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#008000]">
-                  <option>All Departments</option>
-                  <option>BSBA</option>
-                  <option>BSIT</option>
-                  <option>BSCrim</option>
-                  <option>BEED</option>
-                  <option>BSED</option>
-                </select>
+                {isGovernor && governorScope ? (
+                  <div className="px-4 py-2 border border-gray-300 rounded-lg text-sm bg-gray-100 text-gray-700">
+                    {governorScope.label}
+                  </div>
+                ) : (
+                  <select value={department} onChange={(e) => setDepartment(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#008000]">
+                    <option>All Departments</option>
+                    <option>BSBA</option>
+                    <option>BSIT</option>
+                    <option>BSCrim</option>
+                    <option>BEED</option>
+                    <option>BSED</option>
+                    <option>BSHM</option>
+                  </select>
+                )}
                 <select value={year} onChange={(e) => setYear(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#008000]">
                   <option>All Years</option>
                   <option>1st Year</option>

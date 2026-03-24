@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAddevent } from "../hooks/useAddevent";
+import { useGovernorScope } from "../hooks/useGovernorScope";
 
 const STEPS = [
   { id: 1, label: "Basic Info" },
@@ -9,7 +10,35 @@ const STEPS = [
 
 const GRACE_OPTIONS = ["10 Mins", "15 Mins", "20 Mins", "50 Mins"];
 
+function formatTime12FromTotalMinutes(totalMinutes) {
+  const hour24 = Math.floor(totalMinutes / 60);
+  const minute = totalMinutes % 60;
+  const period = hour24 >= 12 ? "PM" : "AM";
+  let hour12 = hour24 % 12;
+  if (hour12 === 0) hour12 = 12;
+  return `${hour12}:${String(minute).padStart(2, "0")} ${period}`;
+}
+
+const AM_SESSION_TIME_OPTIONS = (() => {
+  const options = [];
+  // AM only: 6:00 AM to 11:45 AM
+  for (let m = 6 * 60; m <= 11 * 60 + 45; m += 15) {
+    options.push(formatTime12FromTotalMinutes(m));
+  }
+  return options;
+})();
+
+const PM_SESSION_TIME_OPTIONS = (() => {
+  const options = [];
+  // PM only: 12:00 PM to 6:00 PM
+  for (let m = 12 * 60; m <= 18 * 60; m += 15) {
+    options.push(formatTime12FromTotalMinutes(m));
+  }
+  return options;
+})();
+
 export default function AddEvent({ onBack, onNext }) {
+  const { role, isGovernor, governorScope } = useGovernorScope();
   const [step, setStep] = useState(1);
   const [eventName, setEventName] = useState("");
   const [eventDate, setEventDate] = useState("");
@@ -31,11 +60,32 @@ export default function AddEvent({ onBack, onNext }) {
   const [errors, setErrors] = useState({});
   const [yearLevel, setYearLevel] = useState("All Year Levels");
   const [department, setDepartment] = useState("All Departments");
+  const [major, setMajor] = useState("All Majors");
   const [isMandatory, setIsMandatory] = useState(true);
   const [audienceNotes, setAudienceNotes] = useState("");
   const [useAmHalf, setUseAmHalf] = useState(true);
   const [usePmHalf, setUsePmHalf] = useState(false);
   const addEvent = useAddevent();
+  const shouldShowMajorSelection =
+    role === "ceas_governor" || role === "cba_governor";
+  const majorOptions = role === "cba_governor"
+    ? ["Marketing Management", "Financial Management", "Human Resource Management"]
+    : role === "ceas_governor"
+      ? ["English", "Filipino", "Mathematics", "BEED"]
+      : [];
+
+  useEffect(() => {
+    if (!isGovernor || !governorScope) return;
+    setDepartment(governorScope.courses.join(" / "));
+  }, [isGovernor, governorScope]);
+
+  useEffect(() => {
+    if (!shouldShowMajorSelection || majorOptions.length === 0) {
+      setMajor("All Majors");
+      return;
+    }
+    setMajor(majorOptions[0]);
+  }, [shouldShowMajorSelection, role]);
 
   const validateBasicInfo = () => {
     const e = {};
@@ -78,11 +128,37 @@ export default function AddEvent({ onBack, onNext }) {
 
     if (step === 3) {
       const payload = buildEventPayload();
-      const { icon, ...backendPayload } = payload;
+      const backendPayload = {
+        name: payload.name,
+        date: payload.date,
+        duration: payload.duration,
+        venue: payload.venue,
+        status: payload.status,
+        yearLevel,
+        department,
+        major: shouldShowMajorSelection ? major : "",
+        isMandatory,
+        audienceNotes: audienceNotes?.trim() || "",
+        amTimeIn: amTimeIn || "",
+        amTimeOut: amTimeOut || "",
+        pmTimeIn: pmTimeIn || "",
+        pmTimeOut: pmTimeOut || "",
+      };
 
       // Send to backend via React Query + axios (without icon)
-      console.log("Sending to backend (no icon):", backendPayload);
-      addEvent.mutate(backendPayload);
+      console.warn("[AddEvent] About to call addEvent.mutate with:", backendPayload);
+      addEvent.mutate(backendPayload, {
+        onSuccess: (data) => {
+          console.log("[AddEvent] mutate success:", data);
+        },
+        onError: (err) => {
+          console.error("[AddEvent] mutate error:", {
+            message: err?.message,
+            status: err?.response?.status,
+            response: err?.response?.data,
+          });
+        },
+      });
 
       // Also persist locally so Events.jsx can read it (with icon)
       try {
@@ -261,26 +337,36 @@ export default function AddEvent({ onBack, onNext }) {
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Time In</label>
                   <div className="flex gap-2">
-                    <input
-                      type="text"
+                    <select
                       value={amTimeIn}
                       onChange={(e) => setAmTimeIn(e.target.value)}
-                      placeholder="08:00 AM"
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-                    />
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000]"
+                    >
+                      <option value="">Select time</option>
+                      {AM_SESSION_TIME_OPTIONS.map((timeOption) => (
+                        <option key={`am-in-${timeOption}`} value={timeOption}>
+                          {timeOption}
+                        </option>
+                      ))}
+                    </select>
                     <span className="flex items-center px-2 text-gray-500">🕐</span>
                   </div>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Time Out</label>
                   <div className="flex gap-2">
-                    <input
-                      type="text"
+                    <select
                       value={amTimeOut}
                       onChange={(e) => setAmTimeOut(e.target.value)}
-                      placeholder="12:00 PM"
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-                    />
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000]"
+                    >
+                      <option value="">Select time</option>
+                      {AM_SESSION_TIME_OPTIONS.map((timeOption) => (
+                        <option key={`am-out-${timeOption}`} value={timeOption}>
+                          {timeOption}
+                        </option>
+                      ))}
+                    </select>
                     <span className="flex items-center px-2 text-gray-500">🕐</span>
                   </div>
                 </div>
@@ -296,26 +382,36 @@ export default function AddEvent({ onBack, onNext }) {
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Time In</label>
                   <div className="flex gap-2">
-                    <input
-                      type="text"
+                    <select
                       value={pmTimeIn}
                       onChange={(e) => setPmTimeIn(e.target.value)}
-                      placeholder="01:00 PM"
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-                    />
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000]"
+                    >
+                      <option value="">Select time</option>
+                      {PM_SESSION_TIME_OPTIONS.map((timeOption) => (
+                        <option key={`pm-in-${timeOption}`} value={timeOption}>
+                          {timeOption}
+                        </option>
+                      ))}
+                    </select>
                     <span className="flex items-center px-2 text-gray-500">🕐</span>
                   </div>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Time Out</label>
                   <div className="flex gap-2">
-                    <input
-                      type="text"
+                    <select
                       value={pmTimeOut}
                       onChange={(e) => setPmTimeOut(e.target.value)}
-                      placeholder="05:00 PM"
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-                    />
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000]"
+                    >
+                      <option value="">Select time</option>
+                      {PM_SESSION_TIME_OPTIONS.map((timeOption) => (
+                        <option key={`pm-out-${timeOption}`} value={timeOption}>
+                          {timeOption}
+                        </option>
+                      ))}
+                    </select>
                     <span className="flex items-center px-2 text-gray-500">🕐</span>
                   </div>
                 </div>
@@ -348,20 +444,44 @@ export default function AddEvent({ onBack, onNext }) {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Department</label>
-                <select
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000]"
-                >
-                  <option>All Departments</option>
-                  <option>BSBA</option>
-                  <option>BSIT</option>
-                  <option>BSCrim</option>
-                  <option>BEED</option>
-                  <option>BSED</option>
-                </select>
+                {isGovernor && governorScope ? (
+                  <div className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-sm text-gray-700">
+                    {governorScope.label}
+                  </div>
+                ) : (
+                  <select
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000]"
+                  >
+                    <option>All Departments</option>
+                    <option>BSBA</option>
+                    <option>BSIT</option>
+                    <option>BSCrim</option>
+                    <option>BEED</option>
+                    <option>BSED</option>
+                    <option>BSHM</option>
+                  </select>
+                )}
               </div>
             </div>
+
+            {shouldShowMajorSelection && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Major</label>
+                <select
+                  value={major}
+                  onChange={(e) => setMajor(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000]"
+                >
+                  {majorOptions.map((majorOption) => (
+                    <option key={majorOption} value={majorOption}>
+                      {majorOption}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Mandatory toggle */}
             <div className="flex items-center gap-3">
@@ -449,6 +569,12 @@ export default function AddEvent({ onBack, onNext }) {
                 <span className="text-gray-700">Department</span>
                 <span className="text-gray-900">{department}</span>
               </div>
+              {shouldShowMajorSelection && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-700">Major</span>
+                  <span className="text-gray-900">{major}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-gray-700">Mandatory</span>
                 <span className="text-gray-900">{isMandatory ? "Yes" : "No"}</span>
