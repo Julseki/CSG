@@ -3,18 +3,21 @@ import api from "../api/axiosInstance";
 
 async function fetchSession() {
   const sessionPaths = ["/me", "/auth/me"];
-  let lastError = null;
 
   for (const path of sessionPaths) {
     try {
       const response = await api.get(path);
       return response.data;
     } catch (error) {
-      lastError = error;
-      if (error?.response?.status === 404) {
-        continue;
+      const status = error?.response?.status;
+
+      if (status === 404) continue;
+
+      if (status === 401) {
+        return null;
       }
-      throw error;
+
+      throw error; 
     }
   }
 
