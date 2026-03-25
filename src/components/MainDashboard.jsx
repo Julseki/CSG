@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { useCreateDepartmentUser } from "../hooks/auth";
+import { useAuthSession, useCreateDepartmentUser } from "../hooks/auth";
+import { useGovernorScope } from "../hooks/useGovernorScope";
 import {
   useGetEvents,
   formatEventDateForDisplay,
@@ -80,6 +81,8 @@ function isValidAllowedEmail(value) {
 
 export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, isCreateUserOpen }) {
   const { data: apiEvents = [], isPending: eventsLoading, isError: eventsError } = useGetEvents();
+  const { data: session } = useAuthSession();
+  const { isGovernor, governorScope } = useGovernorScope();
   console.log(apiEvents, ": API EVENTS")
   const [eventSearch, setEventSearch] = useState("");
 
@@ -150,8 +153,15 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
     accountType: "department",
   });
   const activeNav = "dashboard";
-  const roleLabel = "Admin";
-  const isAdmin = true;
+  const roleLabel = isGovernor ? (governorScope?.label || "Governor") : "Admin";
+  const isAdmin = !isGovernor;
+  const sessionEmail =
+    session?.email ||
+    session?.user?.email ||
+    session?.data?.email ||
+    session?.profile?.email ||
+    "";
+  const headerName = sessionEmail ? `Welcome, ${sessionEmail}` : `Welcome, ${roleLabel}`;
   const { mutate: createDepartmentUser, isPending: isCreatingDepartmentUser } =
     useCreateDepartmentUser();
 
@@ -219,7 +229,8 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
 
   const reportItems = [
     { id: "export", label: "Export" },
-    ...(isAdmin ? [{ id: "import", label: "Import" }, { id: "settings", label: "Settings" }] : []),
+    ...(isAdmin ? [{ id: "import", label: "Import" }] : []),
+    { id: "settings", label: "Settings" },
   ];
 
   const closeCreateUserModal = () => {
@@ -324,18 +335,20 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
               {item.label}
             </button>
           ))}
-          <button
-            type="button"
-            onClick={() => onOpenCreateUser?.()}
-            className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left text-sm font-semibold text-white transition-colors ${
-              isCreateUserOpen
-                ? "bg-white/15 hover:bg-white/25"
-                : "bg-transparent hover:bg-white/15"
-            }`}
-          >
-            <span className="text-base">＋</span>
-            Create User
-          </button>
+          {!isGovernor && (
+            <button
+              type="button"
+              onClick={() => onOpenCreateUser?.()}
+              className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left text-sm font-semibold text-white transition-colors ${
+                isCreateUserOpen
+                  ? "bg-white/15 hover:bg-white/25"
+                  : "bg-transparent hover:bg-white/15"
+              }`}
+            >
+              <span className="text-base">＋</span>
+              Create User
+            </button>
+          )}
           <div className="pt-4">
             <p className="px-4 text-xs font-medium text-green-200 uppercase tracking-wider">Reports</p>
             {reportItems.map((item) => (
@@ -369,7 +382,7 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-[#008000]">Event Tracker Dashboard</h1>
+          <h1 className="text-lg font-semibold text-[#008000]">{headerName}</h1>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">
               {eventsLoading && !activeEvent ? (
@@ -493,7 +506,7 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
                       <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Fine</dt>
                       <dd className="text-sm font-semibold tabular-nums text-gray-900">
                         {activeEvent.fine != null && activeEvent.fine !== ""
-                          ? String(activeEvent.fine)
+                          ? `₱${String(activeEvent.fine)}`
                           : "—"}
                       </dd>
                     </div>
@@ -646,7 +659,7 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
                         <td className="py-3 px-3 whitespace-nowrap">{ev.duration || "—"}</td>
                         <td className="py-3 px-3 text-xs text-gray-700">{ev.timeSlots || "—"}</td>
                         <td className="py-3 px-3 text-right tabular-nums">
-                          {ev.fine != null && ev.fine !== "" ? String(ev.fine) : "—"}
+                          {ev.fine != null && ev.fine !== "" ? `₱${String(ev.fine)}` : "—"}
                         </td>
                         <td className="py-3 px-3">
                           <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getEventStatusPillClass(ev.status)}`}>
@@ -681,7 +694,9 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
             <div className="bg-[#008000] px-5 py-3">
               <h3 className="text-white font-semibold">
                 {reportMode === "settings"
-                  ? "Admin Settings"
+                  ? isGovernor
+                    ? `${roleLabel} Settings`
+                    : "Admin Settings"
                   : reportMode === "import"
                     ? "Import Data"
                     : "Export Data"}

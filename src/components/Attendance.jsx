@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useGovernorScope } from "../hooks/useGovernorScope";
 
 const EVENTS = [
   { id: "1", name: "General Assembly 2025", date: "Mar 14, 2025" },
@@ -21,12 +22,13 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
   const [showLogout, setShowLogout] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportMode, setReportMode] = useState("export");
+  const { isGovernor, governorScope } = useGovernorScope();
   const [selectedEvent, setSelectedEvent] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const activeNav = "attendance";
-  const roleLabel = "Admin";
-  const isAdmin = true;
+  const roleLabel = isGovernor ? (governorScope?.label || "Governor") : "Admin";
+  const isAdmin = !isGovernor;
 
   const now = new Date();
   const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
@@ -41,7 +43,8 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
 
   const reportItems = [
     { id: "export", label: "Export" },
-    ...(isAdmin ? [{ id: "import", label: "Import" }, { id: "settings", label: "Settings" }] : []),
+    ...(isAdmin ? [{ id: "import", label: "Import" }] : []),
+    { id: "settings", label: "Settings" },
   ];
 
   const filteredLog = ATTENDANCE_LOG.filter((row) => {
@@ -76,16 +79,20 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
               {item.label}
             </button>
           ))}
-          <button
-            type="button"
-            onClick={() => onOpenCreateUser?.()}
-            className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left text-sm font-semibold text-white transition-colors ${
-              isCreateUserOpen ? "bg-white/15 hover:bg-white/25" : "bg-transparent hover:bg-white/15"
-            }`}
-          >
-            <span className="text-base">＋</span>
-            Create User
-          </button>
+          {!isGovernor && (
+            <button
+              type="button"
+              onClick={() => onOpenCreateUser?.()}
+              className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left text-sm font-semibold text-white transition-colors ${
+                isCreateUserOpen
+                  ? "bg-white/15 hover:bg-white/25"
+                  : "bg-transparent hover:bg-white/15"
+              }`}
+            >
+              <span className="text-base">＋</span>
+              Create User
+            </button>
+          )}
           <div className="pt-4">
             <p className="px-4 text-xs font-medium text-green-200 uppercase tracking-wider">Reports</p>
             {reportItems.map((item) => (
@@ -247,7 +254,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
             <div className="bg-[#008000] px-5 py-3">
               <h3 className="text-white font-semibold">
                 {reportMode === "settings"
-                  ? "Admin Settings"
+                  ? `${roleLabel} Settings`
                   : reportMode === "import"
                     ? "Import Data"
                     : "Export Data"}

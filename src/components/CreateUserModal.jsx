@@ -99,6 +99,7 @@ export default function CreateUserModal({ open, onClose }) {
   const [createUserForm, setCreateUserForm] = useState({
     department: "",
     major: "",
+    username: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -139,6 +140,7 @@ export default function CreateUserModal({ open, onClose }) {
     setCreateUserForm({
       department: "",
       major: "",
+      username: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -158,6 +160,7 @@ export default function CreateUserModal({ open, onClose }) {
       accountType: "department",
       department: governorDepartmentFromRole,
       major: "",
+      username: "",
     }));
   }, [open, isGovernorLoggedIn, governorDepartmentFromRole]);
 
@@ -184,34 +187,7 @@ export default function CreateUserModal({ open, onClose }) {
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
 
-  const generatedUsername = useMemo(() => {
-    if (createUserForm.accountType === "csg_president") {
-      return "csg-president".slice(0, 28);
-    }
-
-    const selectedDepartment = DEPARTMENT_OPTIONS.find(
-      (item) => item.value === createUserForm.department,
-    );
-    const requiresMajor = (selectedDepartment?.majors?.length || 0) > 0;
-
-    const departmentBase =
-      DEPARTMENT_USERNAME_BASE[createUserForm.department] ||
-      (normalizedDepartment ? `gov-${normalizedDepartment}` : "");
-
-    if (!departmentBase) return "";
-    // Admin flow: no major selection in create-user modal.
-    if (!isGovernorLoggedIn) return departmentBase.slice(0, 28);
-    if (!requiresMajor) return departmentBase.slice(0, 28);
-    if (!normalizedMajor) return "";
-
-    return `${departmentBase}-${normalizedMajor}`.slice(0, 28);
-  }, [
-    createUserForm.accountType,
-    createUserForm.department,
-    createUserForm.major,
-    normalizedDepartment,
-    normalizedMajor,
-  ]);
+  const usernameValue = createUserForm.username.trim();
 
   const generatedPassword = useMemo(() => {
     // For consistency with your current backend signup flow, admin can set password manually.
@@ -231,6 +207,7 @@ export default function CreateUserModal({ open, onClose }) {
 
   const isCreateDisabled =
     isCreatingUser ||
+    !createUserForm.username.trim() ||
     !createUserForm.email.trim() ||
     !isEmailValid ||
     !passwordValue ||
@@ -257,6 +234,7 @@ export default function CreateUserModal({ open, onClose }) {
     setCreateUserForm({
       department: "",
       major: "",
+      username: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -298,10 +276,8 @@ export default function CreateUserModal({ open, onClose }) {
               }
             }
 
-            if (!generatedUsername) {
-              setCreateUserError(
-                "Unable to generate username. Check your inputs.",
-              );
+            if (!usernameValue) {
+              setCreateUserError("Username is required.");
               return;
             }
 
@@ -332,7 +308,7 @@ export default function CreateUserModal({ open, onClose }) {
 
             createUser(
               {
-                username: generatedUsername,
+                username: usernameValue,
                 password: createUserForm.password,
                 email: createUserForm.email.trim(),
                 department:
@@ -350,7 +326,7 @@ export default function CreateUserModal({ open, onClose }) {
               {
                 onSuccess: () => {
                   setCreatedAccount({
-                    username: generatedUsername,
+                    username: usernameValue,
                     email: createUserForm.email.trim(),
                     password: createUserForm.password,
                     role: roleToSend,
@@ -560,13 +536,32 @@ export default function CreateUserModal({ open, onClose }) {
             </div>
           </div>
 
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-1">
-            <p className="text-xs text-gray-600">
-              Generated username:{" "}
-              <span className="font-semibold text-gray-800">
-                {generatedUsername || "—"}
-              </span>
-            </p>
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Username
+              </label>
+              <input
+                type="text"
+                value={createUserForm.username}
+                onChange={(e) =>
+                  setCreateUserForm((prev) => ({
+                    ...prev,
+                    username: e.target.value,
+                  }))
+                }
+                className={`w-full border rounded-lg px-3 py-2 bg-white ${
+                  createUserForm.username.trim()
+                    ? "border-gray-300"
+                    : "border-red-400"
+                }`}
+                placeholder="Enter username"
+              />
+            </div>
+            {!createUserForm.username.trim() &&
+            createUserError?.toLowerCase().includes("username") ? (
+              <p className="text-[11px] text-red-600">Username is required.</p>
+            ) : null}
           </div>
 
           {createdAccount && (

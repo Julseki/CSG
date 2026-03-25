@@ -38,10 +38,11 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
   const [showAddModal, setShowAddModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportMode, setReportMode] = useState("export");
-  const roleLabel = "Admin";
-  const isAdmin = true;
+  const roleLabel = isGovernor ? (governorScope?.label || "Governor") : "Admin";
+  const isAdmin = !isGovernor;
   const [newStudent, setNewStudent] = useState({
     id: "",
     name: "",
@@ -110,6 +111,15 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
     setShowAddModal(false);
   };
 
+  const handleDeleteSelectedStudent = () => {
+    if (!selectedStudent) return;
+    setStudents((prev) => prev.filter((s) => s.id !== selectedStudent.id));
+    setSelectedStudent(null);
+    setShowDeleteConfirm(false);
+    setShowProfileModal(false);
+    setShowEditModal(false);
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-50 [&_button]:cursor-pointer">
       <aside className="w-64 shrink-0 bg-[#008000] text-white flex flex-col">
@@ -134,16 +144,18 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
             <span className="text-lg">☺</span>
             Department
           </button>
-          <button
-            type="button"
-            onClick={() => onOpenCreateUser?.()}
-            className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left text-sm font-semibold text-white transition-colors ${
-              isCreateUserOpen ? "bg-white/15 hover:bg-white/25" : "bg-transparent hover:bg-white/15"
-            }`}
-          >
-            <span className="text-base">＋</span>
-            Create User
-          </button>
+          {!isGovernor && (
+            <button
+              type="button"
+              onClick={() => onOpenCreateUser?.()}
+              className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left text-sm font-semibold text-white transition-colors ${
+                isCreateUserOpen ? "bg-white/15 hover:bg-white/25" : "bg-transparent hover:bg-white/15"
+              }`}
+            >
+              <span className="text-base">＋</span>
+              Create User
+            </button>
+          )}
           <div className="pt-4">
             <p className="px-4 text-xs font-medium text-green-200 uppercase tracking-wider">Reports</p>
             <button
@@ -166,23 +178,21 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
                 Import
               </button>
             )}
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={() => {
-                  setReportMode("settings");
-                  setShowReportModal(true);
-                }}
-                className="w-full flex items-center gap-3 px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-green-600/50"
-              >
-                <span className="flex items-center gap-2">
-                  <span>Settings</span>
-                  <span className="inline-flex items-center rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold text-white">
-                    {roleLabel}
-                  </span>
+            <button
+              type="button"
+              onClick={() => {
+                setReportMode("settings");
+                setShowReportModal(true);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-green-600/50"
+            >
+              <span className="flex items-center gap-2">
+                <span>Settings</span>
+                <span className="inline-flex items-center rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold text-white">
+                  {roleLabel}
                 </span>
-              </button>
-            )}
+              </span>
+            </button>
           </div>
         </nav>
       </aside>
@@ -356,6 +366,15 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
                         Edit Record
                       </button>
                     )}
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="px-3 py-2 rounded-lg border border-red-300 text-sm text-red-700 hover:bg-red-50"
+                      >
+                        Delete Record
+                      </button>
+                    )}
                   </div>
                 </>
               )}
@@ -480,13 +499,49 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
         </div>
       )}
 
+      {isAdmin && showDeleteConfirm && selectedStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
+            <div className="bg-red-600 px-5 py-3">
+              <h3 className="text-white font-semibold">Delete Student</h3>
+            </div>
+            <div className="p-5 space-y-3 text-sm">
+              <p className="text-gray-700">
+                Are you sure you want to delete{" "}
+                <span className="font-semibold">{selectedStudent.name}</span> (
+                <span className="font-mono">{selectedStudent.id}</span>)?
+              </p>
+              <p className="text-xs text-gray-500">
+                This action will remove the record from the list.
+              </p>
+            </div>
+            <div className="px-4 py-3 border-t border-gray-200 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteSelectedStudent}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showReportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl overflow-hidden">
             <div className="bg-[#008000] px-5 py-3">
               <h3 className="text-white font-semibold">
                 {reportMode === "settings"
-                  ? "Admin Settings"
+                  ? `${roleLabel} Settings`
                   : reportMode === "import"
                     ? "Import Data"
                     : "Export Data"}

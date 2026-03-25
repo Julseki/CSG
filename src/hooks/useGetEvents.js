@@ -58,6 +58,16 @@ function scheduleSlotLabel(startRaw, endRaw) {
   return `${start ?? "—"}–${end ?? "—"}`;
 }
 
+function graceLabel(inMinutes, outMinutes) {
+  const inVal = inMinutes != null && inMinutes !== "" ? Number(inMinutes) : null;
+  const outVal = outMinutes != null && outMinutes !== "" ? Number(outMinutes) : null;
+  if (!(Number.isFinite(inVal) || Number.isFinite(outVal))) return "";
+  const parts = [];
+  if (Number.isFinite(inVal)) parts.push(`in ${inVal}m`);
+  if (Number.isFinite(outVal)) parts.push(`out ${outVal}m`);
+  return parts.length ? ` (grace ${parts.join(", ")})` : "";
+}
+
 /**
  * Maps a row from GET /get-events ({ events: [...] }) to the UI card/list shape.
  * Supports DB snake_case (am_time_in, …) and legacy camelCase from forms.
@@ -69,12 +79,20 @@ export function mapServerEventToDisplay(raw) {
   const amOut = raw.am_time_out ?? raw.amTimeOut ?? null;
   const pmIn = raw.pm_time_in ?? raw.pmTimeIn ?? null;
   const pmOut = raw.pm_time_out ?? raw.pmTimeOut ?? null;
+  const amGraceIn =
+    raw.am_grace_in ?? raw.am_grace_in_minutes ?? raw.amGraceInMinutes ?? raw.am_grace_period ?? raw.amGraceMinutes ?? null;
+  const amGraceOut =
+    raw.am_grace_out ?? raw.am_grace_out_minutes ?? raw.amGraceOutMinutes ?? raw.am_grace_period ?? raw.amGraceMinutes ?? null;
+  const pmGraceIn =
+    raw.pm_grace_in ?? raw.pm_grace_in_minutes ?? raw.pmGraceInMinutes ?? raw.pm_grace_period ?? raw.pmGraceMinutes ?? null;
+  const pmGraceOut =
+    raw.pm_grace_out ?? raw.pm_grace_out_minutes ?? raw.pmGraceOutMinutes ?? raw.pm_grace_period ?? raw.pmGraceMinutes ?? null;
 
   const slots = [];
   const amLabel = scheduleSlotLabel(amIn, amOut);
-  if (amLabel) slots.push(`AM: ${amLabel}`);
+  if (amLabel) slots.push(`AM: ${amLabel}${graceLabel(amGraceIn, amGraceOut)}`);
   const pmLabel = scheduleSlotLabel(pmIn, pmOut);
-  if (pmLabel) slots.push(`PM: ${pmLabel}`);
+  if (pmLabel) slots.push(`PM: ${pmLabel}${graceLabel(pmGraceIn, pmGraceOut)}`);
 
   const timeSlots =
     raw.time_slots ??
@@ -105,6 +123,10 @@ export function mapServerEventToDisplay(raw) {
     duration: raw.duration || "",
     venue: raw.venue || "",
     timeSlots,
+    amGraceInMinutes: amGraceIn != null && amGraceIn !== "" ? Number(amGraceIn) : null,
+    amGraceOutMinutes: amGraceOut != null && amGraceOut !== "" ? Number(amGraceOut) : null,
+    pmGraceInMinutes: pmGraceIn != null && pmGraceIn !== "" ? Number(pmGraceIn) : null,
+    pmGraceOutMinutes: pmGraceOut != null && pmGraceOut !== "" ? Number(pmGraceOut) : null,
     reg: raw.reg ?? 0,
     attRate: raw.att_rate != null ? raw.att_rate : raw.attRate != null ? raw.attRate : null,
     fine,

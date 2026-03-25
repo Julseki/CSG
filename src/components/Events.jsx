@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import AddEvent from "./AddEvent";
 import { useGetEvents, mergeApiAndLocalEvents } from "../hooks/useGetEvents";
+import { useGovernorScope } from "../hooks/useGovernorScope";
 
 const FINE_PER_ABSENT = 50; // Pesos per absent student
 
@@ -32,36 +33,31 @@ function getCustomEventsFromStorage() {
 
 export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreateUserOpen }) {
   const { data: apiEvents = [], isPending: eventsLoading, isError: eventsError } = useGetEvents();
+  const { isGovernor, governorScope } = useGovernorScope();
   const [showLogout, setShowLogout] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportMode, setReportMode] = useState("export");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Status");
   const [viewMode, setViewMode] = useState("list"); // list | grid
-  const [eventFines, setEventFines] = useState({}); // { eventName: fineAmount }
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [editableEvent, setEditableEvent] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
   const [halfSession, setHalfSession] = useState("AM"); // for Half Day in modal
   const activeNav = "events";
-  const roleLabel = "Admin";
-  const isAdmin = true;
+  const roleLabel = isGovernor ? (governorScope?.label || "Governor") : "Admin";
+  const isAdmin = !isGovernor;
 
   const getFinesForEvent = (ev) => {
+    // When the API doesn't provide attRate, read `fine` directly.
     if (ev.attRate == null) {
       if (ev.fine != null && ev.fine !== "") return Number(ev.fine) || 0;
       return null;
     }
-    if (eventFines[ev.name] !== undefined && eventFines[ev.name] !== "") {
-      const val = Number(eventFines[ev.name]);
-      return isNaN(val) ? getDefaultFinesForEvent(ev) : val;
-    }
+    // Otherwise compute default fines from attRate/reg.
     return getDefaultFinesForEvent(ev);
-  };
-
-  const setFineForEvent = (eventName, value) => {
-    if (!isAdmin) return;
-    setEventFines((prev) => ({ ...prev, [eventName]: value }));
   };
 
   const now = new Date();
@@ -77,7 +73,8 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
 
   const reportItems = [
     { id: "export", label: "Export" },
-    ...(isAdmin ? [{ id: "import", label: "Import" }, { id: "settings", label: "Settings" }] : []),
+    ...(isAdmin ? [{ id: "import", label: "Import" }] : []),
+    { id: "settings", label: "Settings" },
   ];
 
   const allEvents = mergeApiAndLocalEvents(apiEvents, getCustomEventsFromStorage());
@@ -141,6 +138,28 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
     setEditableEvent(null);
   };
 
+  const handleDeleteSelectedEvent = () => {
+    if (!isAdmin) return;
+    setDeleteError(null);
+    if (!selectedEvent) return;
+
+    // Only custom (localStorage) events are deletable from the client.
+    const customEvents = getCustomEventsFromStorage();
+    const idx = customEvents.findIndex(
+      (e) => e.name === selectedEvent.name && e.date === selectedEvent.date && e.venue === selectedEvent.venue,
+    );
+
+    if (idx < 0) {
+      setDeleteError("This event can't be deleted (server event).");
+      return;
+    }
+
+    customEvents.splice(idx, 1);
+    localStorage.setItem(CUSTOM_EVENTS_KEY, JSON.stringify(customEvents));
+    setShowDeleteConfirm(false);
+    closeEventModal();
+  };
+
   const saveEditableEvent = () => {
     if (!isAdmin) return;
     if (!editableEvent) return;
@@ -189,16 +208,18 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
               {item.label}
             </button>
           ))}
-          <button
-            type="button"
-            onClick={() => onOpenCreateUser?.()}
-            className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left text-sm font-semibold text-white transition-colors ${
-              isCreateUserOpen ? "bg-white/15 hover:bg-white/25" : "bg-transparent hover:bg-white/15"
-            }`}
-          >
-            <span className="text-base">＋</span>
-            Create User
-          </button>
+          {!isGovernor && (
+            <button
+              type="button"
+              onClick={() => onOpenCreateUser?.()}
+              className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left text-sm font-semibold text-white transition-colors ${
+                isCreateUserOpen ? "bg-white/15 hover:bg-white/25" : "bg-transparent hover:bg-white/15"
+              }`}
+            >
+              <span className="text-base">＋</span>
+              Create User
+            </button>
+          )}
           <div className="pt-4">
             <p className="px-4 text-xs font-medium text-green-200 uppercase tracking-wider">Reports</p>
             {reportItems.map((item) => (
@@ -338,7 +359,6 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
                   <tbody>
                     {filteredEvents.map((ev, i) => {
                       const fineVal = getFinesForEvent(ev);
-                      const displayVal = eventFines[ev.name] ?? (fineVal != null ? fineVal : "");
                       return (
                       <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
                         <td className="py-3 px-4">
@@ -355,18 +375,10 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
                         <td className="py-3 px-4">{ev.duration}</td>
                         <td className="py-3 px-4">📍 {ev.venue}</td>
                         <td className="py-3 px-4 text-gray-600">{ev.timeSlots}</td>
-                        <td className="sticky right-0 z-10 bg-white py-3 px-4" title={`Edit fines for: ${ev.name}`}>
-                          <div className="relative w-28">
-                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
-                            <input
-                              type="number"
-                              min="0"
-                              step="1"
-                              className="w-full rounded border border-gray-300 py-1 pl-6 pr-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#008000]"
-                              value={eventFines[ev.name] !== undefined ? eventFines[ev.name] : fineVal ?? ""}
-                              onChange={(e) => setFineForEvent(ev.name, e.target.value)}
-                            />
-                          </div>
+                        <td className="sticky right-0 z-10 bg-white py-1 px-2 text-right">
+                          <span className="text-sm font-medium text-gray-900 tabular-nums">
+                            {fineVal != null ? `₱${fineVal}` : "—"}
+                          </span>
                         </td>
                         <td className="py-3 px-4">
                           <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getEventStatusClass(ev.status)}`}>
@@ -398,20 +410,13 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
                     <p className="text-xs text-gray-500 mb-1">📍 {ev.venue}</p>
                     <p className="text-xs text-gray-600 mb-2">{ev.duration}</p>
                     <p className="text-xs text-gray-500 mb-2">{ev.timeSlots}</p>
-                    {/* Fines - editable by event name */}
+                    {/* Fines (read-only) */}
                     <div className="pt-2 border-t border-gray-100">
-                      <label className="block text-xs font-medium text-amber-700 mb-1">Fines</label>
-                      <div className="relative">
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">₱</span>
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          title={`Edit fines for ${ev.name}`}
-                          className="w-full rounded border border-gray-300 py-1 pl-6 pr-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#008000]"
-                          value={eventFines[ev.name] ?? (getFinesForEvent(ev) ?? "")}
-                          onChange={(e) => setFineForEvent(ev.name, e.target.value)}
-                        />
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-amber-700">Fines</span>
+                        <span className="py-1 text-sm font-medium text-gray-900 tabular-nums">
+                          {getFinesForEvent(ev) != null ? `₱${getFinesForEvent(ev)}` : "—"}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -438,7 +443,7 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
             <div className="bg-[#008000] px-5 py-3">
               <h3 className="text-white font-semibold">
                 {reportMode === "settings"
-                  ? "Admin Settings"
+                  ? `${roleLabel} Settings`
                   : reportMode === "import"
                     ? "Import Data"
                     : "Export Data"}
@@ -592,6 +597,15 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
             </div>
             <div className="px-6 py-3 border-t border-gray-200 flex items-center justify-end">
               <div className="flex gap-2">
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="px-4 py-2 text-sm rounded-lg border border-red-300 text-red-700 hover:bg-red-50"
+                  >
+                    Delete
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={closeEventModal}
@@ -607,6 +621,42 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
                   Save Changes
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirm (admin only) */}
+      {isAdmin && showDeleteConfirm && selectedEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <div className="bg-red-600 px-6 py-3">
+              <h3 className="text-sm sm:text-base font-semibold text-white">Delete Event</h3>
+            </div>
+            <div className="p-6 space-y-3 text-sm">
+              <p className="text-gray-800">
+                Delete <span className="font-semibold">{selectedEvent.name}</span>?
+              </p>
+              <p className="text-xs text-gray-500">
+                This will remove the locally-saved custom event record.
+              </p>
+              {deleteError && <p className="text-xs text-red-700 bg-red-50 border border-red-200 p-2 rounded-lg">{deleteError}</p>}
+            </div>
+            <div className="px-6 py-3 border-t border-gray-200 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteSelectedEvent}
+                className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700"
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>

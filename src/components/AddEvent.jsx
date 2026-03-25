@@ -47,17 +47,12 @@ export default function AddEvent({ onBack, onNext }) {
   const [duration, setDuration] = useState("whole"); // whole | half
   const [amTimeIn, setAmTimeIn] = useState("");
   const [amTimeOut, setAmTimeOut] = useState("");
-  // Grace period state removed from UI, kept here only if needed later
-  const [amGraceIn, setAmGraceIn] = useState("15 Mins");
-  const [amGraceOut, setAmGraceOut] = useState("15 Mins");
+  const [amGraceInMinutes, setAmGraceInMinutes] = useState(15);
+  const [amGraceOutMinutes, setAmGraceOutMinutes] = useState(15);
   const [pmTimeIn, setPmTimeIn] = useState("");
   const [pmTimeOut, setPmTimeOut] = useState("");
-  const [pmGraceIn, setPmGraceIn] = useState("15 Mins");
-  const [pmGraceOut, setPmGraceOut] = useState("15 Mins");
-  const [showAmGraceIn, setShowAmGraceIn] = useState(false);
-  const [showAmGraceOut, setShowAmGraceOut] = useState(false);
-  const [showPmGraceIn, setShowPmGraceIn] = useState(false);
-  const [showPmGraceOut, setShowPmGraceOut] = useState(false);
+  const [pmGraceInMinutes, setPmGraceInMinutes] = useState(15);
+  const [pmGraceOutMinutes, setPmGraceOutMinutes] = useState(15);
   const [errors, setErrors] = useState({});
   const [yearLevel, setYearLevel] = useState("All Year Levels");
   const [department, setDepartment] = useState("All Departments");
@@ -98,11 +93,15 @@ export default function AddEvent({ onBack, onNext }) {
     if (duration === "whole" || (duration === "half" && useAmHalf)) {
       if (!amTimeIn) e.amTimeIn = "AM Time In is required";
       if (!amTimeOut) e.amTimeOut = "AM Time Out is required";
+      if (amGraceInMinutes == null || Number(amGraceInMinutes) < 0) e.amGraceInMinutes = "AM Time In grace must be 0 or more";
+      if (amGraceOutMinutes == null || Number(amGraceOutMinutes) < 0) e.amGraceOutMinutes = "AM Time Out grace must be 0 or more";
     }
 
     if (duration === "whole" || (duration === "half" && usePmHalf)) {
       if (!pmTimeIn) e.pmTimeIn = "PM Time In is required";
       if (!pmTimeOut) e.pmTimeOut = "PM Time Out is required";
+      if (pmGraceInMinutes == null || Number(pmGraceInMinutes) < 0) e.pmGraceInMinutes = "PM Time In grace must be 0 or more";
+      if (pmGraceOutMinutes == null || Number(pmGraceOutMinutes) < 0) e.pmGraceOutMinutes = "PM Time Out grace must be 0 or more";
     }
 
     setErrors(e);
@@ -133,6 +132,10 @@ export default function AddEvent({ onBack, onNext }) {
       reg: 0,
       attRate: null,
       fine: fineAmount === "" ? null : Number(fineAmount),
+      amGraceInMinutes: Number(amGraceInMinutes) || 0,
+      amGraceOutMinutes: Number(amGraceOutMinutes) || 0,
+      pmGraceInMinutes: Number(pmGraceInMinutes) || 0,
+      pmGraceOutMinutes: Number(pmGraceOutMinutes) || 0,
       status: "Upcoming",
     };
   };
@@ -148,6 +151,10 @@ export default function AddEvent({ onBack, onNext }) {
         duration: payload.duration,
         venue: payload.venue,
         status: payload.status,
+        am_grace_in: payload.amGraceInMinutes ?? 0,
+        am_grace_out: payload.amGraceOutMinutes ?? 0,
+        pm_grace_in: payload.pmGraceInMinutes ?? 0,
+        pm_grace_out: payload.pmGraceOutMinutes ?? 0,
         yearLevel,
         course_code: department,
         major: shouldShowMajorSelection ? major : "",
@@ -425,6 +432,43 @@ export default function AddEvent({ onBack, onNext }) {
                   </div>
                   {errors.amTimeOut && <p className="text-xs text-red-600 mt-1">{errors.amTimeOut}</p>}
                 </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Grace Period (minutes)</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-medium text-gray-600 mb-1">Time In</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={amGraceInMinutes}
+                        onChange={(e) => {
+                          setAmGraceInMinutes(e.target.value === "" ? 0 : Number(e.target.value));
+                          setErrors((prev) => ({ ...prev, amGraceInMinutes: null }));
+                        }}
+                        className={`w-full px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000] ${errors.amGraceInMinutes ? "border-red-500" : "border-gray-300"}`}
+                        placeholder="e.g. 15"
+                      />
+                      {errors.amGraceInMinutes && <p className="text-xs text-red-600 mt-1">{errors.amGraceInMinutes}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-gray-600 mb-1">Time Out</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={amGraceOutMinutes}
+                        onChange={(e) => {
+                          setAmGraceOutMinutes(e.target.value === "" ? 0 : Number(e.target.value));
+                          setErrors((prev) => ({ ...prev, amGraceOutMinutes: null }));
+                        }}
+                        className={`w-full px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000] ${errors.amGraceOutMinutes ? "border-red-500" : "border-gray-300"}`}
+                        placeholder="e.g. 15"
+                      />
+                      {errors.amGraceOutMinutes && <p className="text-xs text-red-600 mt-1">{errors.amGraceOutMinutes}</p>}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
             )}
@@ -477,6 +521,43 @@ export default function AddEvent({ onBack, onNext }) {
                     <span className="flex items-center px-2 text-gray-500">🕐</span>
                   </div>
                   {errors.pmTimeOut && <p className="text-xs text-red-600 mt-1">{errors.pmTimeOut}</p>}
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Grace Period (minutes)</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-medium text-gray-600 mb-1">Time In</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={pmGraceInMinutes}
+                        onChange={(e) => {
+                          setPmGraceInMinutes(e.target.value === "" ? 0 : Number(e.target.value));
+                          setErrors((prev) => ({ ...prev, pmGraceInMinutes: null }));
+                        }}
+                        className={`w-full px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000] ${errors.pmGraceInMinutes ? "border-red-500" : "border-gray-300"}`}
+                        placeholder="e.g. 15"
+                      />
+                      {errors.pmGraceInMinutes && <p className="text-xs text-red-600 mt-1">{errors.pmGraceInMinutes}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-gray-600 mb-1">Time Out</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={pmGraceOutMinutes}
+                        onChange={(e) => {
+                          setPmGraceOutMinutes(e.target.value === "" ? 0 : Number(e.target.value));
+                          setErrors((prev) => ({ ...prev, pmGraceOutMinutes: null }));
+                        }}
+                        className={`w-full px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000] ${errors.pmGraceOutMinutes ? "border-red-500" : "border-gray-300"}`}
+                        placeholder="e.g. 15"
+                      />
+                      {errors.pmGraceOutMinutes && <p className="text-xs text-red-600 mt-1">{errors.pmGraceOutMinutes}</p>}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
