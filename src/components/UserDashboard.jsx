@@ -1,11 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-
-const EVENT_CARD = {
-  label: "Current Event",
-  eventName: "General Assembly",
-  ay: "AY 2025/2026",
-  venue: "City Gym",
-};
+import { useGetEvents, formatEventDateForDisplay } from "../hooks/useGetEvents";
 
 const COLLEGES = [
   {
@@ -79,6 +73,9 @@ function StepPill({ idx, active, done }) {
 }
 
 export default function UserDashboard({ onLogout, onNavigate }) {
+  const { data: apiEvents = [], isPending: eventsLoading } = useGetEvents();
+  const currentEvent = apiEvents.length > 0 ? apiEvents[apiEvents.length - 1] : null;
+
   const [showLogout, setShowLogout] = useState(false);
   const role = (localStorage.getItem("csg_role") || "user").toLowerCase();
 
@@ -139,11 +136,25 @@ export default function UserDashboard({ onLogout, onNavigate }) {
         </div>
 
         <div className="px-4 pb-4">
-          <p className="text-xs font-semibold text-green-100 uppercase tracking-wider mb-2">{EVENT_CARD.label}</p>
+          <p className="text-xs font-semibold text-green-100 uppercase tracking-wider mb-2">Current Event</p>
           <div className="bg-green-700/40 rounded-lg p-3 border border-green-600/40">
-            <div className="text-sm font-semibold">{EVENT_CARD.eventName}</div>
-            <div className="text-[11px] text-green-100">{EVENT_CARD.ay}</div>
-            <div className="text-[11px] text-green-100">{EVENT_CARD.venue}</div>
+            {eventsLoading && !currentEvent ? (
+              <div className="text-xs text-green-100">Loading events…</div>
+            ) : currentEvent ? (
+              <>
+                <div className="text-sm font-semibold">{currentEvent.name}</div>
+                <div className="text-[11px] text-green-100">{formatEventDateForDisplay(currentEvent.date)}</div>
+                <div className="text-[11px] text-green-100">{currentEvent.venue || "—"}</div>
+                {currentEvent.status ? (
+                  <div className="text-[10px] text-green-200/90 mt-1">{currentEvent.status}</div>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <div className="text-sm font-semibold">No event scheduled</div>
+                <div className="text-[11px] text-green-100">Check Events when available</div>
+              </>
+            )}
           </div>
         </div>
 

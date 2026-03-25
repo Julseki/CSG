@@ -1,67 +1,47 @@
 import { useMemo, useState } from "react";
 import { useCreateDepartmentUser } from "../hooks/auth";
+import {
+  useGetEvents,
+  formatEventDateForDisplay,
+  formatDateTimeShort,
+} from "../hooks/useGetEvents";
 
-const ADMIN_CREDENTIALS = { username: "admin", password: "admin123" };
+function eventDateMs(d) {
+  if (!d) return 0;
+  const t = new Date(d).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
 
-// Sample data for the dashboard
-const EVENT_INFO = {
-  name: "General Assembly",
-  date: "March 14, 2025",
-  startTime: "8:00 AM",
-  endTime: "10:00 AM",
-  venue: "City Gym",
-  status: "OUT/IN",
-};
-
-const SUMMARY_DATA = [
-  { label: "Total Registered", value: 12, sub: "Departments", color: "text-[#008000]" },
-  { label: "On Time", value: 6, sub: "Timed In Before 8:00 AM", color: "text-[#008000]" },
-  { label: "Late", value: 4, sub: "Timed In After 10:00 AM", color: "text-red-600" },
-  { label: "Absent", value: 2, sub: "No Time In-Out", color: "text-blue-600", border: "border-blue-400" },
-  { label: "Completed", value: 7, sub: "In And Out Recorded", color: "text-blue-600" },
-  { label: "Still Inside", value: 3, sub: "No Time-Out Yet", color: "text-orange-600" },
-];
-
-const CHART_DATA = [
-  { label: "Total", value: 12, bg: "bg-[#008000]" },
-  { label: "On Time", value: 6, bg: "bg-green-400" },
-  { label: "Late", value: 4, bg: "bg-orange-500" },
-  { label: "Absent", value: 2, bg: "bg-red-500" },
-  { label: "Completed", value: 7, bg: "bg-blue-500" },
-  { label: "Still Inside", value: 3, bg: "bg-purple-500" },
-];
-
-const STUDENTS = [
-  { id: "2021-001", name: "Diaz, Pablo Marcos Sr.", course: "BSIT", major: "Web Dev", timeIn: "7:45 AM", timeOut: "9:52 AM", status: "Complete" },
-  { id: "2021-002", name: "Cruz, Maria Santos", course: "BSCS", major: "AI", timeIn: "8:12 AM", timeOut: "—", status: "On Time + Absent" },
-  { id: "2021-003", name: "Garcia, Jose Reyes Jr.", course: "BSIT", major: "Networks", timeIn: "8:05 AM", timeOut: "9:58 AM", status: "Late + Out" },
-  { id: "2021-004", name: "Ramos, Ana Dela Cruz", course: "BSCS", major: "Data Science", timeIn: "—", timeOut: "—", status: "Absent" },
-  { id: "2021-005", name: "Santos, Carlos Mendoza", course: "BSIT", major: "Mobile Dev", timeIn: "7:50 AM", timeOut: "10:00 AM", status: "On Time + Late" },
-  { id: "2021-006", name: "Torres, Elena Fernandez", course: "BSCS", major: "Cybersecurity", timeIn: "8:20 AM", timeOut: "—", status: "Late + Late" },
-  { id: "2021-007", name: "Lopez, Miguel Ocampo", course: "BSIT", major: "Cloud", timeIn: "8:15 AM", timeOut: "9:45 AM", status: "Late + Out" },
-  { id: "2021-008", name: "Rivera, Sofia Bautista", course: "BSCS", major: "ML", timeIn: "—", timeOut: "—", status: "Late + Absent" },
-  { id: "2021-009", name: "Fernandez, Juan Carlos", course: "BSIT", major: "Web Dev", timeIn: "7:55 AM", timeOut: "9:50 AM", status: "Complete" },
-  { id: "2021-010", name: "Mendoza, Patricia Reyes", course: "BSCS", major: "AI", timeIn: "8:22 AM", timeOut: "—", status: "Late + Late" },
-  { id: "2021-011", name: "Ocampo, Luis Miguel", course: "BSIT", major: "Networks", timeIn: "—", timeOut: "—", status: "Absent" },
-  { id: "2021-012", name: "Bautista, Carmen Lopez", course: "BSCS", major: "Data Science", timeIn: "8:00 AM", timeOut: "10:05 AM", status: "On Time + Late" },
-  { id: "2021-013", name: "Dela Cruz, Roberto Santos", course: "BSIT", major: "Mobile Dev", timeIn: "7:48 AM", timeOut: "9:55 AM", status: "Complete" },
-  { id: "2021-014", name: "Gonzalez, Maria Clara", course: "BSCS", major: "Cybersecurity", timeIn: "8:18 AM", timeOut: "9:40 AM", status: "Late + Out" },
-  { id: "2021-015", name: "Villanueva, Jose Maria", course: "BSIT", major: "Cloud", timeIn: "8:05 AM", timeOut: "—", status: "On Time + Absent" },
-  { id: "2021-016", name: "Reyes, Anna Patricia", course: "BSCS", major: "ML", timeIn: "7:52 AM", timeOut: "10:00 AM", status: "Complete" },
-  { id: "2021-017", name: "Santiago, Miguel Angel", course: "BSIT", major: "Web Dev", timeIn: "—", timeOut: "—", status: "Absent" },
-  { id: "2021-018", name: "Romero, Teresa Cruz", course: "BSCS", major: "AI", timeIn: "8:10 AM", timeOut: "9:58 AM", status: "Late + Out" },
-  { id: "2021-019", name: "Castillo, Pedro Juan", course: "BSIT", major: "Networks", timeIn: "7:58 AM", timeOut: "9:45 AM", status: "Complete" },
-  { id: "2021-020", name: "Morales, Lucia Fernan", course: "BSCS", major: "Data Science", timeIn: "8:25 AM", timeOut: "—", status: "Late + Late" },
-];
-
-function getStatusBadgeClass(status) {
-  if (status.includes("Complete") || status.includes("On Time")) return "bg-green-100 text-green-800";
-  if (status.includes("Late")) return "bg-orange-100 text-orange-800";
-  if (status.includes("Absent")) return "bg-red-100 text-red-800";
+function getEventStatusPillClass(status) {
+  const s = String(status || "");
+  if (s === "Completed") return "bg-green-100 text-green-800";
+  if (s === "Active") return "bg-orange-100 text-orange-800";
+  if (s === "Upcoming") return "bg-blue-100 text-blue-800";
   return "bg-gray-100 text-gray-800";
 }
 
-const PAGE_SIZE = 10;
+function audienceScopeLabel(ev) {
+  if (ev?.is_all_departments) return "All departments";
+  const n = Array.isArray(ev?.audiences) ? ev.audiences.length : 0;
+  return n ? `Targeted (${n} rule${n === 1 ? "" : "s"})` : "—";
+}
+
+function audienceRulesSummary(ev) {
+  if (!Array.isArray(ev?.audiences) || ev.audiences.length === 0) return "—";
+  return ev.audiences
+    .map((a) => {
+      if (a?.department_id == null && a?.program_id == null && a?.year_level == null) {
+        return "All (open)";
+      }
+      const p = [];
+      if (a?.department_id != null) p.push(`dept ${a.department_id}`);
+      if (a?.program_id != null) p.push(`prog ${a.program_id}`);
+      p.push(a?.year_level != null ? `yr ${a.year_level}` : "all yrs");
+      return p.join(", ");
+    })
+    .join(" · ");
+}
+
 const DEPARTMENT_OPTIONS = [
   {
     value: "College of Information Technology",
@@ -99,14 +79,66 @@ function isValidAllowedEmail(value) {
 }
 
 export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, isCreateUserOpen }) {
+  const { data: apiEvents = [], isPending: eventsLoading, isError: eventsError } = useGetEvents();
+  console.log(apiEvents, ": API EVENTS")
+  const [eventSearch, setEventSearch] = useState("");
+
+  /** Next upcoming event by date from API only; else latest by date. */
+  const activeEvent = useMemo(() => {
+    if (apiEvents.length === 0) return null;
+    const sorted = [...apiEvents].sort((a, b) => eventDateMs(a.date) - eventDateMs(b.date));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const next = sorted.find((e) => {
+      const d = new Date(e.date);
+      if (Number.isNaN(d.getTime())) return false;
+      d.setHours(0, 0, 0, 0);
+      return d >= today;
+    });
+    return next ?? sorted[sorted.length - 1];
+  }, [apiEvents]);
+
+  const eventSummaryCards = useMemo(() => {
+    const list = apiEvents;
+    const norm = (s) => String(s || "").toLowerCase();
+    const total = list.length;
+    const upcoming = list.filter((e) => norm(e.status) === "upcoming").length;
+    const active = list.filter((e) => norm(e.status) === "active").length;
+    const completed = list.filter((e) => norm(e.status) === "completed").length;
+    const mandatory = list.filter((e) => e.is_mandatory).length;
+    const allDept = list.filter((e) => e.is_all_departments).length;
+    return [
+      { label: "Total events", value: total, sub: "From server (/get-events)", color: "text-[#008000]" },
+      { label: "Upcoming", value: upcoming, sub: "Scheduled", color: "text-blue-600" },
+      { label: "Active", value: active, sub: "In progress", color: "text-orange-600" },
+      { label: "Completed", value: completed, sub: "Past events", color: "text-green-600" },
+      { label: "Mandatory", value: mandatory, sub: "Required attendance", color: "text-gray-800" },
+      { label: "All departments", value: allDept, sub: "Open to everyone", color: "text-gray-800" },
+    ];
+  }, [apiEvents]);
+
+  const serverEventsSorted = useMemo(() => {
+    return [...apiEvents].sort((a, b) => eventDateMs(b.date) - eventDateMs(a.date));
+  }, [apiEvents]);
+
+  const filteredEventsTable = useMemo(() => {
+    const q = eventSearch.trim().toLowerCase();
+    if (!q) return serverEventsSorted;
+    return serverEventsSorted.filter(
+      (e) =>
+        e.name?.toLowerCase().includes(q) ||
+        e.venue?.toLowerCase().includes(q) ||
+        String(e.id ?? "").includes(q) ||
+        e.status?.toLowerCase().includes(q),
+    );
+  }, [serverEventsSorted, eventSearch]);
+
   const [showLogout, setShowLogout] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [showCreateConfirmPassword, setShowCreateConfirmPassword] = useState(false);
   const [reportMode, setReportMode] = useState("export");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
   const [createUserError, setCreateUserError] = useState("");
   const [createdAccount, setCreatedAccount] = useState(null);
   const [createUserForm, setCreateUserForm] = useState({
@@ -189,25 +221,6 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
     { id: "export", label: "Export" },
     ...(isAdmin ? [{ id: "import", label: "Import" }, { id: "settings", label: "Settings" }] : []),
   ];
-
-  const filteredStudents = STUDENTS.filter((s) => {
-    const q = search.toLowerCase().trim();
-    if (!q) return true;
-    return (
-      s.name.toLowerCase().includes(q) ||
-      s.id.toLowerCase().includes(q) ||
-      s.course.toLowerCase().includes(q) ||
-      s.major.toLowerCase().includes(q)
-    );
-  });
-
-  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / PAGE_SIZE));
-  const startIdx = (page - 1) * PAGE_SIZE;
-  const endIdx = Math.min(startIdx + PAGE_SIZE, filteredStudents.length);
-  const paginatedStudents = filteredStudents.slice(startIdx, endIdx);
-
-  const goPrev = () => setPage((p) => Math.max(1, p - 1));
-  const goNext = () => setPage((p) => Math.min(totalPages, p + 1));
 
   const closeCreateUserModal = () => {
     if (isCreatingDepartmentUser) return;
@@ -359,7 +372,19 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
           <h1 className="text-lg font-semibold text-[#008000]">Event Tracker Dashboard</h1>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">
-              Event: {EVENT_INFO.name} 2025 | Start: {EVENT_INFO.startTime}
+              {eventsLoading && !activeEvent ? (
+                <>Loading events…</>
+              ) : eventsError && !activeEvent ? (
+                <>Could not load events. Check the server or add one from Events.</>
+              ) : activeEvent ? (
+                <>
+                  {activeEvent.icon ? `${activeEvent.icon} ` : ""}
+                  Event: {activeEvent.name} | Date: {formatEventDateForDisplay(activeEvent.date)}
+                  {activeEvent.timeSlots ? ` | Schedule: ${activeEvent.timeSlots}` : ""}
+                </>
+              ) : (
+                <>No events from the server yet</>
+              )}
             </span>
             <div className="relative">
               <button
@@ -380,22 +405,155 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
         </header>
 
         <main className="flex-1 p-6 overflow-auto">
-          {/* Event banner */}
-          <div className="bg-green-50 border border-green-200 rounded-lg px-6 py-4 mb-6 flex flex-wrap gap-6">
-            <span><strong>EVENT:</strong> {EVENT_INFO.name}</span>
-            <span><strong>DATE:</strong> {EVENT_INFO.date}</span>
-            <span><strong>START TIME:</strong> {EVENT_INFO.startTime}</span>
-            <span><strong>END TIME:</strong> {EVENT_INFO.endTime}</span>
-            <span><strong>VENUE:</strong> {EVENT_INFO.venue}</span>
-            <span><strong>STATUS:</strong> {EVENT_INFO.status}</span>
-          </div>
+          {/* Featured event — primary focus card */}
+          <section
+            className={[
+              "mb-6 rounded-xl border border-gray-200/90 bg-white shadow-sm",
+              "ring-1 ring-gray-950/[0.04] overflow-hidden",
+            ].join(" ")}
+          >
+            {activeEvent ? (
+              <>
+                <div className="relative border-b border-gray-100 bg-gradient-to-br from-[#008000]/[0.07] via-white to-gray-50/80 px-6 py-5 sm:px-8 sm:py-6">
+                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#008000] via-[#00a320] to-[#008000]/60" aria-hidden />
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="flex min-w-0 flex-1 gap-4">
+                      <div
+                        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-2xl shadow-sm ring-1 ring-gray-200/80"
+                        aria-hidden
+                      >
+                        {activeEvent.icon || "📅"}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#008000]">
+                          Featured event
+                        </p>
+                        <h2 className="mt-1.5 text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">
+                          {activeEvent.name}
+                        </h2>
+                        <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
+                          {activeEvent.id != null ? (
+                            <span className="tabular-nums">ID {activeEvent.id}</span>
+                          ) : null}
+                          {activeEvent.id != null && activeEvent.created_by_username ? (
+                            <span className="hidden text-gray-300 sm:inline" aria-hidden>
+                              ·
+                            </span>
+                          ) : null}
+                          {activeEvent.created_by_username ? (
+                            <span>
+                              By <span className="font-medium text-gray-700">{activeEvent.created_by_username}</span>
+                            </span>
+                          ) : null}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 lg:flex-col lg:items-end lg:pt-1">
+                      <span
+                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getEventStatusPillClass(activeEvent.status)}`}
+                      >
+                        {activeEvent.status || "—"}
+                      </span>
+                      {typeof activeEvent.is_mandatory === "boolean" && activeEvent.is_mandatory ? (
+                        <span className="inline-flex items-center rounded-full border border-amber-200/80 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-900">
+                          Mandatory
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
 
-          {/* Summary cards */}
+                <div className="min-w-0 px-6 py-6 sm:px-8">
+                  <dl className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="space-y-1">
+                      <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Date</dt>
+                      <dd className="text-sm font-semibold text-gray-900">
+                        {formatEventDateForDisplay(activeEvent.date)}
+                      </dd>
+                    </div>
+                    <div className="space-y-1">
+                      <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Venue</dt>
+                      <dd className="text-sm font-semibold text-gray-900">{activeEvent.venue || "—"}</dd>
+                    </div>
+                    {activeEvent.duration ? (
+                      <div className="space-y-1">
+                        <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Duration</dt>
+                        <dd className="text-sm font-semibold text-gray-900">{activeEvent.duration}</dd>
+                      </div>
+                    ) : null}
+                    <div className="space-y-1">
+                      <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Scope</dt>
+                      <dd className="text-sm font-semibold text-gray-900">
+                        {typeof activeEvent.is_all_departments === "boolean"
+                          ? audienceScopeLabel(activeEvent)
+                          : "—"}
+                      </dd>
+                    </div>
+                    <div className="space-y-1">
+                      <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Fine</dt>
+                      <dd className="text-sm font-semibold tabular-nums text-gray-900">
+                        {activeEvent.fine != null && activeEvent.fine !== ""
+                          ? String(activeEvent.fine)
+                          : "—"}
+                      </dd>
+                    </div>
+                    {typeof activeEvent.is_mandatory === "boolean" && !activeEvent.is_mandatory ? (
+                      <div className="space-y-1">
+                        <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                          Attendance
+                        </dt>
+                        <dd className="text-sm font-semibold text-gray-700">Optional</dd>
+                      </div>
+                    ) : null}
+
+                    {/* Full-width rows: same dt/dd alignment as Date, Venue, etc. */}
+                    <div className="space-y-1 border-t border-gray-100 pt-5 sm:col-span-2 lg:col-span-3 min-w-0">
+                      <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                        Schedule
+                      </dt>
+                      <dd className="break-words text-sm font-semibold leading-relaxed text-gray-900">
+                        {activeEvent.timeSlots || "—"}
+                      </dd>
+                    </div>
+
+                    {activeEvent.audience_notes ? (
+                      <div className="space-y-1 sm:col-span-2 lg:col-span-3 min-w-0">
+                        <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                          Notes
+                        </dt>
+                        <dd className="break-words text-sm font-semibold leading-relaxed text-gray-900">
+                          {activeEvent.audience_notes}
+                        </dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                </div>
+              </>
+            ) : (
+              <div className="px-6 py-14 sm:px-8">
+                <div className="mx-auto max-w-md text-center">
+                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-2xl text-gray-400">
+                    📅
+                  </div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-[#008000]/90">
+                    Featured event
+                  </p>
+                  <p className="mt-2 text-base font-semibold text-gray-900">No upcoming event to highlight</p>
+                  <p className="mt-2 text-sm leading-relaxed text-gray-500">
+                    Events from <span className="font-mono text-xs text-gray-600">/get-events</span> will appear here
+                    once your server returns data.
+                  </p>
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* Summary — derived from /get-events only */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-            {SUMMARY_DATA.map((item, i) => (
+            {eventSummaryCards.map((item, i) => (
               <div
                 key={i}
-                className={`bg-white rounded-lg border p-4 shadow-sm ${item.border || "border-gray-200"}`}
+                className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm"
               >
                 <p className={`text-2xl font-bold ${item.color}`}>{item.value}</p>
                 <p className="text-xs font-medium text-gray-700">{item.label}</p>
@@ -404,84 +562,114 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
             ))}
           </div>
 
-          {/* Chart */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm mb-6">
-            <h3 className="text-sm font-semibold text-gray-800 mb-4">Attendance Overview</h3>
-            <div className="flex items-end gap-4 h-40">
-              {CHART_DATA.map((item, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                  <div className="w-full bg-gray-100 rounded-t flex flex-col justify-end h-32" style={{ minHeight: 24 }}>
-                    <div
-                      className={`w-full ${item.bg} rounded-t transition-all`}
-                      style={{ height: `${(item.value / 12) * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-gray-600">{item.label}</span>
-                </div>
-              ))}
+          {/* All events from API */}
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden mb-6">
+            <div className="px-4 py-3 border-b border-gray-200 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-gray-800">All events</h2>
+              {eventsLoading ? (
+                <span className="text-xs text-gray-500">Loading…</span>
+              ) : eventsError ? (
+                <span className="text-xs text-red-600">Failed to load /get-events</span>
+              ) : (
+                <span className="text-xs text-gray-500">
+                  {apiEvents.length} record{apiEvents.length === 1 ? "" : "s"}
+                  {eventSearch.trim() ? ` · ${filteredEventsTable.length} match` : ""}
+                </span>
+              )}
             </div>
-          </div>
-
-          {/* Filters */}
-          <div className="flex flex-wrap gap-4 mb-4">
-            <div className="relative flex-1 min-w-[200px]">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
-              <input
-                type="text"
-                placeholder="Search Name Or ID"
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000]"
-              />
+            <div className="px-4 py-2 border-b border-gray-100">
+              <div className="relative max-w-md">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+                <input
+                  type="search"
+                  placeholder="Filter by name, venue, ID, or status"
+                  value={eventSearch}
+                  onChange={(e) => setEventSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#008000]"
+                />
+              </div>
             </div>
-            <select className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#008000]">
-              <option>All Courses</option>
-            </select>
-            <select className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#008000]">
-              <option>All Status</option>
-            </select>
-          </div>
-
-          {/* Table */}
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Student ID</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Name</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Course</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Major</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Time In</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Time Out</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
+                    <th className="text-left py-3 px-2 font-medium text-gray-700 w-10" />
+                    <th className="text-left py-3 px-3 font-medium text-gray-700">ID</th>
+                    <th className="text-left py-3 px-3 font-medium text-gray-700">Name</th>
+                    <th className="text-left py-3 px-3 font-medium text-gray-700">Date</th>
+                    <th className="text-left py-3 px-3 font-medium text-gray-700">Venue</th>
+                    <th className="text-left py-3 px-3 font-medium text-gray-700">Duration</th>
+                    <th className="text-left py-3 px-3 font-medium text-gray-700 min-w-[200px]">Schedule</th>
+                    <th className="text-right py-3 px-3 font-medium text-gray-700">Fine</th>
+                    <th className="text-left py-3 px-3 font-medium text-gray-700">Status</th>
+                    <th className="text-left py-3 px-3 font-medium text-gray-700">Mand.</th>
+                    <th className="text-left py-3 px-3 font-medium text-gray-700">Scope</th>
+                    <th className="text-left py-3 px-3 font-medium text-gray-700 min-w-[140px]">Audience rules</th>
+                    <th className="text-left py-3 px-3 font-medium text-gray-700 min-w-[160px]">Notes</th>
+                    <th className="text-left py-3 px-3 font-medium text-gray-700">Created by</th>
+                    <th className="text-left py-3 px-3 font-medium text-gray-700">Updated</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedStudents.map((s, i) => (
-                    <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-4">{s.id}</td>
-                      <td className="py-3 px-4 font-medium">{s.name}</td>
-                      <td className="py-3 px-4">{s.course}</td>
-                      <td className="py-3 px-4">{s.major}</td>
-                      <td className={`py-3 px-4 ${s.timeIn?.startsWith("7") || s.timeIn?.startsWith("8") ? "text-green-600" : ""}`}>{s.timeIn}</td>
-                      <td className={`py-3 px-4 ${s.timeOut === "—" ? "text-gray-400" : ""}`}>{s.timeOut}</td>
-                      <td className="py-3 px-4">
-                        <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getStatusBadgeClass(s.status)}`}>
-                          {s.status}
-                        </span>
+                  {eventsLoading && apiEvents.length === 0 ? (
+                    <tr>
+                      <td colSpan={15} className="py-10 px-4 text-center text-gray-500">
+                        Loading events…
                       </td>
                     </tr>
-                  ))}
+                  ) : eventsError && apiEvents.length === 0 ? (
+                    <tr>
+                      <td colSpan={15} className="py-10 px-4 text-center text-gray-500">
+                        Could not load events from the server. Check <strong>/get-events</strong> and your session.
+                      </td>
+                    </tr>
+                  ) : apiEvents.length === 0 ? (
+                    <tr>
+                      <td colSpan={15} className="py-10 px-4 text-center text-gray-500">
+                        No events returned from the API yet.
+                      </td>
+                    </tr>
+                  ) : filteredEventsTable.length === 0 ? (
+                    <tr>
+                      <td colSpan={15} className="py-10 px-4 text-center text-gray-500">
+                        No events match your filter.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredEventsTable.map((ev) => (
+                      <tr key={ev.id ?? `${ev.name}-${ev.date}`} className="border-b border-gray-100 hover:bg-gray-50 align-top">
+                        <td className="py-3 px-2 text-center text-base">{ev.icon || "—"}</td>
+                        <td className="py-3 px-3 text-gray-600 whitespace-nowrap">{ev.id ?? "—"}</td>
+                        <td className="py-3 px-3 font-medium text-gray-900">{ev.name}</td>
+                        <td className="py-3 px-3 whitespace-nowrap">{formatEventDateForDisplay(ev.date)}</td>
+                        <td className="py-3 px-3 max-w-[120px]">{ev.venue || "—"}</td>
+                        <td className="py-3 px-3 whitespace-nowrap">{ev.duration || "—"}</td>
+                        <td className="py-3 px-3 text-xs text-gray-700">{ev.timeSlots || "—"}</td>
+                        <td className="py-3 px-3 text-right tabular-nums">
+                          {ev.fine != null && ev.fine !== "" ? String(ev.fine) : "—"}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getEventStatusPillClass(ev.status)}`}>
+                            {ev.status || "—"}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3">
+                          {ev.is_mandatory === true ? "Yes" : ev.is_mandatory === false ? "No" : "—"}
+                        </td>
+                        <td className="py-3 px-3 text-xs whitespace-nowrap">{audienceScopeLabel(ev)}</td>
+                        <td className="py-3 px-3 text-xs text-gray-700 max-w-[200px]">{audienceRulesSummary(ev)}</td>
+                        <td className="py-3 px-3 text-xs text-gray-700 max-w-[220px] line-clamp-2" title={ev.audience_notes || ""}>
+                          {ev.audience_notes || "—"}
+                        </td>
+                        <td className="py-3 px-3 text-xs text-gray-700 whitespace-nowrap">
+                          {ev.created_by_username || "—"}
+                        </td>
+                        <td className="py-3 px-3 text-xs text-gray-600 whitespace-nowrap">{formatDateTimeShort(ev.updated_at)}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
-            </div>
-            <div className="px-4 py-3 flex items-center justify-between border-t border-gray-200 text-sm text-gray-600">
-              <span>Showing {filteredStudents.length > 0 ? `${startIdx + 1}-${endIdx}` : 0} Of {filteredStudents.length}</span>
-              <div className="flex gap-2">
-                <button onClick={goPrev} disabled={page <= 1} className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">← Prev</button>
-                <button onClick={goNext} disabled={page >= totalPages} className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Next →</button>
-              </div>
             </div>
           </div>
         </main>
@@ -795,9 +983,4 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
       )}
     </div>
   );
-}
-
-// Export for use in App - validation helper
-export function validateAdmin(username, password) {
-  return username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password;
 }

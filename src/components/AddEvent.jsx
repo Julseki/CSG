@@ -157,6 +157,7 @@ export default function AddEvent({ onBack, onNext }) {
         amTimeOut: amTimeOut || "",
         pmTimeIn: pmTimeIn || "",
         pmTimeOut: pmTimeOut || "",
+        fineAmount: Number(fineAmount),
       };
 
       // Send to backend via React Query + axios (without icon)

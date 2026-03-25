@@ -1,7 +1,9 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../api/axiosInstance";
+import { EVENTS_QUERY_KEY } from "./useGetEvents";
 
 export function useAddevent() {
+  const queryClient = useQueryClient();
   return useMutation({
     onMutate: (variables) => {
       console.warn("[useAddevent] onMutate called with:", variables);
@@ -17,6 +19,7 @@ export function useAddevent() {
     },
     onSuccess: (data, variables) => {
       console.log("[useAddevent] Mutation success.", { data, variables });
+      queryClient.invalidateQueries({ queryKey: EVENTS_QUERY_KEY });
     },
     onError: (error, variables) => {
       console.error("[useAddevent] Mutation error.", {

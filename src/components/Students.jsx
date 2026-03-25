@@ -1,22 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 
+const DEPARTMENT_STUDENTS_KEY = "csg_department_students";
+
+function loadDepartmentStudents() {
+  try {
+    const raw = localStorage.getItem(DEPARTMENT_STUDENTS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((s) => s && typeof s.id === "string");
+  } catch {
+    return [];
+  }
+}
+
 const STUDENT_STATS = [
   { label: "Total Departments", value: 248, },
   { label: "Present Today", value: 214, },
   { label: "Late", value: 21, },
   { label: "Absent", value: 13, },
-];
-
-const STUDENTS = [
-  { id: "2021-001", name: "Diaz, Pablo Marcos Sr.", course: "BSIT", year: "4th Year", dept: "CCS", section: "A", status: "Present" },
-  { id: "2021-002", name: "Cruz, Maria Santos", course: "BSBA", year: "3rd Year", dept: "CBA", section: "B", status: "Late" },
-  { id: "2021-003", name: "Garcia, Jose Reyes Jr.", course: "BSCrim", year: "2nd Year", dept: "CAS", section: "A", status: "Absent" },
-  { id: "2021-004", name: "Ramos, Ana Dela Cruz", course: "BEED", year: "1st Year", dept: "CED", section: "C", status: "Present" },
-  { id: "2021-005", name: "Santos, Carlos Mendoza", course: "BSED", year: "4th Year", dept: "CED", section: "B", status: "Present" },
-  { id: "2021-006", name: "Torres, Elena Fernandez", course: "BSIT", year: "2nd Year", dept: "CCS", section: "C", status: "Late" },
-  { id: "2021-007", name: "Lopez, Miguel Ocampo", course: "BSBA", year: "3rd Year", dept: "CBA", section: "A", status: "Present" },
-  { id: "2021-008", name: "Rivera, Sofia Bautista", course: "BSCrim", year: "4th Year", dept: "CAS", section: "B", status: "Absent" },
 ];
 
 function getBadgeClass(status) {
@@ -30,8 +33,8 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("All Departments");
   const [year, setYear] = useState("All Years");
-  const [students, setStudents] = useState(STUDENTS);
-  const [selectedStudent, setSelectedStudent] = useState(STUDENTS[0]);
+  const [students, setStudents] = useState(loadDepartmentStudents);
+  const [selectedStudent, setSelectedStudent] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -54,6 +57,20 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
       setDepartment("All Departments");
     }
   }, [isGovernor, governorScope]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(DEPARTMENT_STUDENTS_KEY, JSON.stringify(students));
+    } catch {
+      // ignore quota / private mode
+    }
+  }, [students]);
+
+  useEffect(() => {
+    if (selectedStudent && !students.some((s) => s.id === selectedStudent.id)) {
+      setSelectedStudent(students[0] ?? null);
+    }
+  }, [students, selectedStudent]);
 
   const filteredStudents = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -246,11 +263,18 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredStudents.map((student) => (
+                    {filteredStudents.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-8 px-4 text-center text-gray-500 text-sm">
+                          No students yet. Use <strong>Add Students</strong> to create a record.
+                        </td>
+                      </tr>
+                    ) : (
+                    filteredStudents.map((student) => (
                       <tr
                         key={student.id}
                         onClick={() => setSelectedStudent(student)}
-                        className={`cursor-pointer border-b border-gray-100 hover:bg-gray-50 ${selectedStudent.id === student.id ? "bg-green-50" : ""}`}
+                        className={`cursor-pointer border-b border-gray-100 hover:bg-gray-50 ${selectedStudent?.id === student.id ? "bg-green-50" : ""}`}
                       >
                         <td className="py-3 px-4">{student.id}</td>
                         <td className="py-3 px-4 font-medium">{student.name}</td>
@@ -262,7 +286,8 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
                           </span>
                         </td>
                       </tr>
-                    ))}
+                    ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -270,64 +295,70 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
 
             <aside className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
               <h2 className="text-sm font-semibold text-gray-800 mb-4">Selected Department</h2>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-green-100 text-[#008000] flex items-center justify-center font-bold">
-                  {selectedStudent.name.split(",")[0].slice(0, 1)}
-                  {selectedStudent.name.split(" ")[1]?.slice(0, 1)}
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-900">{selectedStudent.name}</p>
-                  <p className="text-xs text-gray-500">{selectedStudent.id}</p>
-                </div>
-              </div>
+              {!selectedStudent ? (
+                <p className="text-sm text-gray-500">Select a row in the table or add a student to see details.</p>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 rounded-full bg-green-100 text-[#008000] flex items-center justify-center font-bold">
+                      {selectedStudent.name.split(",")[0].slice(0, 1)}
+                      {selectedStudent.name.split(" ")[1]?.slice(0, 1)}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">{selectedStudent.name}</p>
+                      <p className="text-xs text-gray-500">{selectedStudent.id}</p>
+                    </div>
+                  </div>
 
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between gap-4 py-1.5 border-b border-gray-100">
-                  <span className="text-gray-500">Course</span>
-                  <span className="font-medium text-gray-800 text-right">{selectedStudent.course}</span>
-                </div>
-                <div className="flex items-center justify-between gap-4 py-1.5 border-b border-gray-100">
-                  <span className="text-gray-500">Year Level</span>
-                  <span className="font-medium text-gray-800 text-right">{selectedStudent.year}</span>
-                </div>
-                <div className="flex items-center justify-between gap-4 py-1.5 border-b border-gray-100">
-                  <span className="text-gray-500">Section</span>
-                  <span className="font-medium text-gray-800 text-right">{selectedStudent.section}</span>
-                </div>
-                <div className="flex items-center justify-between gap-4 py-1.5">
-                  <span className="text-gray-500">Attendance</span>
-                  <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
-                      selectedStudent.status === "Present"
-                        ? "bg-green-100 text-green-800"
-                        : selectedStudent.status === "Late"
-                          ? "bg-orange-100 text-orange-800"
-                          : "bg-red-100 text-red-800"
-                    }`}
-                  >
-                    {selectedStudent.status}
-                  </span>
-                </div>
-              </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between gap-4 py-1.5 border-b border-gray-100">
+                      <span className="text-gray-500">Course</span>
+                      <span className="font-medium text-gray-800 text-right">{selectedStudent.course}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4 py-1.5 border-b border-gray-100">
+                      <span className="text-gray-500">Year Level</span>
+                      <span className="font-medium text-gray-800 text-right">{selectedStudent.year}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4 py-1.5 border-b border-gray-100">
+                      <span className="text-gray-500">Section</span>
+                      <span className="font-medium text-gray-800 text-right">{selectedStudent.section}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4 py-1.5">
+                      <span className="text-gray-500">Attendance</span>
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
+                          selectedStudent.status === "Present"
+                            ? "bg-green-100 text-green-800"
+                            : selectedStudent.status === "Late"
+                              ? "bg-orange-100 text-orange-800"
+                              : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {selectedStudent.status}
+                      </span>
+                    </div>
+                  </div>
 
-              <div className="mt-5 grid grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setShowProfileModal(true)}
-                  className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  View Profile
-                </button>
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => setShowEditModal(true)}
-                    className="px-3 py-2 rounded-lg bg-[#008000] text-white text-sm hover:bg-green-700"
-                  >
-                    Edit Record
-                  </button>
-                )}
-              </div>
+                  <div className="mt-5 grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setShowProfileModal(true)}
+                      className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      View Profile
+                    </button>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => setShowEditModal(true)}
+                        className="px-3 py-2 rounded-lg bg-[#008000] text-white text-sm hover:bg-green-700"
+                      >
+                        Edit Record
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
             </aside>
           </div>
         </main>
@@ -401,7 +432,7 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
         </div>
       )}
 
-      {showProfileModal && (
+      {showProfileModal && selectedStudent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl overflow-hidden">
             <div className="bg-[#008000] px-5 py-3">
@@ -423,7 +454,7 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
         </div>
       )}
 
-      {isAdmin && showEditModal && (
+      {isAdmin && showEditModal && selectedStudent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl overflow-hidden">
             <div className="bg-[#008000] px-5 py-3">

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import AddEvent from "./AddEvent";
+import { useGetEvents, mergeApiAndLocalEvents } from "../hooks/useGetEvents";
 
 const FINE_PER_ABSENT = 50; // Pesos per absent student
 
@@ -30,6 +31,7 @@ function getCustomEventsFromStorage() {
 }
 
 export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreateUserOpen }) {
+  const { data: apiEvents = [], isPending: eventsLoading, isError: eventsError } = useGetEvents();
   const [showLogout, setShowLogout] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportMode, setReportMode] = useState("export");
@@ -78,8 +80,8 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
     ...(isAdmin ? [{ id: "import", label: "Import" }, { id: "settings", label: "Settings" }] : []),
   ];
 
-  const allEvents = getCustomEventsFromStorage();
-  const firstEvent = allEvents[0] || null;
+  const allEvents = mergeApiAndLocalEvents(apiEvents, getCustomEventsFromStorage());
+  const latestEvent = allEvents.length ? allEvents[allEvents.length - 1] : null;
   const summaryData = useMemo(() => {
     const total = allEvents.length;
     const completed = allEvents.filter((e) => e.status === "Completed").length;
@@ -233,9 +235,13 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
           <h1 className="text-lg font-semibold text-[#008000]">Events</h1>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">
-              {firstEvent
-                ? `Event: ${firstEvent.name} | Date: ${firstEvent.date || "-"}`
-                : "No events available"}
+              {eventsLoading && !latestEvent
+                ? "Loading events…"
+                : eventsError && !latestEvent
+                  ? "Could not load events."
+                  : latestEvent
+                    ? `Event: ${latestEvent.name} | Date: ${latestEvent.date || "-"}`
+                    : "No events available"}
             </span>
             <div className="relative flex items-center gap-2">
               <button
