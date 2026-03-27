@@ -4,21 +4,17 @@ import { useGovernorScope } from "../hooks/useGovernorScope";
 import {
   useGetEvents,
   formatEventDateForDisplay,
-  formatDateTimeShort,
 } from "../hooks/useGetEvents";
+import EventCard from "./EventCard";
+import { Chart as ChartJS } from "chart.js/auto";
+import { Line } from "react-chartjs-2";
+
+void ChartJS;
 
 function eventDateMs(d) {
   if (!d) return 0;
   const t = new Date(d).getTime();
   return Number.isFinite(t) ? t : 0;
-}
-
-function getEventStatusPillClass(status) {
-  const s = String(status || "");
-  if (s === "Completed") return "bg-green-100 text-green-800";
-  if (s === "Active") return "bg-orange-100 text-orange-800";
-  if (s === "Upcoming") return "bg-blue-100 text-blue-800";
-  return "bg-gray-100 text-gray-800";
 }
 
 function audienceScopeLabel(ev) {
@@ -84,7 +80,6 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
   const { data: session } = useAuthSession();
   const { isGovernor, governorScope } = useGovernorScope();
   console.log(apiEvents, ": API EVENTS")
-  const [eventSearch, setEventSearch] = useState("");
 
   /** Next upcoming event by date from API only; else latest by date. */
   const activeEvent = useMemo(() => {
@@ -119,22 +114,67 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
       { label: "All departments", value: allDept, sub: "Open to everyone", color: "text-gray-800" },
     ];
   }, [apiEvents]);
+  const overviewLineData = useMemo(() => {
+    const total = eventSummaryCards[0]?.value ?? 0;
+    const upcoming = eventSummaryCards[1]?.value ?? 0;
+    const active = eventSummaryCards[2]?.value ?? 0;
+    const completed = eventSummaryCards[3]?.value ?? 0;
+    const mandatory = eventSummaryCards[4]?.value ?? 0;
+    const allDepartments = eventSummaryCards[5]?.value ?? 0;
 
-  const serverEventsSorted = useMemo(() => {
-    return [...apiEvents].sort((a, b) => eventDateMs(b.date) - eventDateMs(a.date));
-  }, [apiEvents]);
+    return {
+      labels: ["Total", "Upcoming", "Active", "Completed", "Mandatory", "All Departments"],
+      datasets: [
+        {
+          label: "Event Overview",
+          data: [total, upcoming, active, completed, mandatory, allDepartments],
+          borderColor: "#008000",
+          backgroundColor: "rgba(0,128,0,0.15)",
+          pointBackgroundColor: "#FFC90B",
+          pointBorderColor: "#36454F",
+          pointHoverBackgroundColor: "#36454F",
+          pointHoverBorderColor: "#FFC90B",
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          borderWidth: 3,
+          tension: 0.35,
+          fill: true,
+        },
+      ],
+    };
+  }, [eventSummaryCards]);
 
-  const filteredEventsTable = useMemo(() => {
-    const q = eventSearch.trim().toLowerCase();
-    if (!q) return serverEventsSorted;
-    return serverEventsSorted.filter(
-      (e) =>
-        e.name?.toLowerCase().includes(q) ||
-        e.venue?.toLowerCase().includes(q) ||
-        String(e.id ?? "").includes(q) ||
-        e.status?.toLowerCase().includes(q),
-    );
-  }, [serverEventsSorted, eventSearch]);
+  const overviewLineOptions = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: "top",
+          labels: {
+            color: "#36454F",
+            boxWidth: 12,
+            boxHeight: 12,
+            usePointStyle: true,
+            pointStyle: "circle",
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { color: "rgba(54,69,79,0.12)" },
+          ticks: { color: "#36454F", font: { size: 11 } },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: "rgba(54,69,79,0.12)" },
+          ticks: { color: "#36454F", precision: 0 },
+        },
+      },
+    }),
+    [],
+  );
 
   const [showLogout, setShowLogout] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -417,274 +457,67 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
           </div>
         </header>
 
-        <main className="flex-1 p-6 overflow-auto">
-          {/* Featured event — primary focus card */}
-          <section
-            className={[
-              "mb-6 rounded-xl border border-gray-200/90 bg-white shadow-sm",
-              "ring-1 ring-gray-950/[0.04] overflow-hidden",
-            ].join(" ")}
-          >
+        <main className="flex-1 p-6 overflow-auto bg-[#f6f8f9]">
+          {activeEvent ? (
+            <section className="mb-6">
+              <EventCard event={activeEvent} />
+            </section>
+          ) : null}
+
+          <section className="mb-6 rounded-xl border border-[#008000]/30 bg-[#E7F3E7] px-6 py-4 shadow-sm">
             {activeEvent ? (
-              <>
-                <div className="relative border-b border-gray-100 bg-gradient-to-br from-[#008000]/[0.07] via-white to-gray-50/80 px-6 py-5 sm:px-8 sm:py-6">
-                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#008000] via-[#00a320] to-[#008000]/60" aria-hidden />
-                  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="flex min-w-0 flex-1 gap-4">
-                      <div
-                        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-2xl shadow-sm ring-1 ring-gray-200/80"
-                        aria-hidden
-                      >
-                        {activeEvent.icon || "📅"}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#008000]">
-                          Featured event
-                        </p>
-                        <h2 className="mt-1.5 text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">
-                          {activeEvent.name}
-                        </h2>
-                        <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
-                          {activeEvent.id != null ? (
-                            <span className="tabular-nums">ID {activeEvent.id}</span>
-                          ) : null}
-                          {activeEvent.id != null && activeEvent.created_by_username ? (
-                            <span className="hidden text-gray-300 sm:inline" aria-hidden>
-                              ·
-                            </span>
-                          ) : null}
-                          {activeEvent.created_by_username ? (
-                            <span>
-                              By <span className="font-medium text-gray-700">{activeEvent.created_by_username}</span>
-                            </span>
-                          ) : null}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 lg:flex-col lg:items-end lg:pt-1">
-                      <span
-                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getEventStatusPillClass(activeEvent.status)}`}
-                      >
-                        {activeEvent.status || "—"}
-                      </span>
-                      {typeof activeEvent.is_mandatory === "boolean" && activeEvent.is_mandatory ? (
-                        <span className="inline-flex items-center rounded-full border border-amber-200/80 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-900">
-                          Mandatory
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#36454F]/70">Event</p>
+                  <p className="text-sm font-semibold text-[#36454F]">{activeEvent.name || "—"}</p>
                 </div>
-
-                <div className="min-w-0 px-6 py-6 sm:px-8">
-                  <dl className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                    <div className="space-y-1">
-                      <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Date</dt>
-                      <dd className="text-sm font-semibold text-gray-900">
-                        {formatEventDateForDisplay(activeEvent.date)}
-                      </dd>
-                    </div>
-                    <div className="space-y-1">
-                      <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Venue</dt>
-                      <dd className="text-sm font-semibold text-gray-900">{activeEvent.venue || "—"}</dd>
-                    </div>
-                    {activeEvent.duration ? (
-                      <div className="space-y-1">
-                        <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Duration</dt>
-                        <dd className="text-sm font-semibold text-gray-900">{activeEvent.duration}</dd>
-                      </div>
-                    ) : null}
-                    <div className="space-y-1">
-                      <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Scope</dt>
-                      <dd className="text-sm font-semibold text-gray-900">
-                        {typeof activeEvent.is_all_departments === "boolean"
-                          ? audienceScopeLabel(activeEvent)
-                          : "—"}
-                      </dd>
-                    </div>
-                    <div className="space-y-1">
-                      <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Fine</dt>
-                      <dd className="text-sm font-semibold tabular-nums text-gray-900">
-                        {activeEvent.fine != null && activeEvent.fine !== ""
-                          ? `₱${String(activeEvent.fine)}`
-                          : "—"}
-                      </dd>
-                    </div>
-                    {typeof activeEvent.is_mandatory === "boolean" && !activeEvent.is_mandatory ? (
-                      <div className="space-y-1">
-                        <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                          Attendance
-                        </dt>
-                        <dd className="text-sm font-semibold text-gray-700">Optional</dd>
-                      </div>
-                    ) : null}
-
-                    {/* Full-width rows: same dt/dd alignment as Date, Venue, etc. */}
-                    <div className="space-y-1 border-t border-gray-100 pt-5 sm:col-span-2 lg:col-span-3 min-w-0">
-                      <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                        Schedule
-                      </dt>
-                      <dd className="break-words text-sm font-semibold leading-relaxed text-gray-900">
-                        {activeEvent.timeSlots || "—"}
-                      </dd>
-                    </div>
-
-                    {activeEvent.audience_notes ? (
-                      <div className="space-y-1 sm:col-span-2 lg:col-span-3 min-w-0">
-                        <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                          Notes
-                        </dt>
-                        <dd className="break-words text-sm font-semibold leading-relaxed text-gray-900">
-                          {activeEvent.audience_notes}
-                        </dd>
-                      </div>
-                    ) : null}
-                  </dl>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#36454F]/70">Date</p>
+                  <p className="text-sm font-semibold text-[#36454F]">{formatEventDateForDisplay(activeEvent.date)}</p>
                 </div>
-              </>
-            ) : (
-              <div className="px-6 py-14 sm:px-8">
-                <div className="mx-auto max-w-md text-center">
-                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-2xl text-gray-400">
-                    📅
-                  </div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-[#008000]/90">
-                    Featured event
-                  </p>
-                  <p className="mt-2 text-base font-semibold text-gray-900">No upcoming event to highlight</p>
-                  <p className="mt-2 text-sm leading-relaxed text-gray-500">
-                    Events from <span className="font-mono text-xs text-gray-600">/get-events</span> will appear here
-                    once your server returns data.
-                  </p>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#36454F]/70">Venue</p>
+                  <p className="text-sm font-semibold text-[#36454F]">{activeEvent.venue || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#36454F]/70">Duration</p>
+                  <p className="text-sm font-semibold text-[#36454F]">{activeEvent.duration || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#36454F]/70">Event Status</p>
+                  <p className="text-sm font-semibold text-[#36454F]">{activeEvent.status || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#36454F]/70">Scope</p>
+                  <p className="text-sm font-semibold text-[#36454F]">{audienceScopeLabel(activeEvent)}</p>
+                </div>
+                <div className="md:col-span-3 lg:col-span-6">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#36454F]/70">Audience</p>
+                  <p className="text-sm font-semibold text-[#36454F] break-words">{audienceRulesSummary(activeEvent)}</p>
                 </div>
               </div>
+            ) : (
+              <p className="text-sm text-[#36454F]">No event available yet.</p>
             )}
           </section>
 
-          {/* Summary — derived from /get-events only */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+          <section className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
             {eventSummaryCards.map((item, i) => (
-              <div
-                key={i}
-                className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm"
-              >
-                <p className={`text-2xl font-bold ${item.color}`}>{item.value}</p>
-                <p className="text-xs font-medium text-gray-700">{item.label}</p>
-                <p className="text-xs text-gray-500">{item.sub}</p>
+              <div key={i} className="rounded-xl border border-[#008000]/40 bg-white p-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#36454F]/70">{item.label}</p>
+                <p className={`mt-2 text-3xl font-bold ${item.color}`}>{item.value}</p>
+                <p className="text-[11px] text-[#36454F]/70">{item.sub}</p>
               </div>
             ))}
-          </div>
+          </section>
 
-          {/* All events from API */}
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden mb-6">
-            <div className="px-4 py-3 border-b border-gray-200 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-gray-800">All events</h2>
-              {eventsLoading ? (
-                <span className="text-xs text-gray-500">Loading…</span>
-              ) : eventsError ? (
-                <span className="text-xs text-red-600">Failed to load /get-events</span>
-              ) : (
-                <span className="text-xs text-gray-500">
-                  {apiEvents.length} record{apiEvents.length === 1 ? "" : "s"}
-                  {eventSearch.trim() ? ` · ${filteredEventsTable.length} match` : ""}
-                </span>
-              )}
+          <section className="rounded-xl border border-[#36454F]/20 bg-white p-5 shadow-sm">
+            <h3 className="text-lg font-semibold text-[#36454F]">Attendance Overview</h3>
+            <p className="mt-1 text-xs text-[#36454F]/70">Overview of current event statistics using line graph.</p>
+            <div className="mt-4 h-[320px]">
+              <Line data={overviewLineData} options={overviewLineOptions} />
             </div>
-            <div className="px-4 py-2 border-b border-gray-100">
-              <div className="relative max-w-md">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
-                <input
-                  type="search"
-                  placeholder="Filter by name, venue, ID, or status"
-                  value={eventSearch}
-                  onChange={(e) => setEventSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#008000]"
-                />
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="text-left py-3 px-2 font-medium text-gray-700 w-10" />
-                    <th className="text-left py-3 px-3 font-medium text-gray-700">ID</th>
-                    <th className="text-left py-3 px-3 font-medium text-gray-700">Name</th>
-                    <th className="text-left py-3 px-3 font-medium text-gray-700">Date</th>
-                    <th className="text-left py-3 px-3 font-medium text-gray-700">Venue</th>
-                    <th className="text-left py-3 px-3 font-medium text-gray-700">Duration</th>
-                    <th className="text-left py-3 px-3 font-medium text-gray-700 min-w-[200px]">Schedule</th>
-                    <th className="text-right py-3 px-3 font-medium text-gray-700">Fine</th>
-                    <th className="text-left py-3 px-3 font-medium text-gray-700">Status</th>
-                    <th className="text-left py-3 px-3 font-medium text-gray-700">Mand.</th>
-                    <th className="text-left py-3 px-3 font-medium text-gray-700">Scope</th>
-                    <th className="text-left py-3 px-3 font-medium text-gray-700 min-w-[140px]">Audience rules</th>
-                    <th className="text-left py-3 px-3 font-medium text-gray-700 min-w-[160px]">Notes</th>
-                    <th className="text-left py-3 px-3 font-medium text-gray-700">Created by</th>
-                    <th className="text-left py-3 px-3 font-medium text-gray-700">Updated</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {eventsLoading && apiEvents.length === 0 ? (
-                    <tr>
-                      <td colSpan={15} className="py-10 px-4 text-center text-gray-500">
-                        Loading events…
-                      </td>
-                    </tr>
-                  ) : eventsError && apiEvents.length === 0 ? (
-                    <tr>
-                      <td colSpan={15} className="py-10 px-4 text-center text-gray-500">
-                        Could not load events from the server. Check <strong>/get-events</strong> and your session.
-                      </td>
-                    </tr>
-                  ) : apiEvents.length === 0 ? (
-                    <tr>
-                      <td colSpan={15} className="py-10 px-4 text-center text-gray-500">
-                        No events returned from the API yet.
-                      </td>
-                    </tr>
-                  ) : filteredEventsTable.length === 0 ? (
-                    <tr>
-                      <td colSpan={15} className="py-10 px-4 text-center text-gray-500">
-                        No events match your filter.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredEventsTable.map((ev) => (
-                      <tr key={ev.id ?? `${ev.name}-${ev.date}`} className="border-b border-gray-100 hover:bg-gray-50 align-top">
-                        <td className="py-3 px-2 text-center text-base">{ev.icon || "—"}</td>
-                        <td className="py-3 px-3 text-gray-600 whitespace-nowrap">{ev.id ?? "—"}</td>
-                        <td className="py-3 px-3 font-medium text-gray-900">{ev.name}</td>
-                        <td className="py-3 px-3 whitespace-nowrap">{formatEventDateForDisplay(ev.date)}</td>
-                        <td className="py-3 px-3 max-w-[120px]">{ev.venue || "—"}</td>
-                        <td className="py-3 px-3 whitespace-nowrap">{ev.duration || "—"}</td>
-                        <td className="py-3 px-3 text-xs text-gray-700">{ev.timeSlots || "—"}</td>
-                        <td className="py-3 px-3 text-right tabular-nums">
-                          {ev.fine != null && ev.fine !== "" ? `₱${String(ev.fine)}` : "—"}
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getEventStatusPillClass(ev.status)}`}>
-                            {ev.status || "—"}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3">
-                          {ev.is_mandatory === true ? "Yes" : ev.is_mandatory === false ? "No" : "—"}
-                        </td>
-                        <td className="py-3 px-3 text-xs whitespace-nowrap">{audienceScopeLabel(ev)}</td>
-                        <td className="py-3 px-3 text-xs text-gray-700 max-w-[200px]">{audienceRulesSummary(ev)}</td>
-                        <td className="py-3 px-3 text-xs text-gray-700 max-w-[220px] line-clamp-2" title={ev.audience_notes || ""}>
-                          {ev.audience_notes || "—"}
-                        </td>
-                        <td className="py-3 px-3 text-xs text-gray-700 whitespace-nowrap">
-                          {ev.created_by_username || "—"}
-                        </td>
-                        <td className="py-3 px-3 text-xs text-gray-600 whitespace-nowrap">{formatDateTimeShort(ev.updated_at)}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          </section>
         </main>
       </div>
 

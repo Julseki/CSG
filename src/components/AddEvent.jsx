@@ -655,93 +655,68 @@ export default function AddEvent({ onBack, onNext }) {
         )}
 
         {step === 3 && (
-          <div className="space-y-6">
-            <h2 className="text-base font-semibold text-[#008000]">Confirm Event Details</h2>
+  <div className="space-y-6">
+    <h2 className="text-base font-semibold text-[#008000]">Confirm Event Details</h2>
 
-            {/* Basic Info summary */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="font-semibold text-gray-700">Event Name</span>
-                <span className="text-gray-900">{eventName || "-"}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="font-semibold text-gray-700">Date</span>
-                <span className="text-gray-900">{eventDate || "-"}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="font-semibold text-gray-700">Venue</span>
-                <span className="text-gray-900">{venue || "-"}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="font-semibold text-gray-700">Duration</span>
-                <span className="text-gray-900">
-                  {duration === "whole" ? "Whole Day (AM + PM)" : "Half Day (AM or PM only)"}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="font-semibold text-gray-700">Fines</span>
-                <span className="text-gray-900">{fineAmount ? `₱${fineAmount}` : "-"}</span>
-              </div>
-              <div className="mt-3 border-t border-gray-100 pt-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-700">
-                <div>
-                  <p className="font-semibold mb-1">AM Session</p>
-                  <p>Time In: {amTimeIn || "—"}</p>
-                  <p>Time Out: {amTimeOut || "—"}</p>
-                  <p>Grace IN: {amGraceIn}</p>
-                  <p>Grace OUT: {amGraceOut}</p>
-                </div>
-                {duration === "whole" && (
-                  <div>
-                    <p className="font-semibold mb-1">PM Session</p>
-                    <p>Time In: {pmTimeIn || "—"}</p>
-                    <p>Time Out: {pmTimeOut || "—"}</p>
-                    <p>Grace IN: {pmGraceIn}</p>
-                    <p>Grace OUT: {pmGraceOut}</p>
-                  </div>
-                )}
-              </div>
-            </div>
+    {/* Basic Info summary */}
+    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm space-y-2">
+      <div className="flex justify-between text-sm">
+        <span className="font-semibold text-gray-700">Event Name</span>
+        <span className="text-gray-900">{eventName || "-"}</span>
+      </div>
+      <div className="flex justify-between text-sm">
+        <span className="font-semibold text-gray-700">Date</span>
+        <span className="text-gray-900">{eventDate || "-"}</span>
+      </div>
+      <div className="flex justify-between text-sm">
+        <span className="font-semibold text-gray-700">Venue</span>
+        <span className="text-gray-900">{venue || "-"}</span>
+      </div>
+      <div className="flex justify-between text-sm">
+        <span className="font-semibold text-gray-700">Duration</span>
+        <span className="text-gray-900">
+          {duration === "whole" ? "Whole Day (AM + PM)" : "Half Day (AM or PM only)"}
+        </span>
+      </div>
+      <div className="flex justify-between text-sm">
+        <span className="font-semibold text-gray-700">Fines</span>
+        <span className="text-gray-900">{fineAmount ? `₱${fineAmount}` : "-"}</span>
+      </div>
 
-            {/* Audience summary */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm space-y-2">
-              <h3 className="text-sm font-semibold text-gray-800 mb-1">Audience</h3>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-700">Audience</span>
-                <span className="text-gray-900">Students</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-700">Year Level</span>
-                <span className="text-gray-900">{yearLevel}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-700">Department</span>
-                <span className="text-gray-900">{department}</span>
-              </div>
-              {shouldShowMajorSelection && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-700">Major</span>
-                  <span className="text-gray-900">{major}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-700">Mandatory</span>
-                <span className="text-gray-900">{isMandatory ? "Yes" : "No"}</span>
-              </div>
-              {audienceNotes && (
-                <div className="mt-2 text-xs text-gray-700">
-                  <p className="font-semibold mb-0.5">Notes</p>
-                  <p className="whitespace-pre-line">{audienceNotes}</p>
-                </div>
-              )}
-            </div>
+      {/* AM Session */}
+      {(duration === "whole" || (duration === "half" && useAmHalf)) && (
+        <div className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-700">
+          <p className="font-semibold mb-1">AM Session</p>
+          <p>Time In: {amTimeIn || "-"}</p>
+          <p>Time Out: {amTimeOut || "-"}</p>
+          <p>Grace In: {amGraceInMinutes ?? 0} mins</p>
+          <p>Grace Out: {amGraceOutMinutes ?? 0} mins</p>
+        </div>
+      )}
 
-            {/* Final action info */}
-            <p className="text-xs text-gray-500">
-              Review the details above. When you click <span className="font-semibold">Next</span>, the event will be
-              created with this configuration (in your actual save logic).
-            </p>
-          </div>
-        )}
+      {/* PM Session */}
+      {(duration === "whole" || (duration === "half" && usePmHalf)) && (
+        <div className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-700">
+          <p className="font-semibold mb-1">PM Session</p>
+          <p>Time In: {pmTimeIn || "-"}</p>
+          <p>Time Out: {pmTimeOut || "-"}</p>
+          <p>Grace In: {pmGraceInMinutes ?? 0} mins</p>
+          <p>Grace Out: {pmGraceOutMinutes ?? 0} mins</p>
+        </div>
+      )}
+
+      {/* Audience */}
+      <div className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-700">
+        <p className="font-semibold mb-1">Audience</p>
+        <p>Year Level: {yearLevel}</p>
+        <p>Department: {department}</p>
+        {shouldShowMajorSelection && <p>Major: {major}</p>}
+        <p>Mandatory: {isMandatory ? "Yes" : "No"}</p>
+        {audienceNotes && <p>Notes: {audienceNotes}</p>}
+      </div>
+    </div>
+  </div>
+)}
 
         {/* Navigation Buttons */}
         <div className="mt-6 pb-2 flex items-center justify-between">
