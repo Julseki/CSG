@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { useGetEvents, formatEventDateForDisplay } from "../hooks/useGetEvents";
-import EventCard from "./EventCard";
-
+import { useLocation } from "react-router-dom";
+import { useGetEvents, selectActiveOrUpcomingEvent } from "../hooks/useGetEvents";
+import EventSummaryStrip from "./EventSummaryStrip";
 const COLLEGES = [
   {
     key: "CBA",
@@ -90,8 +90,8 @@ function StepPill({ idx, active, done }) {
 }
 
 export default function UserDashboard({ onLogout, onNavigate }) {
-  const { data: apiEvents = [], isPending: eventsLoading } = useGetEvents();
-  const currentEvent = apiEvents.length > 0 ? apiEvents[apiEvents.length - 1] : null;
+  const { data: apiEvents = [] } = useGetEvents();
+  const currentEvent = useMemo(() => selectActiveOrUpcomingEvent(apiEvents), [apiEvents]);
 
   const [showLogout, setShowLogout] = useState(false);
   const role = (localStorage.getItem("csg_role") || "user").toLowerCase();
@@ -113,6 +113,17 @@ export default function UserDashboard({ onLogout, onNavigate }) {
   useEffect(() => {
     setShowLogout(false);
   }, [role]);
+
+  useEffect(() => {
+    const key =
+      location.state && typeof location.state === "object" && location.state != null
+        ? location.state.collegeKey
+        : null;
+    if (!key || !COLLEGES.some((c) => c.key === key)) return;
+    setSelectedCollegeKey(key);
+    setSelectedCourseKey(null);
+    setStep(2);
+  }, [location.state]);
 
   const selectedCollege = useMemo(
     () => COLLEGES.find((c) => c.key === selectedCollegeKey) || null,
@@ -165,39 +176,6 @@ export default function UserDashboard({ onLogout, onNavigate }) {
           <p className="text-xs text-center font-medium uppercase tracking-wider">
             Northern Mindanao Colleges, Inc.
           </p>
-        </div>
-
-        <div className="px-4 pb-4">
-          <p className="text-xs font-semibold text-green-100 uppercase tracking-wider mb-2">
-            Current Event
-          </p>
-          <div className="bg-green-700/40 rounded-lg p-3 border border-green-600/40">
-            {eventsLoading && !currentEvent ? (
-              <div className="text-xs text-green-100">Loading events…</div>
-            ) : currentEvent ? (
-              <>
-                <div className="text-sm font-semibold">{currentEvent.name}</div>
-                <div className="text-[11px] text-green-100">
-                  {formatEventDateForDisplay(currentEvent.date)}
-                </div>
-                <div className="text-[11px] text-green-100">
-                  {currentEvent.venue || "—"}
-                </div>
-                {currentEvent.status ? (
-                  <div className="text-[10px] text-green-200/90 mt-1">
-                    {currentEvent.status}
-                  </div>
-                ) : null}
-              </>
-            ) : (
-              <>
-                <div className="text-sm font-semibold">No event scheduled</div>
-                <div className="text-[11px] text-green-100">
-                  Check Events when available
-                </div>
-              </>
-            )}
-          </div>
         </div>
 
         <nav className="flex-1 px-4 space-y-1">
@@ -282,7 +260,6 @@ export default function UserDashboard({ onLogout, onNavigate }) {
         </header>
 
         <main className="flex-1 p-6 overflow-auto">
-          {currentEvent && <div className="mb-6"><EventCard event={currentEvent} /></div>}
           {/* Stepper */}
           <div className="flex flex-col gap-3 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
@@ -293,11 +270,8 @@ export default function UserDashboard({ onLogout, onNavigate }) {
             </div>
           </div>
 
-          {/* Event / summary banner */}
-          <div className="bg-green-50 border border-green-200 rounded-lg px-6 py-4 mb-6 flex flex-wrap gap-4 text-sm">
-            <span><strong>EVENT:</strong> {currentEvent?.name ?? "—"}</span>
-            <span><strong>DATE:</strong> {formatEventDateForDisplay(currentEvent?.date)}</span>
-            <span><strong>VENUE:</strong> {currentEvent?.venue ?? "—"}</span>
+          <div className="mb-6">
+            <EventSummaryStrip event={currentEvent} />
           </div>
 
           {step === 1 && (

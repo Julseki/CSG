@@ -13,6 +13,8 @@ export function getRoleFromSession(session) {
     session.user?.role ??
     session.data?.role ??
     session.profile?.role ??
+    session.departmentSession?.role ??
+    session.departmentSession?.user?.role ??
     "";
   return String(rawRole).toLowerCase().trim();
 }

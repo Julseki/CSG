@@ -32,7 +32,7 @@ function getCustomEventsFromStorage() {
 }
 
 export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreateUserOpen }) {
-  const { data: apiEvents = [], isPending: eventsLoading, isError: eventsError } = useGetEvents();
+  const { data: apiEvents = [] } = useGetEvents();
   const { isGovernor, governorScope } = useGovernorScope();
   const [showLogout, setShowLogout] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -78,7 +78,6 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
   ];
 
   const allEvents = mergeApiAndLocalEvents(apiEvents, getCustomEventsFromStorage());
-  const latestEvent = allEvents.length ? allEvents[allEvents.length - 1] : null;
   const summaryData = useMemo(() => {
     const total = allEvents.length;
     const completed = allEvents.filter((e) => e.status === "Completed").length;
@@ -255,15 +254,6 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
         <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <h1 className="text-lg font-semibold text-[#008000]">Events</h1>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">
-              {eventsLoading && !latestEvent
-                ? "Loading events…"
-                : eventsError && !latestEvent
-                  ? "Could not load events."
-                  : latestEvent
-                    ? `Event: ${latestEvent.name} | Date: ${latestEvent.date || "-"}`
-                    : "No events available"}
-            </span>
             <div className="relative flex items-center gap-2">
               <button
                 onClick={() => setShowLogout((prev) => !prev)}

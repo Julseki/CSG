@@ -93,15 +93,15 @@ export default function AddEvent({ onBack, onNext }) {
     if (duration === "whole" || (duration === "half" && useAmHalf)) {
       if (!amTimeIn) e.amTimeIn = "AM Time In is required";
       if (!amTimeOut) e.amTimeOut = "AM Time Out is required";
-      if (amGraceInMinutes == null || Number(amGraceInMinutes) < 0) e.amGraceInMinutes = "AM Time In grace must be 0 or more";
-      if (amGraceOutMinutes == null || Number(amGraceOutMinutes) < 0) e.amGraceOutMinutes = "AM Time Out grace must be 0 or more";
+      if (amGraceInMinutes == null || Number(amGraceInMinutes) < 0) e.amGraceInMinutes = "AM Time In late must be 0 or more";
+      if (amGraceOutMinutes == null || Number(amGraceOutMinutes) < 0) e.amGraceOutMinutes = "AM Time Out late must be 0 or more";
     }
 
     if (duration === "whole" || (duration === "half" && usePmHalf)) {
       if (!pmTimeIn) e.pmTimeIn = "PM Time In is required";
       if (!pmTimeOut) e.pmTimeOut = "PM Time Out is required";
-      if (pmGraceInMinutes == null || Number(pmGraceInMinutes) < 0) e.pmGraceInMinutes = "PM Time In grace must be 0 or more";
-      if (pmGraceOutMinutes == null || Number(pmGraceOutMinutes) < 0) e.pmGraceOutMinutes = "PM Time Out grace must be 0 or more";
+      if (pmGraceInMinutes == null || Number(pmGraceInMinutes) < 0) e.pmGraceInMinutes = "PM Time In late must be 0 or more";
+      if (pmGraceOutMinutes == null || Number(pmGraceOutMinutes) < 0) e.pmGraceOutMinutes = "PM Time Out late must be 0 or more";
     }
 
     setErrors(e);
@@ -433,7 +433,7 @@ export default function AddEvent({ onBack, onNext }) {
                   {errors.amTimeOut && <p className="text-xs text-red-600 mt-1">{errors.amTimeOut}</p>}
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Grace Period (minutes)</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Late (minutes)</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[11px] font-medium text-gray-600 mb-1">Time In</label>
@@ -523,7 +523,7 @@ export default function AddEvent({ onBack, onNext }) {
                   {errors.pmTimeOut && <p className="text-xs text-red-600 mt-1">{errors.pmTimeOut}</p>}
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Grace Period (minutes)</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Late (minutes)</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[11px] font-medium text-gray-600 mb-1">Time In</label>
@@ -689,8 +689,8 @@ export default function AddEvent({ onBack, onNext }) {
           <p className="font-semibold mb-1">AM Session</p>
           <p>Time In: {amTimeIn || "-"}</p>
           <p>Time Out: {amTimeOut || "-"}</p>
-          <p>Grace In: {amGraceInMinutes ?? 0} mins</p>
-          <p>Grace Out: {amGraceOutMinutes ?? 0} mins</p>
+          <p>Late in: {amGraceInMinutes ?? 0} mins</p>
+          <p>Late out: {amGraceOutMinutes ?? 0} mins</p>
         </div>
       )}
 
@@ -700,8 +700,8 @@ export default function AddEvent({ onBack, onNext }) {
           <p className="font-semibold mb-1">PM Session</p>
           <p>Time In: {pmTimeIn || "-"}</p>
           <p>Time Out: {pmTimeOut || "-"}</p>
-          <p>Grace In: {pmGraceInMinutes ?? 0} mins</p>
-          <p>Grace Out: {pmGraceOutMinutes ?? 0} mins</p>
+          <p>Late in: {pmGraceInMinutes ?? 0} mins</p>
+          <p>Late out: {pmGraceOutMinutes ?? 0} mins</p>
         </div>
       )}
 

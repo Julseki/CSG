@@ -1,36 +1,76 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import api from "../api/axiosInstance";
 
-async function fetchSession() {
-  const sessionPaths = ["/me", "/auth/me"];
+export const AUTH_SESSION_QUERY_KEY = ["auth", "session"];
 
-  for (const path of sessionPaths) {
+async function tryGetPaths(paths) {
+  let lastNonAuthError = null;
+  for (const path of paths) {
     try {
       const response = await api.get(path);
       return response.data;
     } catch (error) {
       const status = error?.response?.status;
-
       if (status === 404) continue;
-
-      if (status === 401) {
-        return null;
-      }
-
-      throw error; 
+      if (status === 401) continue;
+      lastNonAuthError = error;
+      break;
     }
   }
-
+  if (lastNonAuthError) throw lastNonAuthError;
   return null;
 }
 
-export function useAuthSession() {
+/**
+ * Loads admin/user session (GET /me) and department session (GET /department).
+ * Returns a merged object, or null when neither endpoint returns a body.
+ * Shape: { ...mePayload, departmentSession?: departmentPayload }
+ */
+async function fetchSession() {
+  const meData = await tryGetPaths(["/me"]);
+
+  let departmentData = null;
+  try {
+    departmentData = await tryGetPaths(["/department"]);
+  } catch {
+    departmentData = null;
+  }
+
+  if (meData == null && departmentData == null) {
+    return null;
+  }
+
+  const base =
+    meData != null && typeof meData === "object" && !Array.isArray(meData) ? { ...meData } : {};
+
+  if (departmentData != null) {
+    base.departmentSession = departmentData;
+  }
+
+  return Object.keys(base).length > 0 ? base : null;
+}
+
+export function useAuthSession(options = {}) {
   return useQuery({
-    queryKey: ["auth", "session"],
+    queryKey: AUTH_SESSION_QUERY_KEY,
     queryFn: fetchSession,
     retry: false,
     staleTime: 60_000,
+    ...options,
   });
+}
+
+/** Department slice of the merged session (same query as useAuthSession — no extra request). */
+export function useDepartmentSession(options = {}) {
+  const q = useAuthSession(options);
+  const departmentSession =
+    q.data && typeof q.data === "object" && q.data.departmentSession != null
+      ? q.data.departmentSession
+      : null;
+  return {
+    ...q,
+    data: departmentSession,
+  };
 }
 
 export function useSignIn({ onSuccess, onError } = {}) {

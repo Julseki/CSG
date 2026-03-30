@@ -14,6 +14,32 @@ export function formatEventDateForDisplay(dateStr) {
   }
 }
 
+export function eventDateMs(d) {
+  if (!d) return 0;
+  const t = new Date(d).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
+/** Active event first (by date), else soonest Upcoming; for home / select-department sidebars. */
+export function selectActiveOrUpcomingEvent(apiEvents) {
+  if (!Array.isArray(apiEvents) || apiEvents.length === 0) return null;
+  const norm = (s) => String(s ?? "").trim().toLowerCase();
+  const isTerminal = (s) => {
+    const n = norm(s);
+    return n === "completed" || n === "cancelled" || n === "canceled";
+  };
+  const byDate = [...apiEvents]
+    .filter((e) => !isTerminal(e?.status))
+    .sort((a, b) => eventDateMs(a.date) - eventDateMs(b.date));
+  if (byDate.length === 0) return null;
+  const active = byDate.filter((e) => norm(e.status) === "active");
+  if (active.length > 0) return active[0];
+  const upcoming = byDate.filter((e) => norm(e.status) === "upcoming");
+  if (upcoming.length > 0) return upcoming[0];
+  // Back end sometimes uses other labels ("scheduled", etc.) — show soonest non-terminal row
+  return byDate[0] ?? null;
+}
+
 export function formatDateTimeShort(iso) {
   if (!iso) return "—";
   try {
@@ -35,6 +61,9 @@ function normalizeResponseToArray(data) {
   if (Array.isArray(data)) return data;
   if (data && Array.isArray(data.events)) return data.events;
   if (data && Array.isArray(data.data)) return data.data;
+  if (data?.data && Array.isArray(data.data.events)) return data.data.events;
+  if (data && Array.isArray(data.rows)) return data.rows;
+  if (data && Array.isArray(data.results)) return data.results;
   return [];
 }
 
@@ -65,7 +94,7 @@ function graceLabel(inMinutes, outMinutes) {
   const parts = [];
   if (Number.isFinite(inVal)) parts.push(`in ${inVal}m`);
   if (Number.isFinite(outVal)) parts.push(`out ${outVal}m`);
-  return parts.length ? ` (grace ${parts.join(", ")})` : "";
+  return parts.length ? ` (late ${parts.join(", ")})` : "";
 }
 
 /**
@@ -130,7 +159,10 @@ export function mapServerEventToDisplay(raw) {
     reg: raw.reg ?? 0,
     attRate: raw.att_rate != null ? raw.att_rate : raw.attRate != null ? raw.attRate : null,
     fine,
-    status: raw.status || "Upcoming",
+    status:
+      raw.status != null && String(raw.status).trim() !== ""
+        ? String(raw.status).trim()
+        : "Upcoming",
     audience_notes: raw.audience_notes ?? null,
     is_mandatory:
       raw.is_mandatory === true || raw.is_mandatory === 1 || raw.is_mandatory === "1",
@@ -143,7 +175,7 @@ export function mapServerEventToDisplay(raw) {
     created_at: raw.created_at ?? null,
     updated_at: raw.updated_at ?? null,
     audiences,
-    source: "api",
+    source: raw.source != null && raw.source !== "" ? String(raw.source) : "api",
   };
 }
 

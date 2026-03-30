@@ -1,10 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuthSession, useCreateDepartmentUser } from "../hooks/auth";
 import { useGovernorScope } from "../hooks/useGovernorScope";
-import {
-  useGetEvents,
-  formatEventDateForDisplay,
-} from "../hooks/useGetEvents";
+import { useGetEvents, formatEventDateForDisplay } from "../hooks/useGetEvents";
 import EventCard from "./EventCard";
 import { Chart as ChartJS } from "chart.js/auto";
 import { Line } from "react-chartjs-2";
@@ -17,26 +14,64 @@ function eventDateMs(d) {
   return Number.isFinite(t) ? t : 0;
 }
 
-function audienceScopeLabel(ev) {
-  if (ev?.is_all_departments) return "All departments";
-  const n = Array.isArray(ev?.audiences) ? ev.audiences.length : 0;
-  return n ? `Targeted (${n} rule${n === 1 ? "" : "s"})` : "—";
+/** First slot start → last slot end from API `timeSlots` text (AM/PM lines). */
+function parseStartEndFromTimeSlots(timeSlots) {
+  if (!timeSlots || typeof timeSlots !== "string") {
+    return { start: "—", end: "—" };
+  }
+  const re =
+    /(?:AM|PM):\s*(\d{1,2}:\d{2}\s*(?:AM|PM))\s*[\u2013\u2014\-]\s*(\d{1,2}:\d{2}\s*(?:AM|PM))/gi;
+  const ranges = [];
+  let m = re.exec(timeSlots);
+  while (m) {
+    ranges.push({ start: m[1].replace(/\s+/g, " ").trim(), end: m[2].replace(/\s+/g, " ").trim() });
+    m = re.exec(timeSlots);
+  }
+  if (ranges.length === 0) return { start: "—", end: "—" };
+  return { start: ranges[0].start, end: ranges[ranges.length - 1].end };
 }
 
-function audienceRulesSummary(ev) {
-  if (!Array.isArray(ev?.audiences) || ev.audiences.length === 0) return "—";
-  return ev.audiences
-    .map((a) => {
-      if (a?.department_id == null && a?.program_id == null && a?.year_level == null) {
-        return "All (open)";
-      }
-      const p = [];
-      if (a?.department_id != null) p.push(`dept ${a.department_id}`);
-      if (a?.program_id != null) p.push(`prog ${a.program_id}`);
-      p.push(a?.year_level != null ? `yr ${a.year_level}` : "all yrs");
-      return p.join(", ");
-    })
-    .join(" · ");
+function UpcomingEventStrip({ ev, onOpen }) {
+  const { start, end } = parseStartEndFromTimeSlots(ev.timeSlots);
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`View full details for ${ev.name || "event"}`}
+      className="group w-full rounded-xl bg-[#C8E6C9] px-5 py-5 sm:px-8 shadow-md text-left transition hover:brightness-[0.97] hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008000] focus-visible:ring-offset-2"
+    >
+      <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-6">
+        {[
+          { label: "Event", value: ev.name || "—" },
+          { label: "Date", value: formatEventDateForDisplay(ev.date) },
+          { label: "Start time", value: start },
+          { label: "End time", value: end },
+          { label: "Venue", value: ev.venue || "—" },
+          {
+            label: "Status",
+            value: ev.status || "—",
+            bold: true,
+          },
+        ].map((col) => (
+          <div key={col.label} className="min-w-0 text-left">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#36454F]/65">
+              {col.label}
+            </p>
+            <p
+              className={`mt-1.5 text-sm text-gray-900 leading-snug break-words ${
+                col.bold ? "font-bold" : "font-medium"
+              }`}
+            >
+              {col.value}
+            </p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-center text-[11px] text-[#36454F]/50 group-hover:text-[#36454F]/70">
+        Click for full details
+      </p>
+    </button>
+  );
 }
 
 const DEPARTMENT_OPTIONS = [
@@ -76,24 +111,18 @@ function isValidAllowedEmail(value) {
 }
 
 export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, isCreateUserOpen }) {
-  const { data: apiEvents = [], isPending: eventsLoading, isError: eventsError } = useGetEvents();
+  const { data: apiEvents = [] } = useGetEvents();
+  console.log(apiEvents, ": API EVENTS")
   const { data: session } = useAuthSession();
   const { isGovernor, governorScope } = useGovernorScope();
-  console.log(apiEvents, ": API EVENTS")
 
-  /** Next upcoming event by date from API only; else latest by date. */
-  const activeEvent = useMemo(() => {
-    if (apiEvents.length === 0) return null;
-    const sorted = [...apiEvents].sort((a, b) => eventDateMs(a.date) - eventDateMs(b.date));
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const next = sorted.find((e) => {
-      const d = new Date(e.date);
-      if (Number.isNaN(d.getTime())) return false;
-      d.setHours(0, 0, 0, 0);
-      return d >= today;
-    });
-    return next ?? sorted[sorted.length - 1];
+  /** Second upcoming by date (index 1); falls back to the first if only one Upcoming row exists. */
+  const nextUpcomingEvent = useMemo(() => {
+    const norm = (s) => String(s || "").toLowerCase();
+    const sorted = [...apiEvents]
+      .filter((e) => norm(e.status) === "upcoming")
+      .sort((a, b) => eventDateMs(a.date) - eventDateMs(b.date));
+    return sorted[3] ?? sorted[0] ?? null;
   }, [apiEvents]);
 
   const eventSummaryCards = useMemo(() => {
@@ -177,6 +206,7 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
   );
 
   const [showLogout, setShowLogout] = useState(false);
+  const [showEventDetailModal, setShowEventDetailModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [showCreatePassword, setShowCreatePassword] = useState(false);
@@ -192,6 +222,16 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
     confirmPassword: "",
     accountType: "department",
   });
+
+  useEffect(() => {
+    if (!showEventDetailModal) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setShowEventDetailModal(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showEventDetailModal]);
+
   const activeNav = "dashboard";
   const roleLabel = isGovernor ? (governorScope?.label || "Governor") : "Admin";
   const isAdmin = !isGovernor;
@@ -424,21 +464,6 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
         <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <h1 className="text-lg font-semibold text-[#008000]">{headerName}</h1>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">
-              {eventsLoading && !activeEvent ? (
-                <>Loading events…</>
-              ) : eventsError && !activeEvent ? (
-                <>Could not load events. Check the server or add one from Events.</>
-              ) : activeEvent ? (
-                <>
-                  {activeEvent.icon ? `${activeEvent.icon} ` : ""}
-                  Event: {activeEvent.name} | Date: {formatEventDateForDisplay(activeEvent.date)}
-                  {activeEvent.timeSlots ? ` | Schedule: ${activeEvent.timeSlots}` : ""}
-                </>
-              ) : (
-                <>No events from the server yet</>
-              )}
-            </span>
             <div className="relative">
               <button
                 onClick={() => setShowLogout((prev) => !prev)}
@@ -458,46 +483,19 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
         </header>
 
         <main className="flex-1 p-6 overflow-auto bg-[#f6f8f9]">
-          {activeEvent ? (
-            <section className="mb-6">
-              <EventCard event={activeEvent} />
-            </section>
-          ) : null}
-
-          <section className="mb-6 rounded-xl border border-[#008000]/30 bg-[#E7F3E7] px-6 py-4 shadow-sm">
-            {activeEvent ? (
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#36454F]/70">Event</p>
-                  <p className="text-sm font-semibold text-[#36454F]">{activeEvent.name || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#36454F]/70">Date</p>
-                  <p className="text-sm font-semibold text-[#36454F]">{formatEventDateForDisplay(activeEvent.date)}</p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#36454F]/70">Venue</p>
-                  <p className="text-sm font-semibold text-[#36454F]">{activeEvent.venue || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#36454F]/70">Duration</p>
-                  <p className="text-sm font-semibold text-[#36454F]">{activeEvent.duration || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#36454F]/70">Event Status</p>
-                  <p className="text-sm font-semibold text-[#36454F]">{activeEvent.status || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#36454F]/70">Scope</p>
-                  <p className="text-sm font-semibold text-[#36454F]">{audienceScopeLabel(activeEvent)}</p>
-                </div>
-                <div className="md:col-span-3 lg:col-span-6">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#36454F]/70">Audience</p>
-                  <p className="text-sm font-semibold text-[#36454F] break-words">{audienceRulesSummary(activeEvent)}</p>
-                </div>
-              </div>
+          <section className="mb-6">
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[#36454F]/45">
+              Upcoming event
+            </p>
+            {nextUpcomingEvent ? (
+              <UpcomingEventStrip
+                ev={nextUpcomingEvent}
+                onOpen={() => setShowEventDetailModal(true)}
+              />
             ) : (
-              <p className="text-sm text-[#36454F]">No event available yet.</p>
+              <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-5 py-8 text-center text-sm text-[#36454F]/65">
+                No upcoming event scheduled.
+              </div>
             )}
           </section>
 
@@ -520,6 +518,38 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
           </section>
         </main>
       </div>
+
+      {showEventDetailModal && nextUpcomingEvent && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 px-4 py-6"
+          role="presentation"
+          onClick={() => setShowEventDetailModal(false)}
+        >
+          <div
+            className="relative flex max-h-[min(92vh,960px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="event-detail-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex shrink-0 flex-col gap-0.5 border-b border-gray-100 bg-[#f8faf8] px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:py-3.5">
+              <h3 id="event-detail-title" className="text-base font-semibold text-[#36454F]">
+                Event details
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowEventDetailModal(false)}
+                className="mt-2 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white hover:shadow-sm sm:mt-0"
+              >
+                Close
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-8 sm:py-6">
+              <EventCard variant="modalHorizontal" event={nextUpcomingEvent} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {showReportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
