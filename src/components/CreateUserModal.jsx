@@ -59,8 +59,8 @@ const DEPARTMENT_OPTIONS = [
     majors: ["English", "Filipino", "Mathematics", "BEED"],
   },
   {
-    value: "College of Criminology",
-    code: "COC",
+    value: "College of Criminal Justice Education",
+    code: "CCJE",
     majors: [],
   },
   {

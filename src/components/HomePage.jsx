@@ -46,8 +46,8 @@ function inferDepartmentCollegeKeyFromSessionPayload(payload, knownCollegeKeys) 
     if (nName.includes("business administration") || nName.includes("business admin") || nName.includes("cba")) {
       return "CBA";
     }
-    if (nName.includes("criminology") || nName.includes("crim") || nName.includes("coc")) {
-      return "COC";
+    if (nName.includes("criminology") || nName.includes("criminal justice") || nName.includes("crim") || nName.includes("coc") || nName.includes("ccje")) {
+      return "CCJE";
     }
     if (nName.includes("hospitality") || nName.includes("hotel") || nName.includes("chm") || nName.includes("management")) {
       return "CHM";
@@ -62,7 +62,7 @@ function inferDepartmentCollegeKeyFromSessionPayload(payload, knownCollegeKeys) 
     // backend sometimes returns codes like "gov-IT" or similar; we just pattern match.
     if (nCode.includes("cit") || nCode.includes("gov-it") || nCode.includes("-it") || nCode.endsWith("it")) return "CIT";
     if (nCode.includes("cba")) return "CBA";
-    if (nCode.includes("crim") || nCode.includes("coc")) return "COC";
+    if (nCode.includes("crim") || nCode.includes("coc") || nCode.includes("ccje")) return "CCJE";
     if (nCode.includes("chm")) return "CHM";
     if (nCode.includes("ceas")) return "CEAS";
     return null;
@@ -127,9 +127,9 @@ const HOME_COLLEGES = [
     logoSrc: "/cba%20logo%201.png",
   },
   {
-    key: "COC",
+    key: "CCJE",
     iconText: "CCJE",
-    title: "College Of Criminology",
+    title: "College of Criminal Justice Education",
     logoSrc: "/ccje%20logo%201.png",
   },
   {
