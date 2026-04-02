@@ -26,7 +26,13 @@ export default function LoginDashboard({ onLoginSuccess }) {
       { username, password },
       {
         onError: (err) => {
-          setError(err.response?.data?.message || "Login failed");
+          // This is the key part for 429
+          const message =
+            err.response?.data?.message || // Backend JSON message
+            err.response?.status === 429
+              ? "Too many login attempts, please try again later."
+              : "Login failed"; // fallback
+          setError(message);
         },
       },
     );

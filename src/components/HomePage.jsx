@@ -202,7 +202,8 @@ export default function HomePage({
   // Same source as App: cookie session, or loginPayload passed as `session` until /me refetches.
   const isLoggedIn = Boolean(authSession ?? session);
   const { data: eventBundle, isPending: isEventsLoading } = useGetCurrentEvent();
-
+  console.log("EVENTS", eventBundle);
+  
   const currentEvent = eventBundle?.current ?? null;
 
   const sidebarEventHeading = useMemo(() => {

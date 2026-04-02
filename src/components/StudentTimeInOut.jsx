@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { useAuthSession } from "../hooks/auth";
 import { useGetCurrentEvent } from "../hooks/useGetCurrentEvent";
 import EventSummaryStrip from "./EventSummaryStrip";
+import { useSubmitAttendance } from "../hooks/useSubmitAttendance";
 
 /** Same colleges / courses as UserDashboard (student flow). */
 const COLLEGES = [
@@ -82,7 +83,9 @@ function StepPill({ idx, active, done }) {
       </div>
       <div
         className={
-          done || active ? "text-xs font-semibold text-gray-800" : "text-xs font-medium text-gray-400"
+          done || active
+            ? "text-xs font-semibold text-gray-800"
+            : "text-xs font-medium text-gray-400"
         }
       >
         {idx === 1
@@ -104,12 +107,17 @@ function pickProfile(session) {
     session.user ??
     session.data?.user ??
     session.profile ??
-    (dept && typeof dept === "object" ? dept.user ?? dept.profile ?? dept : null) ??
+    (dept && typeof dept === "object"
+      ? (dept.user ?? dept.profile ?? dept)
+      : null) ??
     session
   );
 }
 
-function inferDepartmentCollegeKeyFromSessionPayload(payload, knownCollegeKeys) {
+function inferDepartmentCollegeKeyFromSessionPayload(
+  payload,
+  knownCollegeKeys,
+) {
   if (!payload) return null;
 
   // Payload shape varies:
@@ -118,20 +126,20 @@ function inferDepartmentCollegeKeyFromSessionPayload(payload, knownCollegeKeys) 
   // - /me for department token may include department_code at top-level.
   const dept =
     (payload?.departmentSession &&
-      typeof payload.departmentSession === "object" &&
-      payload.departmentSession.department &&
-      typeof payload.departmentSession.department === "object"
+    typeof payload.departmentSession === "object" &&
+    payload.departmentSession.department &&
+    typeof payload.departmentSession.department === "object"
       ? payload.departmentSession.department
       : null) ??
-    (payload?.department && typeof payload.department === "object" ? payload.department : null) ??
+    (payload?.department && typeof payload.department === "object"
+      ? payload.department
+      : null) ??
     (typeof payload === "object" ? payload : null);
 
   const name =
-    dept?.department_name ??
-    dept?.departmentName ??
-    dept?.name ??
-    null;
-  const code = dept?.department_code ?? dept?.departmentCode ?? dept?.code ?? null;
+    dept?.department_name ?? dept?.departmentName ?? dept?.name ?? null;
+  const code =
+    dept?.department_code ?? dept?.departmentCode ?? dept?.code ?? null;
 
   const nName = name ? String(name).toLowerCase() : "";
   const nCode = code ? String(code).toLowerCase() : "";
@@ -142,17 +150,43 @@ function inferDepartmentCollegeKeyFromSessionPayload(payload, knownCollegeKeys) 
       nName.includes("information tech") ||
       nName === "it" ||
       nName.includes("college of information technology")
-    ) return "CIT";
-    if (nName.includes("business administration") || nName.includes("business admin")) return "CBA";
-    if (nName.includes("criminology") || nName.includes("crim") || nName.includes("coc")) return "COC";
-    if (nName.includes("hospitality") || nName.includes("hotel") || nName.includes("chm")) return "CHM";
-    if (nName.includes("education") && nName.includes("arts") && nName.includes("sciences")) return "CEAS";
+    )
+      return "CIT";
+    if (
+      nName.includes("business administration") ||
+      nName.includes("business admin")
+    )
+      return "CBA";
+    if (
+      nName.includes("criminology") ||
+      nName.includes("crim") ||
+      nName.includes("coc")
+    )
+      return "COC";
+    if (
+      nName.includes("hospitality") ||
+      nName.includes("hotel") ||
+      nName.includes("chm")
+    )
+      return "CHM";
+    if (
+      nName.includes("education") &&
+      nName.includes("arts") &&
+      nName.includes("sciences")
+    )
+      return "CEAS";
     if (nName.includes("ceas")) return "CEAS";
     return null;
   };
 
   const byCode = () => {
-    if (nCode.includes("cit") || nCode.includes("gov-it") || nCode.includes("-it") || nCode.endsWith("it")) return "CIT";
+    if (
+      nCode.includes("cit") ||
+      nCode.includes("gov-it") ||
+      nCode.includes("-it") ||
+      nCode.endsWith("it")
+    )
+      return "CIT";
     if (nCode.includes("cba")) return "CBA";
     if (nCode.includes("crim") || nCode.includes("coc")) return "COC";
     if (nCode.includes("chm")) return "CHM";
@@ -162,7 +196,8 @@ function inferDepartmentCollegeKeyFromSessionPayload(payload, knownCollegeKeys) 
 
   const inferred = byName() ?? byCode();
   if (!inferred) return null;
-  if (Array.isArray(knownCollegeKeys) && !knownCollegeKeys.includes(inferred)) return null;
+  if (Array.isArray(knownCollegeKeys) && !knownCollegeKeys.includes(inferred))
+    return null;
   return inferred;
 }
 
@@ -198,7 +233,9 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
 
   const sidebarEventHeading = useMemo(() => {
     if (!currentEvent) return "Current Event";
-    const s = String(currentEvent.status ?? "").trim().toLowerCase();
+    const s = String(currentEvent.status ?? "")
+      .trim()
+      .toLowerCase();
     if (s === "active") return "Current Event";
     if (s === "upcoming") return "Upcoming Event";
     return "Current Event";
@@ -210,7 +247,9 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
   );
   const selectedCourse = useMemo(() => {
     if (!selectedCollege) return null;
-    return selectedCollege.courses.find((c) => c.key === selectedCourseKey) || null;
+    return (
+      selectedCollege.courses.find((c) => c.key === selectedCourseKey) || null
+    );
   }, [selectedCollege, selectedCourseKey]);
 
   useEffect(() => {
@@ -220,7 +259,9 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
 
   useEffect(() => {
     const key =
-      location.state && typeof location.state === "object" && location.state != null
+      location.state &&
+      typeof location.state === "object" &&
+      location.state != null
         ? location.state.collegeKey
         : null;
     if (!key || !COLLEGES.some((c) => c.key === key)) return;
@@ -236,7 +277,10 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
     if (selectedCollegeKey) return;
 
     const keys = COLLEGES.map((c) => c.key);
-    const actualKey = inferDepartmentCollegeKeyFromSessionPayload(session, keys);
+    const actualKey = inferDepartmentCollegeKeyFromSessionPayload(
+      session,
+      keys,
+    );
     if (!actualKey) return;
 
     setSelectedCollegeKey(actualKey);
@@ -247,7 +291,10 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
   useEffect(() => {
     if (!session) return;
     const keys = COLLEGES.map((c) => c.key);
-    const actualKey = inferDepartmentCollegeKeyFromSessionPayload(session, keys);
+    const actualKey = inferDepartmentCollegeKeyFromSessionPayload(
+      session,
+      keys,
+    );
     if (!actualKey) {
       // If we can't infer, don't block; the backend should remain the source of truth.
       setDeptMismatch(false);
@@ -270,7 +317,9 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
     if (!u) return;
     setDetails((d) => ({
       ...d,
-      studentId: String(u.student_id ?? u.studentId ?? u.username ?? d.studentId ?? ""),
+      studentId: String(
+        u.student_id ?? u.studentId ?? u.username ?? d.studentId ?? "",
+      ),
       firstName: String(u.first_name ?? u.firstName ?? d.firstName ?? ""),
       lastName: String(u.last_name ?? u.lastName ?? d.lastName ?? ""),
       middleName: String(u.middle_name ?? u.middleName ?? d.middleName ?? ""),
@@ -281,7 +330,8 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
   useEffect(() => {
     if (!showSettings) return;
     const onDown = (e) => {
-      if (settingsRef.current && !settingsRef.current.contains(e.target)) setShowSettings(false);
+      if (settingsRef.current && !settingsRef.current.contains(e.target))
+        setShowSettings(false);
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
@@ -303,7 +353,10 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
     month: "long",
     day: "numeric",
   });
-  const timeStr = clock.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const timeStr = clock.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
 
   const canNextFrom1 = !!selectedCollegeKey;
   const canNextFrom2 = !!selectedCourseKey;
@@ -318,6 +371,26 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
     if (step === 2 && !canNextFrom2) return;
     if (step === 3 && !canNextFrom3) return;
     setStep((s) => Math.min(4, s + 1));
+  };
+
+  const { mutate: submitAttendance, isPending } = useSubmitAttendance({
+    onSuccess: () => goNext(),
+    onError: (error) => {
+      console.error(error.response?.data?.message || "Submission failed.");
+    },
+  });
+
+  const handleSubmit = () => {
+    if (!canNextFrom3) return;
+
+    const payload = {
+      studentId: details.studentId,
+      attendanceKind: details.attendanceKind,
+      courseKey: selectedCourseKey, // ✅ only 3 fields needed
+    };
+
+    console.log("[StudentTimeInOut] Submitting payload:", payload);
+    submitAttendance(payload); // ✅ same payload, not duplicated
   };
 
   // Prevent going back to "Select College" once the department was already chosen
@@ -344,19 +417,24 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
           role="dialog"
           aria-modal="true"
           aria-label="Not authorized"
-          onClick={() => {}}>
+          onClick={() => {}}
+        >
           <div className="w-full max-w-md rounded-xl bg-white border border-[#CCECCC] shadow-2xl overflow-hidden">
             <div className="px-4 py-3 bg-green-50 border-b border-[#CCECCC] flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <h2 className="text-sm font-bold text-gray-900">Not authorized</h2>
+                <h2 className="text-sm font-bold text-gray-900">
+                  Not authorized
+                </h2>
                 <p className="text-[11px] text-gray-600 mt-0.5">
-                  Your account department does not match the department you selected.
+                  Your account department does not match the department you
+                  selected.
                 </p>
               </div>
             </div>
             <div className="p-4 space-y-3">
               <p className="text-xs text-gray-600">
-                Please sign out and log in again using the correct department credentials.
+                Please sign out and log in again using the correct department
+                credentials.
               </p>
               <button
                 type="button"
@@ -388,16 +466,22 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
           <div className="rounded-lg p-4 border border-green-400/50 bg-green-700/30 text-center">
             {currentEvent ? (
               <>
-                <div className="text-sm font-semibold leading-snug">{currentEvent.name}</div>
+                <div className="text-sm font-semibold leading-snug">
+                  {currentEvent.name}
+                </div>
                 <div className="mt-1.5 text-xs font-medium text-[#FFC90B]">
                   {academicYearFromEventDate(currentEvent.date)}
                 </div>
-                <div className="mt-1.5 text-[11px] text-green-100">{currentEvent.venue || "—"}</div>
+                <div className="mt-1.5 text-[11px] text-green-100">
+                  {currentEvent.venue || "—"}
+                </div>
               </>
             ) : (
               <>
                 <div className="text-sm font-semibold">No event scheduled</div>
-                <div className="mt-1.5 text-[11px] text-green-100">Check back later</div>
+                <div className="mt-1.5 text-[11px] text-green-100">
+                  Check back later
+                </div>
               </>
             )}
           </div>
@@ -413,10 +497,13 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
         <header className="shrink-0 bg-white border-b border-gray-200 px-5 sm:px-6 py-3 flex items-center justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-lg sm:text-xl font-bold text-[#008000] tracking-tight truncate">
-              {selectedCollege ? `${selectedCollege.iconText} — Time In / Out` : "Time In / Out"}
+              {selectedCollege
+                ? `${selectedCollege.iconText} — Time In / Out`
+                : "Time In / Out"}
             </h1>
             <p className="text-xs text-gray-500 mt-0.5 truncate">
-              {selectedCollege?.title ?? "Select your college to log attendance"}
+              {selectedCollege?.title ??
+                "Select your college to log attendance"}
             </p>
           </div>
           <div className="relative shrink-0" ref={settingsRef}>
@@ -470,7 +557,9 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
 
           {step === 1 && (
             <>
-              <h2 className="text-sm font-semibold text-gray-800 mb-3">Select College</h2>
+              <h2 className="text-sm font-semibold text-gray-800 mb-3">
+                Select College
+              </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {COLLEGES.map((c) => {
                   const selected = c.key === selectedCollegeKey;
@@ -492,14 +581,24 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-full bg-gray-50 border border-[#CCECCC] overflow-hidden">
                           {c.logoSrc ? (
-                            <img src={c.logoSrc} alt="" className="w-full h-full object-contain bg-white" />
+                            <img
+                              src={c.logoSrc}
+                              alt=""
+                              className="w-full h-full object-contain bg-white"
+                            />
                           ) : (
-                            <span className="text-xs font-bold p-2 block text-center">{c.iconText}</span>
+                            <span className="text-xs font-bold p-2 block text-center">
+                              {c.iconText}
+                            </span>
                           )}
                         </div>
                         <div>
-                          <div className="text-sm font-semibold text-gray-900">{c.iconText}</div>
-                          <div className="text-[11px] text-gray-600 leading-snug">{c.title}</div>
+                          <div className="text-sm font-semibold text-gray-900">
+                            {c.iconText}
+                          </div>
+                          <div className="text-[11px] text-gray-600 leading-snug">
+                            {c.title}
+                          </div>
                         </div>
                       </div>
                     </button>
@@ -511,7 +610,9 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
 
           {step === 2 && selectedCollege && (
             <>
-              <h2 className="text-sm font-semibold text-gray-800 mb-3">Select Course</h2>
+              <h2 className="text-sm font-semibold text-gray-800 mb-3">
+                Select Course
+              </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {selectedCollege.courses.map((course) => {
                   const selected = course.key === selectedCourseKey;
@@ -527,8 +628,12 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
                           : "border-[#CCECCC] bg-white hover:bg-green-50/40",
                       ].join(" ")}
                     >
-                      <div className="text-sm font-semibold text-gray-900">{course.label}</div>
-                      <div className="text-[11px] text-gray-500 mt-0.5">{selectedCollege.key}</div>
+                      <div className="text-sm font-semibold text-gray-900">
+                        {course.label}
+                      </div>
+                      <div className="text-[11px] text-gray-500 mt-0.5">
+                        {selectedCollege.key}
+                      </div>
                     </button>
                   );
                 })}
@@ -538,13 +643,17 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
 
           {step === 3 && selectedCollege && selectedCourse && (
             <>
-              <h2 className="text-sm font-semibold text-gray-800 mb-3">Fill Details</h2>
+              <h2 className="text-sm font-semibold text-gray-800 mb-3">
+                Fill Details
+              </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 mb-6">
                 <label className="block text-xs font-medium text-gray-600">
                   Student ID
                   <input
                     value={details.studentId}
-                    onChange={(e) => setDetails((d) => ({ ...d, studentId: e.target.value }))}
+                    onChange={(e) =>
+                      setDetails((d) => ({ ...d, studentId: e.target.value }))
+                    }
                     className={inputCls}
                     autoComplete="username"
                   />
@@ -553,7 +662,9 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
                   First Name
                   <input
                     value={details.firstName}
-                    onChange={(e) => setDetails((d) => ({ ...d, firstName: e.target.value }))}
+                    onChange={(e) =>
+                      setDetails((d) => ({ ...d, firstName: e.target.value }))
+                    }
                     className={inputCls}
                   />
                 </label>
@@ -561,7 +672,9 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
                   Last Name
                   <input
                     value={details.lastName}
-                    onChange={(e) => setDetails((d) => ({ ...d, lastName: e.target.value }))}
+                    onChange={(e) =>
+                      setDetails((d) => ({ ...d, lastName: e.target.value }))
+                    }
                     className={inputCls}
                   />
                 </label>
@@ -569,7 +682,9 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
                   Middle Name
                   <input
                     value={details.middleName}
-                    onChange={(e) => setDetails((d) => ({ ...d, middleName: e.target.value }))}
+                    onChange={(e) =>
+                      setDetails((d) => ({ ...d, middleName: e.target.value }))
+                    }
                     className={inputCls}
                   />
                 </label>
@@ -577,7 +692,9 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
                   Suffix
                   <select
                     value={details.suffix}
-                    onChange={(e) => setDetails((d) => ({ ...d, suffix: e.target.value }))}
+                    onChange={(e) =>
+                      setDetails((d) => ({ ...d, suffix: e.target.value }))
+                    }
                     className={`${inputCls} bg-white`}
                   >
                     <option value="">None</option>
@@ -589,7 +706,9 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
                   </select>
                 </label>
                 <div className="sm:col-span-2">
-                  <p className="text-xs font-medium text-gray-600 mb-1">Course</p>
+                  <p className="text-xs font-medium text-gray-600 mb-1">
+                    Course
+                  </p>
                   <div className="rounded-lg border-2 border-[#008000]/35 bg-green-50/80 px-3 py-2 text-sm font-semibold text-gray-900">
                     {selectedCourse.label}
                   </div>
@@ -606,7 +725,9 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
                     <button
                       key={key}
                       type="button"
-                      onClick={() => setDetails((d) => ({ ...d, attendanceKind: key }))}
+                      onClick={() =>
+                        setDetails((d) => ({ ...d, attendanceKind: key }))
+                      }
                       className="flex items-center gap-2 text-sm font-medium text-gray-800"
                     >
                       <span
@@ -628,7 +749,9 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
               <div className="rounded-xl border border-[#CCECCC] bg-[#C8E6C9]/40 p-4 sm:p-5">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div>
-                    <p className="text-xs font-semibold text-gray-700 mb-2">Details:</p>
+                    <p className="text-xs font-semibold text-gray-700 mb-2">
+                      Details:
+                    </p>
                     <ol className="list-decimal list-inside space-y-1.5 text-xs text-gray-700 leading-relaxed">
                       <li>Position Face Clearly Within Frame</li>
                       <li>Ensure Good Lighting</li>
@@ -638,9 +761,19 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
                   </div>
                   <div className="flex flex-col items-center justify-center">
                     <label className="flex flex-col items-center justify-center w-full max-w-xs aspect-[4/3] rounded-lg bg-[#008000] text-white cursor-pointer border-2 border-[#006600] hover:brightness-110">
-                      <input type="file" accept="image/*" capture="user" className="sr-only" onChange={onCaptureFile} />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="user"
+                        className="sr-only"
+                        onChange={onCaptureFile}
+                      />
                       {capturePreview ? (
-                        <img src={capturePreview} alt="Capture preview" className="w-full h-full object-cover rounded-lg" />
+                        <img
+                          src={capturePreview}
+                          alt="Capture preview"
+                          className="w-full h-full object-cover rounded-lg"
+                        />
                       ) : (
                         <span className="flex flex-col items-center gap-2 p-6 text-center text-sm font-medium">
                           <span className="text-2xl">📷</span>
@@ -652,14 +785,11 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (!canNextFrom3) return;
-                    goNext();
-                  }}
-                  disabled={!canNextFrom3}
+                  onClick={handleSubmit}
+                  disabled={!canNextFrom3 || isPending}
                   className="mt-4 rounded-lg bg-[#008000] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#006600] disabled:opacity-50"
                 >
-                  Submit Attendance
+                  {isPending ? "Submitting…" : "Submit Attendance"}
                 </button>
               </div>
             </>
@@ -669,7 +799,8 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
             <div className="max-w-lg rounded-xl border border-[#CCECCC] bg-white p-5 shadow-sm space-y-3">
               <h2 className="text-sm font-semibold text-gray-800">Submitted</h2>
               <p className="text-sm text-gray-600">
-                Your attendance request was recorded (demo). Connect this action to your backend when ready.
+                Your attendance request was recorded (demo). Connect this action
+                to your backend when ready.
               </p>
               <button
                 type="button"

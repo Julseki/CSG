@@ -8,7 +8,6 @@ import {
 
 export const CURRENT_EVENT_QUERY_KEY = ["events", "current"];
 
-/** Collect raw event rows from GET /get-current-event (array, { events }, legacy wrappers). */
 function normalizeRawRows(data) {
   if (data == null) return [];
   if (Array.isArray(data)) return data;
@@ -50,28 +49,51 @@ function normalizeRawRows(data) {
 
 async function fetchCurrentEventBundle() {
   const { data } = await api.get("/get-current-event");
+
+  console.log("[useGetCurrentEvent] raw data:", data);
+
   const rawRows = normalizeRawRows(data);
+
+  console.log("[useGetCurrentEvent] rawRows:", rawRows.map(e => ({
+    id: e.id,
+    name: e.name,
+    status: e.status,
+    date: e.date,
+  })));
+
   const mapped = rawRows.map((row) => mapServerEventToDisplay(row)).filter(Boolean);
+
+  console.log("[useGetCurrentEvent] mapped:", mapped.map(e => ({
+    id: e.id,
+    name: e.name,
+    status: e.status,
+    date: e.date,
+  })));
 
   if (mapped.length === 0) {
     return { current: null, upcoming: [] };
   }
 
-  const current = selectActiveOrUpcomingEvent(mapped);
   const norm = (s) => String(s ?? "").trim().toLowerCase();
+
+  const current =
+    mapped.find((e) => norm(e.status) === "ongoing") ??
+    mapped
+      .filter((e) => norm(e.status) === "upcoming")
+      .sort((a, b) => eventDateMs(a.date) - eventDateMs(b.date))[0] ??
+    null;
 
   const upcoming = mapped
     .filter((e) => norm(e.status) === "upcoming")
     .filter((e) => current == null || e.id !== current.id)
     .sort((a, b) => eventDateMs(a.date) - eventDateMs(b.date));
 
+  console.log("[useGetCurrentEvent] current:", { id: current?.id, name: current?.name, status: current?.status });
+  console.log("[useGetCurrentEvent] upcoming:", upcoming.map(e => ({ id: e.id, name: e.name, status: e.status })));
+
   return { current, upcoming };
 }
 
-/**
- * Home page: featured event + upcoming list from GET /get-current-event.
- * Accepts a top-level array of rows (same shape as /get-events).
- */
 export function useGetCurrentEvent(options = {}) {
   return useQuery({
     queryKey: CURRENT_EVENT_QUERY_KEY,
