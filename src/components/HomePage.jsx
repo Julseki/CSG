@@ -296,14 +296,14 @@ export default function HomePage({
 
   return (
     <div className="flex h-[100dvh] min-h-0 overflow-hidden bg-gray-50 [&_button]:cursor-pointer">
-      <aside className="w-64 shrink-0 bg-[#008000] text-white flex flex-col h-full">
+      <aside className="w-64 shrink-0 bg-[#07713C] text-white flex flex-col h-full font-[Inter,sans-serif]">
         <div className="p-6 space-y-4 shrink-0">
           <img
             src="/logo.png"
             alt="NMCI"
             className="w-16 h-16 rounded-full bg-white/10 object-contain mx-auto"
           />
-          <p className="text-xs text-center font-medium uppercase tracking-wider">
+          <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif]">
             Northern Mindanao Colleges, Inc.
           </p>
         </div>
@@ -312,12 +312,12 @@ export default function HomePage({
           <p className="text-xs font-semibold text-green-100 uppercase tracking-wider mb-2 text-center">
             {sidebarEventHeading}
           </p>
-          <div className="rounded-lg p-4 border border-green-400/50 bg-green-700/30 text-center">
+          <div className="rounded-lg p-4 border border-white/20 bg-black/15 text-center">
             {currentEvent ? (
               <button
                 type="button"
                 onClick={() => setDetailEvent(currentEvent)}
-                className="w-full cursor-pointer rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#008000]"
+                className="w-full cursor-pointer rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07713C]"
               >
                 <div className="text-sm font-semibold leading-snug">{currentEvent.name}</div>
                 <div className="mt-1.5 text-xs font-medium text-[#FFC90B]">
@@ -334,7 +334,7 @@ export default function HomePage({
           </div>
         </div>
 
-        <div className="p-4 border-t border-green-600/50 shrink-0 text-center">
+        <div className="p-4 border-t border-white/15 shrink-0 text-center">
           <p className="text-sm font-medium">{timeStr}</p>
           <p className="text-xs text-green-200">{dateStr}</p>
         </div>
@@ -343,7 +343,7 @@ export default function HomePage({
       <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
         <header className="shrink-0 bg-white border-b border-gray-200 px-5 sm:px-6 py-3 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-lg sm:text-xl font-bold text-[#008000] tracking-wide">
+            <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#008000] leading-tight">
               SELECT DEPARTMENT
             </h1>
             <p className="text-xs text-gray-500 mt-0.5">

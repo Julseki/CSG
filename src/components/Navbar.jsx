@@ -9,7 +9,7 @@ export default function Navbar() {
                             alt="Northern Mindanao Colleges, Inc."
                             className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-contain object-center"
                         />
-                        <span className="text-sm sm:text-base font-semibold text-green-800 whitespace-nowrap">
+                        <span className="text-sm sm:text-base font-semibold text-green-800 whitespace-nowrap font-[Inter,sans-serif]">
                             Northern Mindanao Colleges, Inc.
                         </span>
                     </div>

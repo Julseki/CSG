@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import SidebarNavIcon from "./SidebarNavIcon";
+import UserCircleIcon from "./UserCircleIcon";
+import { canOpenCreateUser, getDashboardRoleLabel } from "../utils/roles";
 import { useAuthSession, useCreateDepartmentUser } from "../hooks/auth";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { useGetEvents, formatEventDateForDisplay } from "../hooks/useGetEvents";
@@ -114,7 +117,7 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
   const { data: apiEvents = [] } = useGetEvents();
   console.log(apiEvents, ": API EVENTS")
   const { data: session } = useAuthSession();
-  const { isGovernor, governorScope } = useGovernorScope();
+  const { role, isGovernor, governorScope } = useGovernorScope();
 
   /** Second upcoming by date (index 1); falls back to the first if only one Upcoming row exists. */
   const nextUpcomingEvent = useMemo(() => {
@@ -233,7 +236,7 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
   }, [showEventDetailModal]);
 
   const activeNav = "dashboard";
-  const roleLabel = isGovernor ? (governorScope?.label || "Governor") : "Admin";
+  const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
   const isAdmin = !isGovernor;
   const sessionEmail =
     session?.email ||
@@ -301,10 +304,10 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
   const dateStr = now.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
   const navItems = [
-    { id: "dashboard", label: "Dashboard", icon: "▣" },
-    { id: "attendance", label: "Attendance", icon: "☑" },
-    { id: "events", label: "Events", icon: "◉" },
-    { id: "students", label: "Department", icon: "☺" },
+    { id: "dashboard", label: "Dashboard" },
+    { id: "attendance", label: "Attendance" },
+    { id: "events", label: "Events" },
+    { id: "students", label: "Department" },
   ];
 
   const reportItems = [
@@ -397,10 +400,10 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
   return (
     <div className="flex min-h-screen bg-gray-50 [&_button]:cursor-pointer">
       {/* Sidebar */}
-      <aside className="w-64 shrink-0 bg-[#008000] text-white flex flex-col">
+      <aside className="w-64 shrink-0 bg-[#07713C] text-white flex flex-col">
         <div className="p-6 space-y-4">
           <img src="/logo.png" alt="NMCI" className="w-16 h-16 rounded-full bg-white/10 object-contain mx-auto" />
-          <p className="text-xs text-center font-medium uppercase tracking-wider">Northern Mindanao Colleges, Inc.</p>
+          <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif]">Northern Mindanao Colleges, Inc.</p>
         </div>
         <nav className="flex-1 px-4 space-y-1">
           {navItems.map((item) => (
@@ -408,14 +411,14 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
               key={item.id}
               onClick={() => onNavigate && onNavigate(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors ${
-                activeNav === item.id ? "bg-green-600 text-white" : "text-green-100 hover:bg-green-600/50"
+                activeNav === item.id ? "bg-[#055a2e] text-white" : "text-green-100 hover:bg-white/15"
               }`}
             >
-              <span className="text-lg">{item.icon}</span>
+              <SidebarNavIcon navId={item.id} />
               {item.label}
             </button>
           ))}
-          {!isGovernor && (
+          {canOpenCreateUser(isGovernor, role) && (
             <button
               type="button"
               onClick={() => onOpenCreateUser?.()}
@@ -438,7 +441,7 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
                   setReportMode(item.id);
                   setShowReportModal(true);
                 }}
-                className="w-full flex items-center gap-3 px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-green-600/50"
+                className="w-full flex items-center gap-3 px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-white/15"
               >
                 <span className="flex items-center gap-2">
                   <span>{item.label}</span>
@@ -452,7 +455,7 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
             ))}
           </div>
         </nav>
-        <div className="p-4 border-t border-green-600/50">
+        <div className="p-4 border-t border-white/15">
           <p className="text-sm font-medium">{timeStr}</p>
           <p className="text-xs text-green-200">{dateStr}</p>
         </div>
@@ -462,14 +465,20 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-[#008000]">{headerName}</h1>
+          <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#008000] leading-tight">
+            {headerName}
+          </h1>
           <div className="flex items-center gap-4">
             <div className="relative">
               <button
+                type="button"
                 onClick={() => setShowLogout((prev) => !prev)}
-                className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-300"
+                className="inline-flex h-10 w-10 items-center justify-center text-[#008000] rounded-lg hover:bg-green-50"
+                aria-label="Account menu"
+                aria-expanded={showLogout}
+                aria-haspopup="true"
               >
-                <span className="text-sm">👤</span>
+                <UserCircleIcon className="h-5 w-5" />
               </button>
               {showLogout && (
                 <div className="absolute right-0 top-full mt-1 py-1 bg-white rounded-lg shadow-lg border border-gray-200 min-w-[100px]">
@@ -557,9 +566,7 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
             <div className="bg-[#008000] px-5 py-3">
               <h3 className="text-white font-semibold">
                 {reportMode === "settings"
-                  ? isGovernor
-                    ? `${roleLabel} Settings`
-                    : "Admin Settings"
+                  ? `${roleLabel} Settings`
                   : reportMode === "import"
                     ? "Import Data"
                     : "Export Data"}

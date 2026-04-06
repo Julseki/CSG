@@ -152,6 +152,21 @@ export function mapServerEventToDisplay(raw) {
     duration: raw.duration || "",
     venue: raw.venue || "",
     timeSlots,
+    year_level: raw.year_level != null && String(raw.year_level).trim() !== "" ? String(raw.year_level).trim() : null,
+    course_code:
+      raw.course_code != null && String(raw.course_code).trim() !== ""
+        ? String(raw.course_code).trim()
+        : null,
+    major:
+      raw.major != null && String(raw.major).trim() !== "" && String(raw.major).trim().toLowerCase() !== "all majors"
+        ? String(raw.major).trim()
+        : null,
+    department_name:
+      raw.department_name != null && String(raw.department_name).trim() !== ""
+        ? String(raw.department_name).trim()
+        : raw.department != null && String(raw.department).trim() !== ""
+          ? String(raw.department).trim()
+          : null,
     amGraceInMinutes: amGraceIn != null && amGraceIn !== "" ? Number(amGraceIn) : null,
     amGraceOutMinutes: amGraceOut != null && amGraceOut !== "" ? Number(amGraceOut) : null,
     pmGraceInMinutes: pmGraceIn != null && pmGraceIn !== "" ? Number(pmGraceIn) : null,
@@ -179,22 +194,8 @@ export function mapServerEventToDisplay(raw) {
   };
 }
 
-export function mergeApiAndLocalEvents(apiList, localList) {
-  const merged = [...(apiList || [])];
-  const keyOf = (e) =>
-    `${String(e?.name ?? "")}|${String(e?.date ?? "")}|${String(e?.venue ?? "")}`;
-  const seen = new Set(merged.map(keyOf));
-  for (const le of localList || []) {
-    const k = keyOf(le);
-    if (!seen.has(k)) {
-      merged.push(le);
-      seen.add(k);
-    }
-  }
-  return merged;
-}
-
-async function fetchEventsList() {
+/** Fetches and normalizes every event from GET /get-events (shared by useGetEvents / useGetAllEvents). */
+export async function getAllEvents() {
   const { data } = await api.get("/get-events");
   const rows = normalizeResponseToArray(data);
   return rows.map((row) => mapServerEventToDisplay(row)).filter(Boolean);
@@ -203,7 +204,7 @@ async function fetchEventsList() {
 export function useGetEvents(options = {}) {
   return useQuery({
     queryKey: EVENTS_QUERY_KEY,
-    queryFn: fetchEventsList,
+    queryFn: getAllEvents,
     staleTime: 30_000,
     ...options,
   });

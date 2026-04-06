@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useGetEvents, selectActiveOrUpcomingEvent } from "../hooks/useGetEvents";
 import EventSummaryStrip from "./EventSummaryStrip";
+import SidebarNavIcon from "./SidebarNavIcon";
+import UserCircleIcon from "./UserCircleIcon";
 const COLLEGES = [
   {
     key: "CBA",
@@ -166,14 +168,14 @@ export default function UserDashboard({ onLogout, onNavigate }) {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <aside className="w-64 shrink-0 bg-[#008000] text-white flex flex-col">
+      <aside className="w-64 shrink-0 bg-[#07713C] text-white flex flex-col">
         <div className="p-6 space-y-4">
           <img
             src="/logo.png"
             alt="NMCI"
             className="w-16 h-16 rounded-full bg-white/10 object-contain mx-auto"
           />
-          <p className="text-xs text-center font-medium uppercase tracking-wider">
+          <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif]">
             Northern Mindanao Colleges, Inc.
           </p>
         </div>
@@ -181,38 +183,38 @@ export default function UserDashboard({ onLogout, onNavigate }) {
         <nav className="flex-1 px-4 space-y-1">
           <button
             onClick={() => onNavigate?.("dashboard")}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors bg-green-600 text-white"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors bg-[#055a2e] text-white"
           >
-            <span className="text-lg">▣</span>
+            <SidebarNavIcon navId="dashboard" />
             Governor Dashboard
           </button>
 
           <button
             onClick={() => onNavigate?.("attendance")}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-green-600/50"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-white/15"
           >
-            <span className="text-lg">☑</span>
+            <SidebarNavIcon navId="attendance" />
             Attendance
           </button>
 
           <button
             onClick={() => onNavigate?.("events")}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-green-600/50"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-white/15"
           >
-            <span className="text-lg">◉</span>
+            <SidebarNavIcon navId="events" />
             Events
           </button>
 
           <button
             onClick={() => onNavigate?.("students")}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-green-600/50"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-white/15"
           >
-            <span className="text-lg">☺</span>
+            <SidebarNavIcon navId="students" />
             Department
           </button>
         </nav>
 
-        <div className="p-4 border-t border-green-600/50">
+        <div className="p-4 border-t border-white/15">
           <p className="text-sm font-medium">
             {new Date().toLocaleTimeString("en-US", {
               hour: "numeric",
@@ -225,7 +227,7 @@ export default function UserDashboard({ onLogout, onNavigate }) {
       <div className="flex-1 flex flex-col min-w-0">
         <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold text-[#008000]">
+            <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#008000] leading-tight">
               SELECT DEPARTMENT
             </h1>
             <p className="text-xs text-gray-500">
@@ -236,10 +238,14 @@ export default function UserDashboard({ onLogout, onNavigate }) {
           <div className="flex items-center gap-4">
             <div className="relative">
               <button
+                type="button"
                 onClick={() => setShowLogout((prev) => !prev)}
-                className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-300"
+                className="inline-flex h-10 w-10 items-center justify-center text-[#008000] rounded-lg hover:bg-green-50"
+                aria-label="Account menu"
+                aria-expanded={showLogout}
+                aria-haspopup="true"
               >
-                <span className="text-sm">👤</span>
+                <UserCircleIcon className="h-5 w-5" />
               </button>
 
               {showLogout && (

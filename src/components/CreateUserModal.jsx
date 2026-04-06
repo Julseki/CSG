@@ -70,11 +70,21 @@ const DEPARTMENT_OPTIONS = [
   },
 ];
 
+/** Governor role sent to API — keyed by `code` on each DEPARTMENT_OPTIONS row (avoids label typos). */
+const DEPARTMENT_CODE_TO_GOVERNOR_ROLE = {
+  BSIT: "it_governor",
+  CBA: "cba_governor",
+  CEAS: "ceas_governor",
+  CCJE: "coc_governor",
+  CHM: "chm_governor",
+};
+
 const DEPARTMENT_USERNAME_BASE = {
   "College of Information Technology": "gov-IT",
   "College of Business Administration": "gov-CBA",
   "College of Education, Arts and Sciences": "gov-CEAS",
   "College of Criminology": "gov-CRIM",
+  "College of Criminal Justice Education": "gov-CRIM",
   "College of Hospitality Management": "gov-CHM",
 };
 
@@ -82,7 +92,7 @@ const ROLE_DEPARTMENT_MAP = {
   it_governor: "College of Information Technology",
   cba_governor: "College of Business Administration",
   ceas_governor: "College of Education, Arts and Sciences",
-  coc_governor: "College of Criminology",
+  coc_governor: "College of Criminal Justice Education",
   chm_governor: "College of Hospitality Management",
 };
 
@@ -220,13 +230,17 @@ export default function CreateUserModal({ open, onClose }) {
     "College of Business Administration": "cba_governor",
     "College of Education, Arts and Sciences": "ceas_governor",
     "College of Criminology": "coc_governor",
+    "College of Criminal Justice Education": "coc_governor",
     "College of Hospitality Management": "chm_governor",
   };
 
   const roleToSend =
     createUserForm.accountType === "csg_president"
       ? "csg_president"
-      : (DEPARTMENT_ROLE_MAP[createUserForm.department] ?? "it_governor");
+      : (selectedDepartment?.code &&
+          DEPARTMENT_CODE_TO_GOVERNOR_ROLE[selectedDepartment.code]) ||
+        DEPARTMENT_ROLE_MAP[createUserForm.department] ||
+        "department";
 
   const resetForm = () => {
     setCreateUserError("");

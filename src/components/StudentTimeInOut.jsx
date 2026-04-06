@@ -447,14 +447,14 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
           </div>
         </div>
       )}
-      <aside className="w-64 shrink-0 bg-[#008000] text-white flex flex-col h-full">
+      <aside className="w-64 shrink-0 bg-[#07713C] text-white flex flex-col h-full font-[Inter,sans-serif]">
         <div className="p-6 space-y-4 shrink-0">
           <img
             src="/logo.png"
             alt="NMCI"
             className="w-16 h-16 rounded-full bg-white/10 object-contain mx-auto"
           />
-          <p className="text-xs text-center font-medium uppercase tracking-wider">
+          <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif]">
             Northern Mindanao Colleges, Inc.
           </p>
         </div>
@@ -463,7 +463,7 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
           <p className="text-xs font-semibold text-green-100 uppercase tracking-wider mb-2 text-center">
             {sidebarEventHeading}
           </p>
-          <div className="rounded-lg p-4 border border-green-400/50 bg-green-700/30 text-center">
+          <div className="rounded-lg p-4 border border-white/20 bg-black/15 text-center">
             {currentEvent ? (
               <>
                 <div className="text-sm font-semibold leading-snug">
@@ -487,7 +487,7 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
           </div>
         </div>
 
-        <div className="p-4 border-t border-green-600/50 shrink-0 text-center">
+        <div className="p-4 border-t border-white/15 shrink-0 text-center">
           <p className="text-sm font-medium">{timeStr}</p>
           <p className="text-xs text-green-200">{dateStr}</p>
         </div>
@@ -496,7 +496,7 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
       <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
         <header className="shrink-0 bg-white border-b border-gray-200 px-5 sm:px-6 py-3 flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-lg sm:text-xl font-bold text-[#008000] tracking-tight truncate">
+            <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#008000] leading-tight truncate">
               {selectedCollege
                 ? `${selectedCollege.iconText} — Time In / Out`
                 : "Time In / Out"}

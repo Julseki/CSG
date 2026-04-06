@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import SidebarNavIcon from "./SidebarNavIcon";
 import { useGovernorScope } from "../hooks/useGovernorScope";
+import { canOpenCreateUser, getDashboardRoleLabel, isCsgPresident } from "../utils/roles";
 
 const DEPARTMENT_STUDENTS_KEY = "csg_department_students";
 
@@ -29,7 +31,7 @@ function getBadgeClass(status) {
 }
 
 export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpen }) {
-  const { isGovernor, governorScope } = useGovernorScope();
+  const { role, isGovernor, governorScope } = useGovernorScope();
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("All Departments");
   const [year, setYear] = useState("All Years");
@@ -41,7 +43,7 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportMode, setReportMode] = useState("export");
-  const roleLabel = isGovernor ? (governorScope?.label || "Governor") : "Admin";
+  const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
   const isAdmin = !isGovernor;
   const [newStudent, setNewStudent] = useState({
     id: "",
@@ -51,13 +53,17 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
   });
 
   useEffect(() => {
+    if (isCsgPresident(role)) {
+      setDepartment("All Departments");
+      return;
+    }
     if (!isGovernor || !governorScope) return;
     if (governorScope.courses.length === 1) {
       setDepartment(governorScope.courses[0]);
     } else {
       setDepartment("All Departments");
     }
-  }, [isGovernor, governorScope]);
+  }, [isGovernor, governorScope, role]);
 
   useEffect(() => {
     try {
@@ -82,13 +88,15 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
         student.id.toLowerCase().includes(q) ||
         student.course.toLowerCase().includes(q) ||
         student.dept.toLowerCase().includes(q);
-      const matchesDepartment = isGovernor && governorScope
-        ? governorScope.courses.includes(student.course)
-        : department === "All Departments" || student.course === department;
+      const matchesDepartment = isCsgPresident(role)
+        ? true
+        : isGovernor && governorScope
+          ? governorScope.courses.includes(student.course)
+          : department === "All Departments" || student.course === department;
       const matchesYear = year === "All Years" || student.year === year;
       return matchesSearch && matchesDepartment && matchesYear;
     });
-  }, [search, department, year, students, isGovernor, governorScope]);
+  }, [search, department, year, students, isGovernor, governorScope, role]);
 
   const handleAddStudent = () => {
     if (!newStudent.id.trim() || !newStudent.name.trim() || !newStudent.course.trim() || !newStudent.year.trim()) {
@@ -122,29 +130,29 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
 
   return (
     <div className="flex min-h-screen bg-gray-50 [&_button]:cursor-pointer">
-      <aside className="w-64 shrink-0 bg-[#008000] text-white flex flex-col">
+      <aside className="w-64 shrink-0 bg-[#07713C] text-white flex flex-col">
         <div className="p-6 space-y-4">
           <img src="/logo.png" alt="NMCI" className="w-16 h-16 rounded-full bg-white/10 object-contain mx-auto" />
-          <p className="text-xs text-center font-medium uppercase tracking-wider">Northern Mindanao Colleges, Inc.</p>
+          <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif]">Northern Mindanao Colleges, Inc.</p>
         </div>
         <nav className="flex-1 px-4 space-y-1">
-          <button onClick={() => onNavigate?.("dashboard")} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-green-600/50">
-            <span className="text-lg">▣</span>
+          <button onClick={() => onNavigate?.("dashboard")} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-white/15">
+            <SidebarNavIcon navId="dashboard" />
             Dashboard
           </button>
-          <button onClick={() => onNavigate?.("attendance")} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-green-600/50">
-            <span className="text-lg">☑</span>
+          <button onClick={() => onNavigate?.("attendance")} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-white/15">
+            <SidebarNavIcon navId="attendance" />
             Attendance
           </button>
-          <button onClick={() => onNavigate?.("events")} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-green-600/50">
-            <span className="text-lg">◉</span>
+          <button onClick={() => onNavigate?.("events")} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-white/15">
+            <SidebarNavIcon navId="events" />
             Events
           </button>
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors bg-green-600 text-white">
-            <span className="text-lg">☺</span>
+          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors bg-[#055a2e] text-white">
+            <SidebarNavIcon navId="students" />
             Department
           </button>
-          {!isGovernor && (
+          {canOpenCreateUser(isGovernor, role) && (
             <button
               type="button"
               onClick={() => onOpenCreateUser?.()}
@@ -163,7 +171,7 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
                 setReportMode("export");
                 setShowReportModal(true);
               }}
-              className="w-full flex items-center gap-3 px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-green-600/50"
+              className="w-full flex items-center gap-3 px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-white/15"
             >
               Export
             </button>
@@ -173,7 +181,7 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
                   setReportMode("import");
                   setShowReportModal(true);
                 }}
-                className="w-full flex items-center gap-3 px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-green-600/50"
+                className="w-full flex items-center gap-3 px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-white/15"
               >
                 Import
               </button>
@@ -184,7 +192,7 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
                 setReportMode("settings");
                 setShowReportModal(true);
               }}
-              className="w-full flex items-center gap-3 px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-green-600/50"
+              className="w-full flex items-center gap-3 px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-white/15"
             >
               <span className="flex items-center gap-2">
                 <span>Settings</span>
@@ -200,7 +208,9 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
       <div className="flex-1 flex flex-col min-w-0">
         <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold text-[#008000]">Department</h1>
+            <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#008000] leading-tight">
+              Department
+            </h1>
           </div>
           {isAdmin && (
             <button
@@ -240,6 +250,10 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
                 {isGovernor && governorScope ? (
                   <div className="px-4 py-2 border border-gray-300 rounded-lg text-sm bg-gray-100 text-gray-700">
                     {governorScope.label}
+                  </div>
+                ) : isCsgPresident(role) ? (
+                  <div className="px-4 py-2 border border-gray-300 rounded-lg text-sm bg-gray-100 text-gray-700">
+                    All departments
                   </div>
                 ) : (
                   <select value={department} onChange={(e) => setDepartment(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#008000]">
