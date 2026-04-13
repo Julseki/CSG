@@ -62,10 +62,17 @@ export default function AddEvent({ onBack, onNext }) {
   const shouldShowMajorSelection =
     role === "ceas_governor" || role === "cba_governor";
   const majorOptions = role === "cba_governor"
-    ? ["Marketing Management", "Financial Management", "Human Resource Management"]
+    ? ["Marketing Management", "Financial Management", "Human Resource Development Management", "All Majors"]
     : role === "ceas_governor"
-      ? ["English", "Filipino", "Mathematics", "BEED"]
+      ? ["English", "Math", "Filipino", "BEED"]
       : [];
+
+      // Fix 2: derive course_code from selected major for CEAS
+  const getCourseCodeFromMajor = (major) => {
+    if (major === "BEED") return "BEED";
+    if (["English", "Math", "Filipino"].includes(major)) return "BSED";
+    return department;
+  };
 
   useEffect(() => {
     if (isCsgPresident(role)) {
@@ -155,8 +162,8 @@ export default function AddEvent({ onBack, onNext }) {
         pm_grace_in: payload.pmGraceInMinutes ?? 0,
         pm_grace_out: payload.pmGraceOutMinutes ?? 0,
         yearLevel,
-        course_code: department,
-        major: shouldShowMajorSelection ? major : "",
+        course_code: role === "ceas_governor" ? getCourseCodeFromMajor(major) : department, // ← single definition
+        major: role === "ceas_governor" && major === "BEED" ? "" : shouldShowMajorSelection ? major : "",                                       // ← single definition
         isMandatory,
         audienceNotes: audienceNotes?.trim() || "",
         amTimeIn: amTimeIn || "",

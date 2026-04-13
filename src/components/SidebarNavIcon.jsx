@@ -58,11 +58,31 @@ function IconDepartment(props) {
   );
 }
 
+/** Single-student silhouette — used for Attendance → Students filter view (distinct from Department). */
+function IconStudents(props) {
+  return (
+    <svg {...common} {...props}>
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5 20v-1a7 7 0 0 1 14 0v1" />
+    </svg>
+  );
+}
+
+function IconAnalytics(props) {
+  return (
+    <svg {...common} {...props}>
+      <path d="M4 20V8 M10 20V5 M16 20V12 M22 20V3" />
+    </svg>
+  );
+}
+
 const MAP = {
   dashboard: IconDashboard,
   attendance: IconAttendance,
+  attendance2: IconAnalytics,
   events: IconEvents,
   students: IconDepartment,
+  attendance_students: IconStudents,
 };
 
 export default function SidebarNavIcon({ navId }) {

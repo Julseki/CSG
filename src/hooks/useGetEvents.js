@@ -1,7 +1,44 @@
 import { useQuery } from "@tanstack/react-query";
 import api from "../api/axiosInstance";
+import { useAuthSession } from "./auth";
+import { getRoleFromSession, seesInstitutionWideEventData } from "../utils/roles";
 
+/** Prefix for React Query; scope suffix: all departments vs department governors only. */
 export const EVENTS_QUERY_KEY = ["events", "list"];
+
+/**
+ * Query params for GET /get-events when the user should see every department’s events
+ * (admin, csg_president). Backend may honor these; unknown params are usually ignored.
+ */
+function buildWideEventsRequestConfig() {
+  return {
+    params: {
+      all_events: "1",
+      include_all: "1",
+    },
+  };
+}
+
+function eventsQueryKey(scope) {
+  return [...EVENTS_QUERY_KEY, scope];
+}
+
+function useEventsListQuery(options = {}) {
+  const { enabled: enabledOption, ...restOptions } = options;
+  const { data: session, isPending: isSessionPending } = useAuthSession();
+  const role = getRoleFromSession(session);
+  const scope = seesInstitutionWideEventData(role) ? "all" : "scoped";
+
+  return useQuery({
+    ...restOptions,
+    queryKey: eventsQueryKey(scope),
+    queryFn: () =>
+      getAllEvents(scope === "all" ? buildWideEventsRequestConfig() : undefined),
+    staleTime: 30_000,
+    // Wait for /me so admin/CSG aren’t misclassified as "scoped" on the first fetch.
+    enabled: (enabledOption ?? true) && !isSessionPending,
+  });
+}
 
 export function formatEventDateForDisplay(dateStr) {
   if (!dateStr) return "—";
@@ -195,17 +232,16 @@ export function mapServerEventToDisplay(raw) {
 }
 
 /** Fetches and normalizes every event from GET /get-events (shared by useGetEvents / useGetAllEvents). */
-export async function getAllEvents() {
-  const { data } = await api.get("/get-events");
+export async function getAllEvents(axiosConfig) {
+  const { data } = await api.get("/get-events", axiosConfig);
   const rows = normalizeResponseToArray(data);
   return rows.map((row) => mapServerEventToDisplay(row)).filter(Boolean);
 }
 
 export function useGetEvents(options = {}) {
-  return useQuery({
-    queryKey: EVENTS_QUERY_KEY,
-    queryFn: getAllEvents,
-    staleTime: 30_000,
-    ...options,
-  });
+  return useEventsListQuery(options);
+}
+
+export function useGetAllEvents(options = {}) {
+  return useEventsListQuery(options);
 }

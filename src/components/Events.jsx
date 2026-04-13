@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AddEvent from "./AddEvent";
+import PaginationBar from "./PaginationBar";
 import SidebarNavIcon from "./SidebarNavIcon";
 import UserCircleIcon from "./UserCircleIcon";
 import { useGetAllEvents } from "../hooks/useGetAllEvents";
@@ -7,6 +8,7 @@ import { useGovernorScope } from "../hooks/useGovernorScope";
 import { canOpenCreateUser, getDashboardRoleLabel } from "../utils/roles";
 
 const FINE_PER_ABSENT = 50; // Pesos per absent student
+const EVENTS_PAGE_SIZE = 10;
 
 function normStatusKey(status) {
   const n = String(status ?? "").trim().toLowerCase();
@@ -109,6 +111,7 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
   const [editSaveError, setEditSaveError] = useState(null);
+  const [eventsPage, setEventsPage] = useState(1);
   const activeNav = "events";
   const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
   const isAdmin = !isGovernor;
@@ -131,6 +134,8 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
   const navItems = [
     { id: "dashboard", label: "Dashboard" },
     { id: "attendance", label: "Attendance" },
+    { id: "attendance2", label: "Attendance 2" },
+    { id: "attendance_students", label: "Students" },
     { id: "events", label: "Events" },
     { id: "students", label: "Department" },
   ];
@@ -182,6 +187,29 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
       (ev.audience_notes && String(ev.audience_notes).toLowerCase().includes(q));
     return matchesStatus && matchesSearch;
   });
+
+  const eventsTotal = filteredEvents.length;
+  const eventsTotalPages = Math.max(1, Math.ceil(eventsTotal / EVENTS_PAGE_SIZE) || 1);
+  const eventsPageSafe = Math.min(eventsPage, eventsTotalPages);
+
+  const paginatedEvents = useMemo(() => {
+    const start = (eventsPageSafe - 1) * EVENTS_PAGE_SIZE;
+    return filteredEvents.slice(start, start + EVENTS_PAGE_SIZE);
+  }, [filteredEvents, eventsPageSafe]);
+
+  useEffect(() => {
+    setEventsPage(1);
+  }, [search, statusFilter]);
+
+  useEffect(() => {
+    setEventsPage((p) => Math.min(p, eventsTotalPages));
+  }, [eventsTotalPages]);
+
+  function eventRowKey(ev, index) {
+    const id = ev?.id ?? ev?._id;
+    if (id != null && String(id).trim() !== "") return String(id);
+    return `event-${index}`;
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50 [&_button]:cursor-pointer">
@@ -355,10 +383,10 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
                         </td>
                       </tr>
                     ) : (
-                      filteredEvents.map((ev, i) => {
+                      paginatedEvents.map((ev, i) => {
                         const fineVal = getFinesForEvent(ev);
                         return (
-                          <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
+                          <tr key={eventRowKey(ev, i)} className="border-b border-gray-100 hover:bg-gray-50">
                             <td className="py-3 px-4">
                               <button
                                 type="button"
@@ -399,9 +427,9 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
                 {filteredEvents.length === 0 ? (
                   <div className="col-span-full py-10 text-center text-sm text-gray-500">No event records.</div>
                 ) : (
-                  filteredEvents.map((ev, i) => (
+                  paginatedEvents.map((ev, i) => (
                     <div
-                      key={i}
+                      key={eventRowKey(ev, i)}
                       className="rounded-lg border border-gray-200 p-4 hover:border-[#008000]/50 hover:shadow-md transition-all cursor-pointer"
                       onClick={() => openEventModal(ev)}
                     >
@@ -431,17 +459,14 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
                 )}
               </div>
             )}
-            <div className="px-4 py-3 flex items-center justify-between border-t border-gray-200 text-sm text-gray-500">
-              <span>
-                {filteredEvents.length === 0
-                  ? "No records to show."
-                  : `Showing ${filteredEvents.length > 0 ? `1-${filteredEvents.length}` : 0} of ${filteredEvents.length}`}
-              </span>
-              <div className="flex gap-2">
-                <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50">← Prev</button>
-                <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50">Next →</button>
-              </div>
-            </div>
+            <PaginationBar
+              totalCount={eventsTotal}
+              page={eventsPage}
+              pageSize={EVENTS_PAGE_SIZE}
+              onPageChange={setEventsPage}
+              emptyLabel="No records to show."
+              itemLabel="events"
+            />
           </div>
         </main>
       </div>

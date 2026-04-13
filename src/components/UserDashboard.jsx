@@ -198,6 +198,15 @@ export default function UserDashboard({ onLogout, onNavigate }) {
           </button>
 
           <button
+            type="button"
+            onClick={() => onNavigate?.("attendance_students")}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-white/15"
+          >
+            <SidebarNavIcon navId="attendance_students" />
+            Students
+          </button>
+
+          <button
             onClick={() => onNavigate?.("events")}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-white/15"
           >

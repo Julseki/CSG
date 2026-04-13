@@ -136,22 +136,26 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
           <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif]">Northern Mindanao Colleges, Inc.</p>
         </div>
         <nav className="flex-1 px-4 space-y-1">
-          <button onClick={() => onNavigate?.("dashboard")} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-white/15">
-            <SidebarNavIcon navId="dashboard" />
-            Dashboard
-          </button>
-          <button onClick={() => onNavigate?.("attendance")} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-white/15">
-            <SidebarNavIcon navId="attendance" />
-            Attendance
-          </button>
-          <button onClick={() => onNavigate?.("events")} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-white/15">
-            <SidebarNavIcon navId="events" />
-            Events
-          </button>
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors bg-[#055a2e] text-white">
-            <SidebarNavIcon navId="students" />
-            Department
-          </button>
+          {[
+            { id: "dashboard", label: "Dashboard" },
+            { id: "attendance", label: "Attendance" },
+            { id: "attendance2", label: "Attendance 2" },
+            { id: "attendance_students", label: "Students" },
+            { id: "events", label: "Events" },
+            { id: "students", label: "Department" },
+          ].map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onNavigate?.(item.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors ${
+                item.id === "students" ? "bg-[#055a2e] text-white" : "text-green-100 hover:bg-white/15"
+              }`}
+            >
+              <SidebarNavIcon navId={item.id} />
+              {item.label}
+            </button>
+          ))}
           {canOpenCreateUser(isGovernor, role) && (
             <button
               type="button"

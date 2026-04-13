@@ -5,6 +5,7 @@ import LoginDashboard from "./components/LoginDashboard";
 import HomePage from "./components/HomePage";
 import Dashboard from "./components/Dashboard";
 import Attendance from "./components/Attendance";
+import Attendance2 from "./components/Attendance2";
 import Events from "./components/Events";
 import Students from "./components/Students";
 import CreateUserModal from "./components/CreateUserModal";
@@ -82,13 +83,18 @@ function App() {
   };
 
   const handleNavigate = (page) => {
+    const normalizedPage = String(page || "").toLowerCase().trim();
+    if (normalizedPage === "attendance_students") {
+      navigate("/attendance", { state: { attendanceView: "students" } });
+      return;
+    }
     const pageRoutes = {
       dashboard: "/dashboard",
       attendance: "/attendance",
+      attendance2: "/attendance2",
       events: "/events",
       students: "/students",
     };
-    const normalizedPage = String(page || "").toLowerCase().trim();
     navigate(pageRoutes[normalizedPage] || defaultRoute);
   };
 
@@ -163,6 +169,39 @@ function App() {
                 path="/attendance"
                 element={
                   <Attendance
+                    onLogout={handleLogout}
+                    onNavigate={handleNavigate}
+                    onOpenCreateUser={openCreateUser}
+                    isCreateUserOpen={isCreateUserOpen}
+                  />
+                }
+              />
+              <Route
+                path="/attendance2"
+                element={
+                  <Attendance2
+                    onLogout={handleLogout}
+                    onNavigate={handleNavigate}
+                    onOpenCreateUser={openCreateUser}
+                    isCreateUserOpen={isCreateUserOpen}
+                  />
+                }
+              />
+              <Route
+                path="/attendance2/event/:eventId"
+                element={
+                  <Attendance2
+                    onLogout={handleLogout}
+                    onNavigate={handleNavigate}
+                    onOpenCreateUser={openCreateUser}
+                    isCreateUserOpen={isCreateUserOpen}
+                  />
+                }
+              />
+              <Route
+                path="/attendance2/event/:eventId/students"
+                element={
+                  <Attendance2
                     onLogout={handleLogout}
                     onNavigate={handleNavigate}
                     onOpenCreateUser={openCreateUser}
