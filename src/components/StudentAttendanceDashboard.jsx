@@ -179,7 +179,7 @@ function getEventFinePhp(ev) {
 
 function TimeSlot({ value }) {
   const v = String(value ?? "").trim();
-  if (v) return <span className="font-mono text-xs text-gray-800">{v}</span>;
+  if (v) return <span className="font-mono text-xs text-[#07713c]">{v}</span>;
   return <span className="text-amber-700">No record</span>;
 }
 
@@ -406,7 +406,7 @@ export default function StudentAttendanceDashboard() {
 
   if (rosterLoading) {
     return (
-      <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-600">
+      <div className="rounded-xl border border-[#07713c]/30 bg-white p-8 text-center text-sm text-[#07713c]">
         Loading students…
       </div>
     );
@@ -422,7 +422,7 @@ export default function StudentAttendanceDashboard() {
 
   if (!rosterList.length) {
     return (
-      <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-600">
+      <div className="rounded-xl border border-[#07713c]/30 bg-white p-8 text-center text-sm text-[#07713c]">
         No students found for your account scope.
       </div>
     );
@@ -430,7 +430,7 @@ export default function StudentAttendanceDashboard() {
 
   if (!student) {
     return (
-      <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-600">
+      <div className="rounded-xl border border-[#07713c]/30 bg-white p-8 text-center text-sm text-[#07713c]">
         Select a student to view the dashboard.
       </div>
     );
@@ -439,39 +439,39 @@ export default function StudentAttendanceDashboard() {
   return (
     <div className="space-y-6">
       {/* 1. Main summary */}
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-4 text-sm font-semibold text-gray-800">1. Main summary</h3>
+      <section className="rounded-xl border border-[#07713c]/30 bg-white p-5 shadow-sm">
+        <h3 className="mb-4 text-sm font-semibold text-[#07713c]">1. Main summary</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border-2 border-[#008000]/30 bg-green-50/80 p-4 text-center">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-600">Attendance rate ⭐</p>
-            <p className="mt-1 text-4xl font-extrabold tabular-nums text-[#008000]">{student.attendanceRate}%</p>
+          <div className="rounded-lg border-2 border-[#07713c]/30 bg-[#07713c]/10 p-4 text-center">
+            <p className="text-xs font-medium uppercase tracking-wide text-[#07713c]">Attendance rate ⭐</p>
+            <p className="mt-1 text-4xl font-extrabold tabular-nums text-[#07713c]">{student.attendanceRate}%</p>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
-            <p className="text-xs font-medium text-gray-500">Total events</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">{student.totalEvents}</p>
+          <div className="rounded-lg border border-[#07713c]/30 bg-gray-50/80 p-4">
+            <p className="text-xs font-medium text-[#07713c]/85">Total events</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-[#07713c]">{student.totalEvents}</p>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
-            <p className="text-xs font-medium text-gray-500">Events attended</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-green-700">{student.eventsAttended}</p>
+          <div className="rounded-lg border border-[#07713c]/30 bg-gray-50/80 p-4">
+            <p className="text-xs font-medium text-[#07713c]/85">Events attended</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-[#07713c]">{student.eventsAttended}</p>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
-            <p className="text-xs font-medium text-gray-500">Events missed</p>
+          <div className="rounded-lg border border-[#07713c]/30 bg-gray-50/80 p-4">
+            <p className="text-xs font-medium text-[#07713c]/85">Events missed</p>
             <p className="mt-1 text-2xl font-bold tabular-nums text-red-600">{student.eventsMissed}</p>
           </div>
         </div>
-        <p className="mt-4 text-sm text-gray-600">
-          Attended: <strong className="text-gray-900">{student.eventsAttended}</strong> / {student.totalEvents} · Missed:{" "}
-          <strong className="text-gray-900">{student.eventsMissed}</strong>
+        <p className="mt-4 text-sm text-[#07713c]">
+          Attended: <strong className="text-[#07713c]">{student.eventsAttended}</strong> / {student.totalEvents} · Missed:{" "}
+          <strong className="text-[#07713c]">{student.eventsMissed}</strong>
         </p>
 
         <div className="mt-4">
-          <div className="mb-1 flex justify-between text-xs text-gray-600">
+          <div className="mb-1 flex justify-between text-xs text-[#07713c]">
             <span>Progress</span>
             <span className="tabular-nums font-medium">{student.attendanceRate}%</span>
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
             <div
-              className="h-full rounded-full bg-[#008000] transition-all"
+              className="h-full rounded-full bg-[#07713c] transition-all"
               style={{ width: `${Math.min(100, student.attendanceRate)}%` }}
             />
           </div>
@@ -479,38 +479,38 @@ export default function StudentAttendanceDashboard() {
       </section>
 
       {/* All students summary */}
-      <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <section className="rounded-xl border border-[#07713c]/30 bg-white p-4 shadow-sm">
         <div className="mb-3">
-          <h3 className="mb-3 text-sm font-semibold text-gray-800">All students</h3>
+          <h3 className="mb-3 text-sm font-semibold text-[#07713c]">All students</h3>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
             <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
               <div className="relative min-w-0 w-full max-w-md sm:flex-1">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]/60">🔍</span>
                 <input
                   type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search name, ID, or course"
-                  className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-10 text-sm focus:border-[#008000] focus:outline-none focus:ring-2 focus:ring-[#008000]/30 [&::-webkit-search-cancel-button]:hidden"
+                  className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-9 pr-10 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30 [&::-webkit-search-cancel-button]:hidden"
                   aria-label="Search students by name, ID, or course"
                 />
                 {search.trim() !== "" && (
                   <button
                     type="button"
                     onClick={() => setSearch("")}
-                    className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-gray-500 hover:bg-gray-100 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#008000]/30"
+                    className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-[#07713c]/85 hover:bg-gray-100 hover:text-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
                     aria-label="Clear student search"
                   >
                     ×
                   </button>
                 )}
               </div>
-              <label className="flex shrink-0 items-center gap-2 text-xs text-gray-600">
+              <label className="flex shrink-0 items-center gap-2 text-xs text-[#07713c]">
                 Course
                 <select
                   value={rosterCourseFilter}
                   onChange={(e) => setRosterCourseFilter(e.target.value)}
-                  className="h-9 min-w-[10rem] rounded-lg border border-gray-300 bg-white px-2.5 text-sm focus:border-[#008000] focus:outline-none focus:ring-2 focus:ring-[#008000]/30"
+                  className="h-9 min-w-[10rem] rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
                   aria-label="Filter by course"
                 >
                   <option value="all">All courses</option>
@@ -521,12 +521,12 @@ export default function StudentAttendanceDashboard() {
                   ))}
                 </select>
               </label>
-              <label className="flex shrink-0 items-center gap-2 text-xs text-gray-600">
+              <label className="flex shrink-0 items-center gap-2 text-xs text-[#07713c]">
                 Status
                 <select
                   value={rosterStatusFilter}
                   onChange={(e) => setRosterStatusFilter(e.target.value)}
-                  className="h-9 min-w-[9.5rem] rounded-lg border border-gray-300 bg-white px-2.5 text-sm focus:border-[#008000] focus:outline-none focus:ring-2 focus:ring-[#008000]/30"
+                  className="h-9 min-w-[9.5rem] rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
                   aria-label="Filter by activity status"
                 >
                   {ROSTER_STATUS_FILTER_OPTIONS.map((o) => (
@@ -537,7 +537,7 @@ export default function StudentAttendanceDashboard() {
                 </select>
               </label>
             </div>
-            <label className="flex shrink-0 items-center gap-2 text-xs text-gray-600 lg:ml-auto">
+            <label className="flex shrink-0 items-center gap-2 text-xs text-[#07713c] lg:ml-auto">
               Rows per page
               <select
                 value={rosterPageSize}
@@ -545,7 +545,7 @@ export default function StudentAttendanceDashboard() {
                   setRosterPageSize(Number(e.target.value));
                   setRosterPage(1);
                 }}
-                className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-[#008000] focus:outline-none focus:ring-2 focus:ring-[#008000]/30"
+                className="rounded-lg border border-[#07713c]/40 bg-white px-2 py-1.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
               >
                 {ROSTER_PAGE_SIZE_OPTIONS.map((n) => (
                   <option key={n} value={n}>
@@ -556,9 +556,9 @@ export default function StudentAttendanceDashboard() {
             </label>
           </div>
         </div>
-        <div className="overflow-x-auto rounded-lg border border-gray-100">
+        <div className="overflow-x-auto rounded-lg border border-[#07713c]/20">
           <table className="w-full min-w-[520px] text-sm">
-            <thead className="bg-gray-50 text-xs font-medium uppercase text-gray-600">
+            <thead className="bg-gray-50 text-xs font-medium uppercase text-[#07713c]">
               <tr>
                 <th className="px-3 py-2.5 text-left">Student ID</th>
                 <th className="px-3 py-2.5 text-left">Name</th>
@@ -581,24 +581,24 @@ export default function StudentAttendanceDashboard() {
                         setSelectedId(s.id);
                       }
                     }}
-                    className={`cursor-pointer border-t border-gray-100 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#008000]/40 ${
-                      s.id === selectedId ? "bg-green-50" : "hover:bg-gray-50"
+                    className={`cursor-pointer border-t border-[#07713c]/20 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#07713c]/40 ${
+                      s.id === selectedId ? "bg-[#07713c]/10" : "hover:bg-gray-50"
                     }`}
                     aria-selected={s.id === selectedId}
                     title="Click row to view this student"
                   >
-                    <td className="px-3 py-1.5 text-left font-medium leading-snug text-gray-600">{s.id}</td>
-                    <td className="px-3 py-1.5 text-left font-medium leading-snug text-gray-600">{s.name}</td>
-                    <td className="px-3 py-1.5 text-left font-medium leading-snug text-gray-600">
+                    <td className="px-3 py-1.5 text-left font-medium leading-snug text-[#07713c]">{s.id}</td>
+                    <td className="px-3 py-1.5 text-left font-medium leading-snug text-[#07713c]">{s.name}</td>
+                    <td className="px-3 py-1.5 text-left font-medium leading-snug text-[#07713c]">
                       {getRosterCourseDisplayLabel(s.course)}
                     </td>
-                    <td className="px-3 py-1.5 text-center tabular-nums font-semibold leading-snug text-[#008000] whitespace-nowrap">
+                    <td className="px-3 py-1.5 text-center tabular-nums font-semibold leading-snug text-[#07713c] whitespace-nowrap">
                       {s.attendanceRate}%
                     </td>
                     <td className="px-3 py-1.5 text-left">
                       <span className="inline-flex items-center gap-1 text-xs">
                         <span>{t.emoji}</span>
-                        <span className="text-gray-700">{t.label}</span>
+                        <span className="text-[#07713c]">{t.label}</span>
                       </span>
                     </td>
                   </tr>
@@ -607,7 +607,7 @@ export default function StudentAttendanceDashboard() {
             </tbody>
           </table>
         </div>
-        {filteredRoster.length === 0 && <p className="py-4 text-center text-sm text-gray-500">No students match this search.</p>}
+        {filteredRoster.length === 0 && <p className="py-4 text-center text-sm text-[#07713c]/85">No students match this search.</p>}
         <PaginationBar
           totalCount={rosterTotal}
           page={rosterPage}
@@ -621,18 +621,18 @@ export default function StudentAttendanceDashboard() {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_280px]">
         <div className="space-y-6">
           {/* 2. Event history */}
-          <section className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-            <div className="border-b border-gray-200 px-5 py-3">
-              <h3 className="text-sm font-semibold text-gray-800">2. Event history</h3>
+          <section className="rounded-xl border border-[#07713c]/30 bg-white shadow-sm overflow-hidden">
+            <div className="border-b border-[#07713c]/30 px-5 py-3">
+              <h3 className="text-sm font-semibold text-[#07713c]">2. Event history</h3>
               <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
                 <div className="relative h-9 w-full min-w-[min(100%,16rem)] flex-[1_1_16rem] max-w-xl">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]/60">🔍</span>
                   <input
                     type="search"
                     value={historyEventSearch}
                     onChange={(e) => setHistoryEventSearch(e.target.value)}
                     placeholder="Search by event name or date"
-                    className="h-9 w-full rounded-lg border border-gray-300 bg-white py-0 pl-9 pr-10 text-sm focus:border-[#008000] focus:outline-none focus:ring-2 focus:ring-[#008000]/30 [&::-webkit-search-cancel-button]:hidden"
+                    className="h-9 w-full rounded-lg border border-[#07713c]/40 bg-white py-0 pl-9 pr-10 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30 [&::-webkit-search-cancel-button]:hidden"
                     aria-label="Filter events"
                   />
                   {historyEventSearch.trim() !== "" && (
@@ -642,31 +642,31 @@ export default function StudentAttendanceDashboard() {
                         setHistoryEventSearch("");
                         setDebouncedEventSearch("");
                       }}
-                      className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-gray-500 hover:bg-gray-100 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#008000]/30"
+                      className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-[#07713c]/85 hover:bg-gray-100 hover:text-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
                       aria-label="Clear event search"
                     >
                       ×
                     </button>
                   )}
                 </div>
-                <label className="flex shrink-0 items-center gap-2 text-xs text-gray-600">
+                <label className="flex shrink-0 items-center gap-2 text-xs text-[#07713c]">
                   <span className="whitespace-nowrap">Session</span>
                   <select
                     value={historySessionFilter}
                     onChange={(e) => setHistorySessionFilter(e.target.value)}
-                    className="h-9 w-[9.5rem] rounded-lg border border-gray-300 bg-white px-2.5 text-sm focus:border-[#008000] focus:outline-none focus:ring-2 focus:ring-[#008000]/30"
+                    className="h-9 w-[9.5rem] rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
                   >
                     <option value="all">All</option>
                     <option value="Whole day">Whole day</option>
                     <option value="Half day">Half day</option>
                   </select>
                 </label>
-                <label className="flex shrink-0 items-center gap-2 text-xs text-gray-600">
+                <label className="flex shrink-0 items-center gap-2 text-xs text-[#07713c]">
                   <span className="whitespace-nowrap">Period</span>
                   <select
                     value={historyPeriodFilter}
                     onChange={(e) => setHistoryPeriodFilter(e.target.value)}
-                    className="h-9 w-[8.5rem] rounded-lg border border-gray-300 bg-white px-2.5 text-sm focus:border-[#008000] focus:outline-none focus:ring-2 focus:ring-[#008000]/30"
+                    className="h-9 w-[8.5rem] rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
                     title="Half day: filter by morning (AM) or afternoon (PM). Whole day events stay listed for both."
                   >
                     <option value="all">AM &amp; PM</option>
@@ -674,7 +674,7 @@ export default function StudentAttendanceDashboard() {
                     <option value="PM">PM</option>
                   </select>
                 </label>
-                <label className="flex shrink-0 items-center gap-2 text-xs text-gray-600 whitespace-nowrap">
+                <label className="flex shrink-0 items-center gap-2 text-xs text-[#07713c] whitespace-nowrap">
                   Events per page
                   <select
                     value={historyPageSize}
@@ -682,7 +682,7 @@ export default function StudentAttendanceDashboard() {
                       setHistoryPageSize(Number(e.target.value));
                       setHistoryPage(1);
                     }}
-                    className="h-9 min-w-[4.75rem] rounded-lg border border-gray-300 bg-white px-2 text-sm tabular-nums focus:border-[#008000] focus:outline-none focus:ring-2 focus:ring-[#008000]/30"
+                    className="h-9 min-w-[4.75rem] rounded-lg border border-[#07713c]/40 bg-white px-2 text-sm tabular-nums focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
                   >
                     {ROSTER_PAGE_SIZE_OPTIONS.map((n) => (
                       <option key={n} value={n}>
@@ -697,7 +697,7 @@ export default function StudentAttendanceDashboard() {
               <table
                 className={`w-full text-sm ${narrowTimeColumns ? "min-w-[720px]" : "min-w-[960px]"}`}
               >
-                <thead className="bg-gray-50 text-left text-xs font-medium text-gray-600">
+                <thead className="bg-gray-50 text-left text-xs font-medium text-[#07713c]">
                   <tr>
                     <th className="px-4 py-2 align-bottom" rowSpan={2}>
                       Event name
@@ -712,15 +712,15 @@ export default function StudentAttendanceDashboard() {
                       Status
                     </th>
                     {narrowTimeColumns ? (
-                      <th className="border-l border-gray-200 px-4 py-2 text-center" colSpan={2}>
+                      <th className="border-l border-[#07713c]/30 px-4 py-2 text-center" colSpan={2}>
                         {historyPeriodFilter === "PM" ? "PM" : "AM"}
                       </th>
                     ) : (
                       <>
-                        <th className="border-l border-gray-200 px-4 py-2 text-center" colSpan={2}>
+                        <th className="border-l border-[#07713c]/30 px-4 py-2 text-center" colSpan={2}>
                           AM
                         </th>
-                        <th className="border-l border-gray-200 px-4 py-2 text-center" colSpan={2}>
+                        <th className="border-l border-[#07713c]/30 px-4 py-2 text-center" colSpan={2}>
                           PM
                         </th>
                       </>
@@ -732,14 +732,14 @@ export default function StudentAttendanceDashboard() {
                   <tr>
                     {narrowTimeColumns ? (
                       <>
-                        <th className="border-l border-gray-200 px-3 py-1.5">Time in</th>
+                        <th className="border-l border-[#07713c]/30 px-3 py-1.5">Time in</th>
                         <th className="px-3 py-1.5">Time out</th>
                       </>
                     ) : (
                       <>
-                        <th className="border-l border-gray-200 px-3 py-1.5">Time in</th>
+                        <th className="border-l border-[#07713c]/30 px-3 py-1.5">Time in</th>
                         <th className="px-3 py-1.5">Time out</th>
-                        <th className="border-l border-gray-200 px-3 py-1.5">Time in</th>
+                        <th className="border-l border-[#07713c]/30 px-3 py-1.5">Time in</th>
                         <th className="px-3 py-1.5">Time out</th>
                       </>
                     )}
@@ -748,13 +748,13 @@ export default function StudentAttendanceDashboard() {
                 <tbody>
                   {sortedEventHistory.length === 0 ? (
                     <tr>
-                      <td colSpan={historyTableColCount} className="px-4 py-10 text-center text-sm text-gray-500">
+                      <td colSpan={historyTableColCount} className="px-4 py-10 text-center text-sm text-[#07713c]/85">
                         No event records in history.
                       </td>
                     </tr>
                   ) : filteredEventHistory.length === 0 ? (
                     <tr>
-                      <td colSpan={historyTableColCount} className="px-4 py-10 text-center text-sm text-gray-500">
+                      <td colSpan={historyTableColCount} className="px-4 py-10 text-center text-sm text-[#07713c]/85">
                         No events match the current filters.
                       </td>
                     </tr>
@@ -765,18 +765,18 @@ export default function StudentAttendanceDashboard() {
                     const isHalf = row.sessionType === "Half day";
                     const halfDayPeriod = isHalf ? getHalfDayAmPm(ev) : null;
                     const emptyTimeCell = (
-                      <span className="text-gray-400">—</span>
+                      <span className="text-[#07713c]/60">—</span>
                     );
                     const rowIndex = (historyPageSafe - 1) * historyPageSize + i;
                     return (
-                      <tr key={`${ev.name}-${ev.date}-${rowIndex}`} className="border-t border-gray-100">
-                        <td className="px-4 py-2.5 font-medium text-gray-900">{ev.name}</td>
-                        <td className="px-4 py-2.5 whitespace-nowrap text-gray-600">{formatDisplayDate(ev.date)}</td>
-                        <td className="px-4 py-2.5 whitespace-nowrap text-gray-700">{row.sessionType}</td>
+                      <tr key={`${ev.name}-${ev.date}-${rowIndex}`} className="border-t border-[#07713c]/20">
+                        <td className="px-4 py-2.5 font-medium text-[#07713c]">{ev.name}</td>
+                        <td className="px-4 py-2.5 whitespace-nowrap text-[#07713c]">{formatDisplayDate(ev.date)}</td>
+                        <td className="px-4 py-2.5 whitespace-nowrap text-[#07713c]">{row.sessionType}</td>
                         <td className="px-4 py-2.5">
                           <span
                             className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                              ev.attended ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                              ev.attended ? "bg-[#07713c]/10 text-[#07713c]" : "bg-red-100 text-red-800"
                             }`}
                           >
                             {ev.attended ? "Attended" : "Absent"}
@@ -785,7 +785,7 @@ export default function StudentAttendanceDashboard() {
                         {narrowTimeColumns ? (
                           historyPeriodFilter === "PM" ? (
                             <>
-                              <td className="border-l border-gray-200 px-3 py-2.5">
+                              <td className="border-l border-[#07713c]/30 px-3 py-2.5">
                                 <TimeSlot value={isHalf ? row.timeIn : row.pmTimeIn} />
                               </td>
                               <td className="px-3 py-2.5">
@@ -794,7 +794,7 @@ export default function StudentAttendanceDashboard() {
                             </>
                           ) : (
                             <>
-                              <td className="border-l border-gray-200 px-3 py-2.5">
+                              <td className="border-l border-[#07713c]/30 px-3 py-2.5">
                                 <TimeSlot value={isHalf ? row.timeIn : row.amTimeIn} />
                               </td>
                               <td className="px-3 py-2.5">
@@ -805,9 +805,9 @@ export default function StudentAttendanceDashboard() {
                         ) : isHalf ? (
                           halfDayPeriod === "PM" ? (
                             <>
-                              <td className="border-l border-gray-200 px-3 py-2.5">{emptyTimeCell}</td>
+                              <td className="border-l border-[#07713c]/30 px-3 py-2.5">{emptyTimeCell}</td>
                               <td className="px-3 py-2.5">{emptyTimeCell}</td>
-                              <td className="border-l border-gray-200 px-3 py-2.5">
+                              <td className="border-l border-[#07713c]/30 px-3 py-2.5">
                                 <TimeSlot value={row.timeIn} />
                               </td>
                               <td className="px-3 py-2.5">
@@ -816,25 +816,25 @@ export default function StudentAttendanceDashboard() {
                             </>
                           ) : (
                             <>
-                              <td className="border-l border-gray-200 px-3 py-2.5">
+                              <td className="border-l border-[#07713c]/30 px-3 py-2.5">
                                 <TimeSlot value={row.timeIn} />
                               </td>
                               <td className="px-3 py-2.5">
                                 <TimeSlot value={row.timeOut} />
                               </td>
-                              <td className="border-l border-gray-200 px-3 py-2.5">{emptyTimeCell}</td>
+                              <td className="border-l border-[#07713c]/30 px-3 py-2.5">{emptyTimeCell}</td>
                               <td className="px-3 py-2.5">{emptyTimeCell}</td>
                             </>
                           )
                         ) : (
                           <>
-                            <td className="border-l border-gray-200 px-3 py-2.5">
+                            <td className="border-l border-[#07713c]/30 px-3 py-2.5">
                               <TimeSlot value={row.amTimeIn} />
                             </td>
                             <td className="px-3 py-2.5">
                               <TimeSlot value={row.amTimeOut} />
                             </td>
-                            <td className="border-l border-gray-200 px-3 py-2.5">
+                            <td className="border-l border-[#07713c]/30 px-3 py-2.5">
                               <TimeSlot value={row.pmTimeIn} />
                             </td>
                             <td className="px-3 py-2.5">
@@ -846,7 +846,7 @@ export default function StudentAttendanceDashboard() {
                           {fine > 0 ? (
                             <span className="font-semibold text-red-700">₱{fine.toLocaleString("en-PH")}</span>
                           ) : (
-                            <span className="text-gray-400">—</span>
+                            <span className="text-[#07713c]/60">—</span>
                           )}
                         </td>
                       </tr>
@@ -855,10 +855,10 @@ export default function StudentAttendanceDashboard() {
                   )}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t-2 border-gray-200 bg-gray-50">
+                  <tr className="border-t-2 border-[#07713c]/30 bg-gray-50">
                     <td
                       colSpan={historyTableColCount - 1}
-                      className="px-4 py-3 text-right text-xs font-semibold text-gray-700"
+                      className="px-4 py-3 text-right text-xs font-semibold text-[#07713c]"
                     >
                       {historyFiltersActive ? "Total penalties (matching filters)" : "Total penalties (event history)"}
                     </td>
@@ -886,14 +886,14 @@ export default function StudentAttendanceDashboard() {
           </section>
 
           {/* 3. Status indicator */}
-          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-gray-800">3. Status indicator</h3>
+          <section className="rounded-xl border border-[#07713c]/30 bg-white p-5 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-[#07713c]">3. Status indicator</h3>
             <div className="flex flex-wrap items-center gap-3 text-sm">
               <span className="text-lg">{tier.emoji}</span>
-              <span className="font-semibold text-gray-900">{tier.label}</span>
-              <span className="text-gray-500">({tier.range})</span>
+              <span className="font-semibold text-[#07713c]">{tier.label}</span>
+              <span className="text-[#07713c]/85">({tier.range})</span>
             </div>
-            <ul className="mt-3 space-y-1 text-xs text-gray-600">
+            <ul className="mt-3 space-y-1 text-xs text-[#07713c]">
               <li>🟢 Active (90–100%)</li>
               <li>🟡 Moderate (70–89%)</li>
               <li>🔴 Inactive (&lt;70%)</li>
@@ -906,93 +906,71 @@ export default function StudentAttendanceDashboard() {
           </section>
 
           {/* 4. Participation insights */}
-          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-4 text-sm font-semibold text-gray-800">4. Participation insights</h3>
+          <section className="rounded-xl border border-[#07713c]/30 bg-white p-5 shadow-sm">
+            <h3 className="mb-4 text-sm font-semibold text-[#07713c]">4. Participation insights</h3>
             <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-lg bg-gray-50 px-3 py-2">
-                <dt className="text-xs text-gray-500">Current attendance streak</dt>
-                <dd className="text-sm font-semibold text-gray-900">
+                <dt className="text-xs text-[#07713c]/85">Current attendance streak</dt>
+                <dd className="text-sm font-semibold text-[#07713c]">
                   {(student.streak ?? 0) > 0
                     ? `Attended ${student.streak} event${student.streak === 1 ? "" : "s"} in a row`
                     : "No active streak"}
                 </dd>
               </div>
               <div className="rounded-lg bg-gray-50 px-3 py-2">
-                <dt className="text-xs text-gray-500">Participation trend</dt>
+                <dt className="text-xs text-[#07713c]/85">Participation trend</dt>
                 <dd
                   className={`text-sm font-semibold ${
-                    student.participationTrend === "Increasing" ? "text-green-700" : "text-amber-700"
+                    student.participationTrend === "Increasing" ? "text-[#07713c]" : "text-amber-700"
                   }`}
                 >
                   {student.participationTrend === "Increasing" ? "📈 Increasing" : "📉 Decreasing"}
                 </dd>
               </div>
               <div className="rounded-lg bg-gray-50 px-3 py-2">
-                <dt className="text-xs text-gray-500">Last attended event</dt>
-                <dd className="text-sm font-medium text-gray-900">
+                <dt className="text-xs text-[#07713c]/85">Last attended event</dt>
+                <dd className="text-sm font-medium text-[#07713c]">
                   {student.lastAttendedEvent ? (
                     <>
                       {student.lastAttendedEvent.name}{" "}
-                      <span className="text-gray-500">
+                      <span className="text-[#07713c]/85">
                         ({formatDisplayDate(student.lastAttendedEvent.date)})
                       </span>
                     </>
                   ) : (
-                    <span className="text-gray-500">—</span>
+                    <span className="text-[#07713c]/85">—</span>
                   )}
                 </dd>
               </div>
               <div className="rounded-lg bg-gray-50 px-3 py-2">
-                <dt className="text-xs text-gray-500">Last missed event</dt>
-                <dd className="text-sm font-medium text-gray-900">
+                <dt className="text-xs text-[#07713c]/85">Last missed event</dt>
+                <dd className="text-sm font-medium text-[#07713c]">
                   {student.lastMissedEvent ? (
                     <>
                       {student.lastMissedEvent.name}{" "}
-                      <span className="text-gray-500">
+                      <span className="text-[#07713c]/85">
                         ({formatDisplayDate(student.lastMissedEvent.date)})
                       </span>
                     </>
                   ) : (
-                    <span className="text-gray-500">—</span>
+                    <span className="text-[#07713c]/85">—</span>
                   )}
                 </dd>
-              </div>
-              <div className="rounded-lg bg-gray-50 px-3 py-2 sm:col-span-2">
-                <dt className="text-xs text-gray-500">Most missed event type</dt>
-                <dd className="text-sm font-semibold text-gray-900">{student.mostMissedEventType ?? "—"}</dd>
               </div>
             </dl>
           </section>
 
-          {/* 6. Event type breakdown */}
-          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-4 text-sm font-semibold text-gray-800">6. Event type breakdown</h3>
-            <div className="space-y-3">
-              {(student.eventTypeBreakdown ?? []).map((row) => (
-                <div key={row.type}>
-                  <div className="mb-1 flex justify-between text-xs">
-                    <span className="font-medium text-gray-700">{row.type}</span>
-                    <span className="tabular-nums text-[#008000]">{row.rate}%</span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
-                    <div className="h-full rounded-full bg-[#008000]/80" style={{ width: `${row.rate}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
           {/* 7. Alerts */}
           {(student.alerts ?? []).length > 0 && (
-            <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="mb-3 text-sm font-semibold text-gray-800">7. Alerts &amp; notifications</h3>
+            <section className="rounded-xl border border-[#07713c]/30 bg-white p-5 shadow-sm">
+              <h3 className="mb-3 text-sm font-semibold text-[#07713c]">7. Alerts &amp; notifications</h3>
               <ul className="space-y-2">
                 {(student.alerts ?? []).map((a, i) => (
                   <li
                     key={i}
                     className={`rounded-lg px-3 py-2 text-sm ${
                       a.tone === "success"
-                        ? "border border-green-200 bg-green-50 text-green-900"
+                        ? "border border-[#07713c]/25 bg-[#07713c]/5 text-[#07713c]"
                         : a.tone === "danger"
                           ? "border border-red-200 bg-red-50 text-red-900"
                           : "border border-amber-200 bg-amber-50 text-amber-900"
@@ -1007,11 +985,11 @@ export default function StudentAttendanceDashboard() {
         </div>
 
         <aside className="space-y-4">
-          <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="mb-4 rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Selected student</p>
-              <p className="mt-1 font-semibold text-gray-900">{student.name}</p>
-              <p className="text-xs text-gray-500">
+          <section className="rounded-xl border border-[#07713c]/30 bg-white p-4 shadow-sm">
+            <div className="mb-4 rounded-lg border border-[#07713c]/20 bg-gray-50/80 px-3 py-2.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#07713c]/85">Selected student</p>
+              <p className="mt-1 font-semibold text-[#07713c]">{student.name}</p>
+              <p className="text-xs text-[#07713c]/85">
                 {student.id} · {getRosterCourseDisplayLabel(student.course)}
               </p>
             </div>
@@ -1020,16 +998,16 @@ export default function StudentAttendanceDashboard() {
                 {pieData && <Pie data={pieData} options={pieOptions} />}
               </div>
             ) : (
-              <p className="mb-4 text-center text-xs text-gray-500">No events to show.</p>
+              <p className="mb-4 text-center text-xs text-[#07713c]/85">No events to show.</p>
             )}
             <div>
-              <div className="mb-1 flex justify-between text-xs text-gray-600">
+              <div className="mb-1 flex justify-between text-xs text-[#07713c]">
                 <span>Progress</span>
-                <span className="tabular-nums font-medium text-[#008000]">{student.attendanceRate}%</span>
+                <span className="tabular-nums font-medium text-[#07713c]">{student.attendanceRate}%</span>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
                 <div
-                  className="h-full rounded-full bg-[#008000] transition-all"
+                  className="h-full rounded-full bg-[#07713c] transition-all"
                   style={{ width: `${Math.min(100, student.attendanceRate)}%` }}
                 />
               </div>

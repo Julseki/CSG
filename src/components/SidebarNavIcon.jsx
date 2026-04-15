@@ -23,16 +23,6 @@ function IconDashboard(props) {
   );
 }
 
-function IconAttendance(props) {
-  return (
-    <svg {...common} {...props}>
-      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
-      <rect x="9" y="3" width="6" height="4" rx="1" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-  );
-}
-
 function IconEvents(props) {
   return (
     <svg {...common} {...props}>
@@ -78,8 +68,7 @@ function IconAnalytics(props) {
 
 const MAP = {
   dashboard: IconDashboard,
-  attendance: IconAttendance,
-  attendance2: IconAnalytics,
+  attendance: IconAnalytics,
   events: IconEvents,
   students: IconDepartment,
   attendance_students: IconStudents,

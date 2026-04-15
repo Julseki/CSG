@@ -306,7 +306,6 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
   const navItems = [
     { id: "dashboard", label: "Dashboard" },
     { id: "attendance", label: "Attendance" },
-    { id: "attendance2", label: "Attendance 2" },
     { id: "attendance_students", label: "Students" },
     { id: "events", label: "Events" },
     { id: "students", label: "Department" },

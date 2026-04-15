@@ -25,7 +25,7 @@ const STUDENT_STATS = [
 ];
 
 function getBadgeClass(status) {
-  if (status === "Present") return "bg-green-100 text-green-800";
+  if (status === "Present") return "bg-[#07713c]/10 text-[#07713c]";
   if (status === "Late") return "bg-orange-100 text-orange-800";
   return "bg-red-100 text-red-800";
 }
@@ -34,6 +34,7 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
   const { role, isGovernor, governorScope } = useGovernorScope();
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("All Departments");
+  const [major, setMajor] = useState(ALL_MAJORS);
   const [year, setYear] = useState("All Years");
   const [students, setStudents] = useState(loadDepartmentStudents);
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -79,24 +80,41 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
     }
   }, [students, selectedStudent]);
 
+  const selectedCourseKey = department === "All Departments" ? "" : String(department).toUpperCase();
+  const majorOptions = selectedCourseKey ? (COURSE_MAJOR_OPTIONS[selectedCourseKey] ?? []) : [];
+
+  useEffect(() => {
+    if (major === ALL_MAJORS) return;
+    if (!majorOptions.includes(major)) {
+      setMajor(ALL_MAJORS);
+    }
+  }, [department, major, majorOptions]);
+
   const filteredStudents = useMemo(() => {
     const q = search.toLowerCase().trim();
     return students.filter((student) => {
+      const studentCourse = String(student.course ?? "").toUpperCase();
+      const studentMajor = String(student.major ?? student.dept ?? "").trim();
       const matchesSearch =
         !q ||
         student.name.toLowerCase().includes(q) ||
         student.id.toLowerCase().includes(q) ||
         student.course.toLowerCase().includes(q) ||
-        student.dept.toLowerCase().includes(q);
+        student.dept.toLowerCase().includes(q) ||
+        studentMajor.toLowerCase().includes(q);
       const matchesDepartment = isCsgPresident(role)
         ? true
         : isGovernor && governorScope
           ? governorScope.courses.includes(student.course)
           : department === "All Departments" || student.course === department;
       const matchesYear = year === "All Years" || student.year === year;
-      return matchesSearch && matchesDepartment && matchesYear;
+      const hasMappedMajors = majorOptions.length > 0;
+      const matchesMajor =
+        major === ALL_MAJORS ||
+        (hasMappedMajors && studentCourse === selectedCourseKey && studentMajor.toLowerCase() === major.toLowerCase());
+      return matchesSearch && matchesDepartment && matchesYear && matchesMajor;
     });
-  }, [search, department, year, students, isGovernor, governorScope, role]);
+  }, [search, department, year, major, students, isGovernor, governorScope, role, majorOptions, selectedCourseKey]);
 
   const handleAddStudent = () => {
     if (!newStudent.id.trim() || !newStudent.name.trim() || !newStudent.course.trim() || !newStudent.year.trim()) {
@@ -139,7 +157,6 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
           {[
             { id: "dashboard", label: "Dashboard" },
             { id: "attendance", label: "Attendance" },
-            { id: "attendance2", label: "Attendance 2" },
             { id: "attendance_students", label: "Students" },
             { id: "events", label: "Events" },
             { id: "students", label: "Department" },
@@ -212,7 +229,7 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
       <div className="flex-1 flex flex-col min-w-0">
         <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#008000] leading-tight">
+            <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#07713c] leading-tight">
               Department
             </h1>
           </div>
@@ -231,9 +248,9 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             {STUDENT_STATS.map((item) => (
               <div key={item.label} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
-                <p className="text-2xl font-bold text-[#008000]">{item.value}</p>
-                <p className="text-sm font-medium text-gray-800">{item.label}</p>
-                <p className="text-xs text-gray-500">{item.sub}</p>
+                <p className="text-2xl font-bold text-[#07713c]">{item.value}</p>
+                <p className="text-sm font-medium text-[#07713c]">{item.label}</p>
+                <p className="text-xs text-[#07713c]/80">{item.sub}</p>
               </div>
             ))}
           </div>
@@ -242,7 +259,7 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
             <section className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
               <div className="p-4 border-b border-gray-200 flex flex-wrap gap-3 items-center">
                 <div className="relative flex-1 min-w-[220px]">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]/60">🔍</span>
                   <input
                     type="text"
                     value={search}
@@ -252,11 +269,11 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
                   />
                 </div>
                 {isGovernor && governorScope ? (
-                  <div className="px-4 py-2 border border-gray-300 rounded-lg text-sm bg-gray-100 text-gray-700">
+                  <div className="px-4 py-2 border border-gray-300 rounded-lg text-sm bg-gray-100 text-[#07713c]">
                     {governorScope.label}
                   </div>
                 ) : isCsgPresident(role) ? (
-                  <div className="px-4 py-2 border border-gray-300 rounded-lg text-sm bg-gray-100 text-gray-700">
+                  <div className="px-4 py-2 border border-gray-300 rounded-lg text-sm bg-gray-100 text-[#07713c]">
                     All departments
                   </div>
                 ) : (
@@ -277,23 +294,36 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
                   <option>3rd Year</option>
                   <option>4th Year</option>
                 </select>
+                <select
+                  value={major}
+                  onChange={(e) => setMajor(e.target.value)}
+                  disabled={majorOptions.length === 0}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-[#07713c]/60"
+                >
+                  <option>{ALL_MAJORS}</option>
+                  {majorOptions.map((majorOption) => (
+                    <option key={majorOption} value={majorOption}>
+                      {majorOption}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Student ID</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Name</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Course</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Year</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
+                      <th className="text-left py-3 px-4 font-medium text-[#07713c]">Student ID</th>
+                      <th className="text-left py-3 px-4 font-medium text-[#07713c]">Name</th>
+                      <th className="text-left py-3 px-4 font-medium text-[#07713c]">Course</th>
+                      <th className="text-left py-3 px-4 font-medium text-[#07713c]">Year</th>
+                      <th className="text-left py-3 px-4 font-medium text-[#07713c]">Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredStudents.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="py-8 px-4 text-center text-gray-500 text-sm">
+                        <td colSpan={5} className="py-8 px-4 text-center text-[#07713c]/85 text-sm">
                           No students yet. Use <strong>Add Students</strong> to create a record.
                         </td>
                       </tr>
@@ -304,10 +334,10 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
                         onClick={() => setSelectedStudent(student)}
                         className={`cursor-pointer border-b border-gray-100 hover:bg-gray-50 ${selectedStudent?.id === student.id ? "bg-green-50" : ""}`}
                       >
-                        <td className="py-3 px-4">{student.id}</td>
-                        <td className="py-3 px-4 font-medium">{student.name}</td>
-                        <td className="py-3 px-4">{student.course}</td>
-                        <td className="py-3 px-4">{student.year}</td>
+                        <td className="py-3 px-4 text-[#07713c]">{student.id}</td>
+                        <td className="py-3 px-4 font-medium text-[#07713c]">{student.name}</td>
+                        <td className="py-3 px-4 text-[#07713c]">{student.course}</td>
+                        <td className="py-3 px-4 text-[#07713c]">{student.year}</td>
                         <td className="py-3 px-4">
                           <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getBadgeClass(student.status)}`}>
                             {student.status}
@@ -322,41 +352,41 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
             </section>
 
             <aside className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-              <h2 className="text-sm font-semibold text-gray-800 mb-4">Selected Department</h2>
+              <h2 className="text-sm font-semibold text-[#07713c] mb-4">Selected Department</h2>
               {!selectedStudent ? (
-                <p className="text-sm text-gray-500">Select a row in the table or add a student to see details.</p>
+                <p className="text-sm text-[#07713c]/85">Select a row in the table or add a student to see details.</p>
               ) : (
                 <>
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-green-100 text-[#008000] flex items-center justify-center font-bold">
+                    <div className="w-12 h-12 rounded-full bg-[#07713c]/10 text-[#07713c] flex items-center justify-center font-bold">
                       {selectedStudent.name.split(",")[0].slice(0, 1)}
                       {selectedStudent.name.split(" ")[1]?.slice(0, 1)}
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900">{selectedStudent.name}</p>
-                      <p className="text-xs text-gray-500">{selectedStudent.id}</p>
+                      <p className="font-semibold text-[#07713c]">{selectedStudent.name}</p>
+                      <p className="text-xs text-[#07713c]/85">{selectedStudent.id}</p>
                     </div>
                   </div>
 
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center justify-between gap-4 py-1.5 border-b border-gray-100">
-                      <span className="text-gray-500">Course</span>
-                      <span className="font-medium text-gray-800 text-right">{selectedStudent.course}</span>
+                      <span className="text-[#07713c]/85">Course</span>
+                      <span className="font-medium text-[#07713c] text-right">{selectedStudent.course}</span>
                     </div>
                     <div className="flex items-center justify-between gap-4 py-1.5 border-b border-gray-100">
-                      <span className="text-gray-500">Year Level</span>
-                      <span className="font-medium text-gray-800 text-right">{selectedStudent.year}</span>
+                      <span className="text-[#07713c]/85">Year Level</span>
+                      <span className="font-medium text-[#07713c] text-right">{selectedStudent.year}</span>
                     </div>
                     <div className="flex items-center justify-between gap-4 py-1.5 border-b border-gray-100">
-                      <span className="text-gray-500">Section</span>
-                      <span className="font-medium text-gray-800 text-right">{selectedStudent.section}</span>
+                      <span className="text-[#07713c]/85">Section</span>
+                      <span className="font-medium text-[#07713c] text-right">{selectedStudent.section}</span>
                     </div>
                     <div className="flex items-center justify-between gap-4 py-1.5">
-                      <span className="text-gray-500">Attendance</span>
+                      <span className="text-[#07713c]/85">Attendance</span>
                       <span
                         className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
                           selectedStudent.status === "Present"
-                            ? "bg-green-100 text-green-800"
+                            ? "bg-[#07713c]/10 text-[#07713c]"
                             : selectedStudent.status === "Late"
                               ? "bg-orange-100 text-orange-800"
                               : "bg-red-100 text-red-800"
@@ -371,7 +401,7 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
                     <button
                       type="button"
                       onClick={() => setShowProfileModal(true)}
-                      className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
+                      className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-[#07713c] hover:bg-gray-50"
                     >
                       View Profile
                     </button>
@@ -453,7 +483,7 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
                   setShowAddModal(false);
                   setNewStudent({ id: "", name: "", course: "", year: "" });
                 }}
-                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700"
+                className="px-4 py-2 rounded-lg border border-gray-300 text-[#07713c]"
               >
                 Close
               </button>
@@ -475,7 +505,7 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
             <div className="bg-[#008000] px-5 py-3">
               <h3 className="text-white font-semibold">Department Profile</h3>
             </div>
-            <div className="p-4 space-y-2.5 text-sm">
+            <div className="p-4 space-y-2.5 text-sm text-[#07713c]">
               <p><span className="font-semibold">Name:</span> {selectedStudent.name}</p>
               <p><span className="font-semibold">ID:</span> {selectedStudent.id}</p>
               <p><span className="font-semibold">Course:</span> {selectedStudent.course}</p>
@@ -506,7 +536,7 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
               </div>
             </div>
             <div className="px-4 py-3 border-t border-gray-200 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowEditModal(false)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700">
+              <button type="button" onClick={() => setShowEditModal(false)} className="px-4 py-2 rounded-lg border border-gray-300 text-[#07713c]">
                 Cancel
               </button>
               <button type="button" onClick={() => setShowEditModal(false)} className="px-4 py-2 rounded-lg bg-[#008000] text-white">
@@ -524,12 +554,12 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
               <h3 className="text-white font-semibold">Delete Student</h3>
             </div>
             <div className="p-5 space-y-3 text-sm">
-              <p className="text-gray-700">
+              <p className="text-[#07713c]">
                 Are you sure you want to delete{" "}
                 <span className="font-semibold">{selectedStudent.name}</span> (
                 <span className="font-mono">{selectedStudent.id}</span>)?
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-[#07713c]/85">
                 This action will remove the record from the list.
               </p>
             </div>
@@ -537,7 +567,7 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700"
+                className="px-4 py-2 rounded-lg border border-gray-300 text-[#07713c]"
               >
                 Cancel
               </button>
@@ -566,7 +596,7 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
               </h3>
             </div>
             <div className="p-5 space-y-4 text-sm">
-              <p className="text-gray-600">
+              <p className="text-[#07713c]">
                 {reportMode === "settings"
                   ? "Settings are not implemented yet (this is a placeholder)."
                   : reportMode === "import"
@@ -580,10 +610,10 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
                     className="rounded-xl border border-gray-300 p-4 text-left hover:border-[#008000] hover:bg-green-50 transition-colors"
                     onClick={() => setShowReportModal(false)}
                   >
-                    <p className="font-semibold text-gray-900">
+                    <p className="font-semibold text-[#07713c]">
                       {reportMode === "import" ? "Import Attendance" : "Export Attendance"}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-[#07713c]/85">
                       {reportMode === "import"
                         ? "Import attendance records into the system."
                         : "Download attendance records for reports."}
@@ -594,10 +624,10 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
                     className="rounded-xl border border-gray-300 p-4 text-left hover:border-[#008000] hover:bg-green-50 transition-colors"
                     onClick={() => setShowReportModal(false)}
                   >
-                    <p className="font-semibold text-gray-900">
+                    <p className="font-semibold text-[#07713c]">
                       {reportMode === "import" ? "Import Students" : "Export Students"}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-[#07713c]/85">
                       {reportMode === "import"
                         ? "Import student records into the system."
                         : "Download student or department records."}

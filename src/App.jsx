@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import LoginDashboard from "./components/LoginDashboard";
 import HomePage from "./components/HomePage";
 import Dashboard from "./components/Dashboard";
 import Attendance from "./components/Attendance";
-import Attendance2 from "./components/Attendance2";
+import StudentAttendancePage from "./components/StudentAttendancePage";
 import Events from "./components/Events";
 import Students from "./components/Students";
 import CreateUserModal from "./components/CreateUserModal";
@@ -13,6 +13,16 @@ import StudentTimeInOut from "./components/StudentTimeInOut";
 import { AUTH_SESSION_QUERY_KEY, useAuthSession, useLogout } from "./hooks/auth";
 import { CURRENT_EVENT_QUERY_KEY } from "./hooks/useGetCurrentEvent";
 import { EVENTS_QUERY_KEY } from "./hooks/useGetEvents";
+
+function RedirectAttendance2EventToAttendance() {
+  const { eventId } = useParams();
+  return <Navigate to={`/attendance/event/${eventId}`} replace />;
+}
+
+function RedirectAttendance2EventStudentsToAttendance() {
+  const { eventId } = useParams();
+  return <Navigate to={`/attendance/event/${eventId}/students`} replace />;
+}
 
 function App() {
   const navigate = useNavigate();
@@ -85,15 +95,14 @@ function App() {
   const handleNavigate = (page) => {
     const normalizedPage = String(page || "").toLowerCase().trim();
     if (normalizedPage === "attendance_students") {
-      navigate("/attendance", { state: { attendanceView: "students" } });
+      navigate("/students");
       return;
     }
     const pageRoutes = {
       dashboard: "/dashboard",
       attendance: "/attendance",
-      attendance2: "/attendance2",
       events: "/events",
-      students: "/students",
+      students: "/department",
     };
     navigate(pageRoutes[normalizedPage] || defaultRoute);
   };
@@ -165,6 +174,15 @@ function App() {
                   />
                 }
               />
+              <Route path="/attendance2" element={<Navigate to="/attendance" replace />} />
+              <Route
+                path="/attendance2/event/:eventId"
+                element={<RedirectAttendance2EventToAttendance />}
+              />
+              <Route
+                path="/attendance2/event/:eventId/students"
+                element={<RedirectAttendance2EventStudentsToAttendance />}
+              />
               <Route
                 path="/attendance"
                 element={
@@ -177,9 +195,9 @@ function App() {
                 }
               />
               <Route
-                path="/attendance2"
+                path="/students"
                 element={
-                  <Attendance2
+                  <StudentAttendancePage
                     onLogout={handleLogout}
                     onNavigate={handleNavigate}
                     onOpenCreateUser={openCreateUser}
@@ -188,9 +206,9 @@ function App() {
                 }
               />
               <Route
-                path="/attendance2/event/:eventId"
+                path="/attendance/event/:eventId"
                 element={
-                  <Attendance2
+                  <Attendance
                     onLogout={handleLogout}
                     onNavigate={handleNavigate}
                     onOpenCreateUser={openCreateUser}
@@ -199,9 +217,9 @@ function App() {
                 }
               />
               <Route
-                path="/attendance2/event/:eventId/students"
+                path="/attendance/event/:eventId/students"
                 element={
-                  <Attendance2
+                  <Attendance
                     onLogout={handleLogout}
                     onNavigate={handleNavigate}
                     onOpenCreateUser={openCreateUser}
@@ -221,7 +239,7 @@ function App() {
                 }
               />
               <Route
-                path="/students"
+                path="/department"
                 element={
                   <Students
                     onLogout={handleLogout}
