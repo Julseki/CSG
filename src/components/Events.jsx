@@ -5,6 +5,7 @@ import SidebarNavIcon from "./SidebarNavIcon";
 import UserCircleIcon from "./UserCircleIcon";
 import { useGetAllEvents } from "../hooks/useGetAllEvents";
 import { useEditEvent } from "../hooks/useEditEvent";
+import { useDeleteEvent } from "../hooks/useDeleteEvent";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { canOpenCreateUser, getDashboardRoleLabel } from "../utils/roles";
 import { formatEventDateForDisplay, formatSqlTimeForDisplay } from "../hooks/useGetEvents";
@@ -357,6 +358,7 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
   const { data: apiEvents = [], isPending: isEventsLoading, isError: isEventsError } =
     useGetAllEvents();
   const editEventMutation = useEditEvent();
+  const deleteEventMutation = useDeleteEvent();
   const { role, isGovernor, governorScope } = useGovernorScope();
   const [showLogout, setShowLogout] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -451,9 +453,31 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
 
   const handleDeleteSelectedEvent = () => {
     if (!canManageEvents) return;
-    setDeleteError(null);
     if (!selectedEvent) return;
-    setDeleteError("Delete is not wired to the backend yet — this is UI only.");
+    setDeleteError(null);
+    const eventId = selectedEvent.id ?? selectedEvent._id;
+    if (eventId == null || String(eventId).trim() === "") {
+      setDeleteError("Missing event id.");
+      return;
+    }
+
+    deleteEventMutation.mutate(
+      { id: eventId },
+      {
+        onSuccess: () => {
+          setShowDeleteConfirm(false);
+          closeEventModal();
+          setDeleteError(null);
+        },
+        onError: (error) => {
+          const msg =
+            error?.response?.data?.message ??
+            error?.message ??
+            "Could not delete event.";
+          setDeleteError(msg);
+        },
+      },
+    );
   };
 
   const saveEditableEvent = () => {
@@ -1053,7 +1077,7 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 text-sm [scrollbar-width:thin] [scrollbar-color:rgba(7,113,60,0.28)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#07713c]/30 [&::-webkit-scrollbar-thumb]:hover:bg-[#07713c]/40 [&::-webkit-scrollbar-track]:bg-transparent sm:p-5">
               {eventModalMode === "edit" && (
                 <p className="rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.06] px-3 py-2 text-xs text-[#07713c]">
-                  Save is connected to the API. Delete is still frontend-only.
+                  Save and delete are connected to the API.
                 </p>
               )}
               {editSaveError && (
@@ -1251,7 +1275,7 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
                 Delete <span className="font-semibold">{selectedEvent.name}</span>?
               </p>
               <p className="text-xs text-gray-500">
-                Backend delete is not implemented yet — this confirms intent only.
+                This will permanently delete the event and its audience targets.
               </p>
               {deleteError && <p className="text-xs text-red-700 bg-red-50 border border-red-200 p-2 rounded-lg">{deleteError}</p>}
             </div>
@@ -1259,6 +1283,7 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleteEventMutation.isPending}
                 className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
               >
                 Cancel
@@ -1266,9 +1291,10 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
               <button
                 type="button"
                 onClick={handleDeleteSelectedEvent}
-                className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700"
+                disabled={deleteEventMutation.isPending}
+                className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Delete
+                {deleteEventMutation.isPending ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>
