@@ -89,7 +89,12 @@ export default function AddEvent({ onBack, onNext }) {
   };
 
   const buildEventPayload = () => {
-    const durationLabel = duration === "whole" ? "Whole Day" : "Half Day";
+    const durationLabel =
+      duration === "whole"
+        ? "Whole Day"
+        : useAmHalf
+          ? "AM Only"
+          : "PM Only";
     const slots = [];
 
     const useAm = duration === "whole" || (duration === "half" && useAmHalf);

@@ -312,7 +312,7 @@ export default function HomePage({
           <p className="text-xs font-semibold text-green-100 uppercase tracking-wider mb-2 text-center">
             {sidebarEventHeading}
           </p>
-          <div className="rounded-lg p-4 border border-white/20 bg-black/15 text-center">
+          <div className="rounded-xl border border-white/25 bg-white/10 p-4 text-center shadow-sm">
             {currentEvent ? (
               <button
                 type="button"
@@ -323,7 +323,7 @@ export default function HomePage({
                 <div className="mt-1.5 text-xs font-medium text-[#FFC90B]">
                   {academicYearFromEventDate(currentEvent.date)}
                 </div>
-                <div className="mt-1.5 text-[11px] text-green-100">{currentEvent.venue || "—"}</div>
+                <div className="mt-1.5 text-xs text-green-100">{currentEvent.venue || "—"}</div>
               </button>
             ) : (
               <>
@@ -341,12 +341,12 @@ export default function HomePage({
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
-        <header className="shrink-0 bg-white border-b border-gray-200 px-5 sm:px-6 py-3 flex items-center justify-between gap-4">
+        <header className="shrink-0 bg-white border-b border-[#07713c]/20 px-5 sm:px-6 py-3 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#008000] leading-tight">
+            <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#07713c] leading-tight">
               SELECT DEPARTMENT
             </h1>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-[#07713c]/75 mt-0.5">
               Choose Your College To Log Your Attendance
             </p>
           </div>
@@ -356,7 +356,7 @@ export default function HomePage({
               <button
                 type="button"
                 onClick={() => setShowSettingsMenu((v) => !v)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-[#008000] hover:bg-green-50"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#07713c]/25 text-[#07713c] hover:bg-[#07713c]/8"
                 aria-label="Menu"
                 aria-expanded={showSettingsMenu}
                 aria-haspopup="true"
@@ -365,12 +365,12 @@ export default function HomePage({
                 <span className="text-lg">⚙</span>
               </button>
               {showSettingsMenu && (
-                <div className="absolute right-0 top-full mt-1.5 z-30 min-w-[180px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                <div className="absolute right-0 top-full mt-1.5 z-30 min-w-[180px] rounded-lg border border-[#07713c]/25 bg-white py-1 shadow-lg">
                   {isLoggedIn ? (
                     <>
                       <button
                         type="button"
-                        className="block w-full px-4 py-2.5 text-left text-sm text-gray-800 hover:bg-green-50"
+                        className="block w-full px-4 py-2.5 text-left text-sm text-[#07713c] hover:bg-[#07713c]/8"
                         onClick={() => {
                           setShowSettingsMenu(false);
                           onGoDashboard?.();
@@ -392,7 +392,7 @@ export default function HomePage({
                   ) : (
                     <button
                       type="button"
-                      className="block w-full px-4 py-2.5 text-left text-sm text-gray-800 hover:bg-green-50"
+                      className="block w-full px-4 py-2.5 text-left text-sm text-[#07713c] hover:bg-[#07713c]/8"
                       onClick={() => {
                         setShowSettingsMenu(false);
                         onLogin?.();
@@ -408,7 +408,7 @@ export default function HomePage({
         </header>
 
         <main className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
-          <div className="mb-4">
+          <section className="mb-4 rounded-xl border border-[#07713c]/30 bg-white p-4 shadow-sm">
             {currentEvent &&
               String(currentEvent.status ?? "").trim().toLowerCase() === "upcoming" && (
                 <p className="mb-2 rounded-lg border border-amber-400/70 bg-amber-100 px-3 py-2 text-center text-xs font-bold uppercase tracking-wide text-amber-950 shadow-sm">
@@ -419,39 +419,79 @@ export default function HomePage({
               event={currentEvent}
               onClick={currentEvent ? () => setDetailEvent(currentEvent) : undefined}
             />
-          </div>
+          </section>
 
-          <div className="mb-6">
-            <h2 className="text-sm font-semibold text-gray-800 mb-3">Upcoming events</h2>
+          <section className="mb-6 rounded-xl bg-white p-4 shadow-sm">
+            <h2 className="mb-3 text-base font-semibold text-[#07713c]">Upcoming events</h2>
             {isEventsLoading ? (
-              <p className="text-sm text-gray-500">Loading events…</p>
+              <p className="text-sm text-[#07713c]/75">Loading events…</p>
             ) : upcomingEvents.length === 0 ? (
-              <p className="text-sm text-gray-500">No upcoming events scheduled.</p>
+              <p className="text-sm text-[#07713c]/75">No upcoming events scheduled.</p>
             ) : (
-              <ul className="grid gap-3 sm:grid-cols-2">
+              <ul className="grid gap-3 grid-cols-1">
                 {upcomingEventsShown.map((ev) => (
                   <li key={ev.id ?? `${ev.name}-${ev.date}`}>
+                    <p className="mb-1.5 px-1 text-base font-semibold text-[#07713c]/90">
+                      {formatEventDateForDisplay(ev.date)}
+                    </p>
                     <button
                       type="button"
                       onClick={() => setDetailEvent(ev)}
-                      className="w-full rounded-xl border border-gray-200 bg-white p-4 shadow-sm text-left transition hover:border-[#008000]/40 hover:bg-green-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008000] focus-visible:ring-offset-2"
+                      className="w-full overflow-hidden rounded-xl border border-[#07713c]/30 bg-[#f6fff8] text-left shadow-sm transition hover:border-[#07713c]/45 hover:bg-[#eefaf2] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#07713c] focus-visible:ring-offset-2"
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="text-sm font-semibold text-gray-900 leading-snug">{ev.name}</span>
-                        <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-800">
-                          Upcoming
-                        </span>
+                      <div className="border-b border-[#07713c]/20 bg-gradient-to-r from-[#e9f8ee] to-[#f6fff8] px-4 py-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="line-clamp-1 text-base font-semibold leading-snug text-[#07713c]">{ev.name}</span>
+                          <span className="shrink-0 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-blue-700">
+                            Upcoming
+                          </span>
+                        </div>
                       </div>
-                      <p className="mt-2 text-xs text-gray-600">
-                        {formatEventDateForDisplay(ev.date)}
-                        {ev.venue ? ` · ${ev.venue}` : ""}
-                      </p>
+                      <div className="space-y-2 px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-[#07713c]/15 px-3 py-1.5 text-sm font-semibold text-[#07713c]">
+                            {ev.status || "Upcoming"}
+                          </span>
+                          <span
+                            className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
+                              ev.is_mandatory ? "bg-red-100 text-red-700" : "bg-gray-200 text-gray-700"
+                            }`}
+                          >
+                            {ev.is_mandatory ? "Mandatory" : "Not mandatory"}
+                          </span>
+                          {(ev.fine ?? ev.fineAmount) != null && Number(ev.fine ?? ev.fineAmount) > 0 && (
+                            <span className="rounded-full bg-red-100 px-3 py-1.5 text-sm font-semibold text-red-700">
+                              Fines: ₱{Number(ev.fine ?? ev.fineAmount)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 gap-2 text-sm text-[#07713c]/85 sm:grid-cols-2">
+                          <p className="truncate">
+                            <span className="font-semibold text-[#07713c]">Session:</span>{" "}
+                            {ev.duration || "—"}
+                          </p>
+                          <p className="truncate">
+                            <span className="font-semibold text-[#07713c]">Venue:</span>{" "}
+                            {ev.venue || "—"}
+                          </p>
+                          <p className="truncate sm:col-span-2">
+                            <span className="font-semibold text-[#07713c]">Schedule:</span>{" "}
+                            {ev.timeSlots || "—"}
+                          </p>
+                          {ev.audience_notes && String(ev.audience_notes).trim() !== "" && (
+                            <p className="truncate sm:col-span-2">
+                              <span className="font-semibold text-[#07713c]">Notes:</span>{" "}
+                              {String(ev.audience_notes).trim()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </button>
                   </li>
                 ))}
               </ul>
             )}
-          </div>
+          </section>
 
           <div className="mb-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
@@ -462,16 +502,17 @@ export default function HomePage({
             </div>
           </div>
 
-          <h2 className="text-sm font-semibold text-gray-800 mb-3">Select College</h2>
+          <section className="rounded-xl border border-[#07713c]/30 bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-[#07713c] mb-3">Select College</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {HOME_COLLEGES.map((c) => (
               <button
                 key={c.key}
                 type="button"
                 onClick={() => (isLoggedIn ? onGoDashboard?.() : setCollegeForLogin(c))}
-                className="rounded-xl border border-[#CCECCC] bg-white p-4 shadow-sm flex flex-col items-center text-center hover:bg-green-50/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008000] focus-visible:ring-offset-2"
+                className="rounded-xl border border-[#07713c]/25 bg-white p-4 shadow-sm flex flex-col items-center text-center hover:bg-[#07713c]/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#07713c] focus-visible:ring-offset-2"
               >
-                <div className="w-16 h-16 rounded-full bg-gray-50 border border-[#CCECCC] overflow-hidden flex items-center justify-center mb-3">
+                <div className="w-16 h-16 rounded-full bg-gray-50 border border-[#07713c]/20 overflow-hidden flex items-center justify-center mb-3">
                   {c.logoSrc ? (
                     <img
                       src={c.logoSrc}
@@ -483,10 +524,11 @@ export default function HomePage({
                   )}
                 </div>
                 <div className="text-lg font-bold text-gray-900">{c.iconText}</div>
-                <div className="mt-1 text-xs text-gray-600 leading-snug px-1">{c.title}</div>
+                <div className="mt-1 text-xs text-[#07713c]/80 leading-snug px-1">{c.title}</div>
               </button>
             ))}
           </div>
+          </section>
         </main>
       </div>
 
@@ -593,19 +635,27 @@ export default function HomePage({
           onClick={() => setDetailEvent(null)}
         >
           <div
-            className="w-full max-w-4xl max-h-[min(92dvh,880px)] flex flex-col rounded-2xl bg-white shadow-2xl border border-[#CCECCC] ring-1 ring-[#008000]/10 overflow-hidden"
+            className="w-full max-w-4xl max-h-[min(92dvh,880px)] flex flex-col rounded-2xl bg-white shadow-2xl border border-[#066336] ring-1 ring-[#07713c]/20 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex shrink-0 items-center justify-end border-b border-[#CCECCC] bg-white px-4 py-3">
+            <div className="flex shrink-0 items-start justify-between gap-3 bg-[#07713C] px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/80">
+                  Event Introduction
+                </p>
+                <p className="mt-1 text-sm text-white/90">
+                  Review the full event information below, including schedule, notes, and audience coverage.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setDetailEvent(null)}
-                className="rounded-full px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008000]"
+                className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-[#07713c] hover:bg-yellow-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
               >
-                Close
+                <span className="text-lg font-bold leading-none">×</span>
               </button>
             </div>
-            <div className="overflow-y-auto p-5 sm:p-7 min-h-0">
+            <div className="min-h-0 overflow-y-auto p-5 sm:p-7 [scrollbar-width:thin] [scrollbar-color:rgba(7,113,60,0.28)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#07713c]/30 [&::-webkit-scrollbar-thumb]:hover:bg-[#07713c]/40 [&::-webkit-scrollbar-track]:bg-transparent">
               <EventCard event={detailEvent} variant="modalHorizontal" />
             </div>
           </div>

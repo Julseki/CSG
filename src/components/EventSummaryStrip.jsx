@@ -42,11 +42,11 @@ export default function EventSummaryStrip({ event: ev, onClick }) {
           { label: "Status", value: status, bold: true },
         ].map((col) => (
           <div key={col.label} className="min-w-0 text-left">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#36454F]/65">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#36454F]/65">
               {col.label}
             </p>
             <p
-              className={`mt-1.5 text-sm text-gray-900 leading-snug break-words ${
+              className={`mt-1.5 text-base text-gray-900 leading-snug break-words ${
                 col.bold ? "font-bold" : "font-medium"
               }`}
             >

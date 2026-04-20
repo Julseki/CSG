@@ -1,4 +1,101 @@
-import { formatEventDateForDisplay } from "../hooks/useGetEvents";
+import { formatEventDateForDisplay, formatSqlTimeForDisplay } from "../hooks/useGetEvents";
+
+const ALL_DEPARTMENT_COURSES = [
+  { code: "BEED", name: "Bachelor of Elementary Education", major: "" },
+  { code: "BSED", name: "Bachelor of Secondary Education Major in English", major: "English" },
+  { code: "BSED", name: "Bachelor of Secondary Education Major in Math", major: "Math" },
+  { code: "BSED", name: "Bachelor of Secondary Education Major in Filipino", major: "Filipino" },
+  { code: "BSIT", name: "Bachelor of Science in Information Technology", major: "" },
+  { code: "BSCRIM", name: "Bachelor of Science in Criminology", major: "" },
+  { code: "BSHM", name: "Bachelor of Science in Hospitality Management", major: "" },
+  { code: "BSBA", name: "BSBA Marketing Management", major: "Marketing Management" },
+  { code: "BSBA", name: "BSBA Human Resource Development Management", major: "Human Resource Development Management" },
+  { code: "BSBA", name: "BSBA Financial Management", major: "Financial Management" },
+];
+
+function allDepartmentCourseLabel(course) {
+  return course.name;
+}
+
+function majorAcronym(major) {
+  const v = String(major ?? "").trim().toLowerCase();
+  if (!v) return "";
+  if (v === "english") return "ENG";
+  if (v === "filipino") return "FIL";
+  if (v === "math" || v === "mathematics") return "Math";
+  if (v === "marketing management") return "MM";
+  if (v === "human resource development management") return "HRDM";
+  if (v === "financial management") return "FM";
+  return major;
+}
+
+function courseTagClass(code) {
+  const c = String(code ?? "").toUpperCase();
+  if (c === "BEED") {
+    return "bg-blue-100 text-blue-700";
+  }
+  if (c === "BSHM" || c === "HM") {
+    return "bg-violet-50 text-violet-600";
+  }
+  if (c === "BSBA") {
+    return "bg-amber-50 text-amber-700";
+  }
+  if (c === "BSIT") {
+    return "bg-black/25 text-black";
+  }
+  if (c === "BSCRIM" || c === "CCJE") {
+    // Olive tone sampled from user-provided reference image.
+    return "bg-[#46502B]/25 text-[#46502B]";
+  }
+  return "bg-[#07713c]/15 text-[#07713c]";
+}
+
+function courseWrapperClass(code) {
+  return "border-[#07713c]/20 bg-[#f6fff8]";
+}
+
+function courseTextClass(code) {
+  const c = String(code ?? "").toUpperCase();
+  if (c === "BSIT") {
+    return "text-black";
+  }
+  if (c === "BSCRIM" || c === "CCJE") {
+    return "text-[#46502B]";
+  }
+  if (c === "BSHM" || c === "HM") {
+    return "text-violet-600";
+  }
+  if (c === "BSBA") {
+    return "text-amber-700";
+  }
+  return "text-[#07713c]";
+}
+
+function statusPillClass(status) {
+  const s = String(status ?? "").trim().toLowerCase();
+  if (s === "upcoming" || s === "ongoing" || s === "active") {
+    return "bg-blue-100 text-blue-700";
+  }
+  if (s === "completed") {
+    return "bg-gray-200 text-gray-700";
+  }
+  return "bg-[#07713c]/15 text-[#07713c]";
+}
+
+function AllDepartmentCourseNamesList({ className = "" }) {
+  return (
+    <ul className={className}>
+      {ALL_DEPARTMENT_COURSES.map((c, idx) => (
+        <li
+          key={`${c.code}-${idx}`}
+          className="rounded-lg border border-gray-100 bg-gray-50/90 px-3 py-2 text-sm text-gray-700"
+        >
+          {c.name}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 function Row({ label, value, small }) {
   return (
@@ -56,6 +153,56 @@ function parseScheduleSlots(timeSlots) {
     .split(/\s*,\s*(?=(?:AM|PM):)/i)
     .map((p) => p.trim())
     .filter(Boolean);
+}
+
+function parsePeriodRangeFromTimeSlots(timeSlots, period) {
+  const line = parseScheduleSlots(timeSlots).find((s) => s.toUpperCase().startsWith(`${period}:`));
+  if (!line) return { start: "—", end: "—" };
+  const withoutPrefix = line.replace(/^(AM|PM):\s*/i, "").trim();
+  const clean = withoutPrefix.split(/\s*\(.*$/)[0].trim();
+  const [startRaw, endRaw] = clean.split(/\s*-\s*/);
+  return {
+    start: startRaw?.trim() || "—",
+    end: endRaw?.trim() || "—",
+  };
+}
+
+function resolveTimePair(ev, period) {
+  const isAm = period === "AM";
+  const inDisplay = isAm ? ev?.amTimeInDisplay : ev?.pmTimeInDisplay;
+  const outDisplay = isAm ? ev?.amTimeOutDisplay : ev?.pmTimeOutDisplay;
+  const inRaw = isAm ? ev?.am_time_in ?? ev?.amTimeIn : ev?.pm_time_in ?? ev?.pmTimeIn;
+  const outRaw = isAm ? ev?.am_time_out ?? ev?.amTimeOut : ev?.pm_time_out ?? ev?.pmTimeOut;
+
+  const start = inDisplay ?? formatSqlTimeForDisplay(inRaw);
+  const end = outDisplay ?? formatSqlTimeForDisplay(outRaw);
+  if (start !== "—" || end !== "—") return { start, end };
+
+  return parsePeriodRangeFromTimeSlots(ev?.timeSlots, period);
+}
+
+function shouldShowPeriodFromDuration(duration, period) {
+  const d = String(duration ?? "").trim().toLowerCase();
+  if (!d) return true;
+
+  const isAmOnly =
+    d === "am" ||
+    d.includes("am only") ||
+    d.includes("am session") ||
+    d === "morning";
+  const isPmOnly =
+    d === "pm" ||
+    d.includes("pm only") ||
+    d.includes("pm session") ||
+    d === "afternoon";
+
+  if (period === "AM") return !isPmOnly;
+  return !isAmOnly;
+}
+
+function hasVisibleRange(range) {
+  if (!range) return false;
+  return range.start !== "—" || range.end !== "—";
 }
 
 function ScheduleLine({ line }) {
@@ -189,21 +336,31 @@ function EventCardMinimal({ ev }) {
         </MiniCell>
       </div>
 
-      {!ev.is_all_departments && Array.isArray(ev.audiences) && ev.audiences.length > 0 && (
+      {((ev.is_all_departments && ALL_DEPARTMENT_COURSES.length > 0) ||
+        (!ev.is_all_departments && Array.isArray(ev.audiences) && ev.audiences.length > 0)) && (
         <div className="mt-3 border-t border-[#36454F]/10 pt-3">
           <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400 mb-2">Target audience</p>
           <div className="flex flex-wrap gap-2">
-            {ev.audiences.map((a, idx) => (
-              <div
-                key={idx}
-                className="flex-1 min-w-[140px] max-w-full rounded-md border border-gray-100 bg-gray-50/90 px-3 py-2 text-[11px] text-gray-700"
-              >
-                {a?.department_name ?? "—"}
-                {a?.course_code ? ` · ${a.course_code}` : ""}
-                {a?.course_name ? ` · ${a.course_name}` : ""}
-                {a?.year_level != null ? ` · ${formatYearLevel(a.year_level)}` : ""}
-              </div>
-            ))}
+            {ev.is_all_departments
+              ? ALL_DEPARTMENT_COURSES.map((c, idx) => (
+                  <div
+                    key={`${c.code}-${idx}`}
+                    className="flex-1 min-w-[220px] max-w-full rounded-md border border-gray-100 bg-gray-50/90 px-3 py-2 text-[11px] text-gray-700"
+                  >
+                    {allDepartmentCourseLabel(c)}
+                  </div>
+                ))
+              : ev.audiences.map((a, idx) => (
+                  <div
+                    key={idx}
+                    className="flex-1 min-w-[140px] max-w-full rounded-md border border-gray-100 bg-gray-50/90 px-3 py-2 text-[11px] text-gray-700"
+                  >
+                    {a?.department_name ?? "—"}
+                    {a?.course_code ? ` · ${a.course_code}` : ""}
+                    {a?.course_name ? ` · ${a.course_name}` : ""}
+                    {a?.year_level != null ? ` · ${formatYearLevel(a.year_level)}` : ""}
+                  </div>
+                ))}
           </div>
         </div>
       )}
@@ -231,86 +388,170 @@ function EventCardModalHorizontal({ ev }) {
         .filter(Boolean)
         .join(", ") || "—";
 
+  const bsedPrograms = ALL_DEPARTMENT_COURSES.filter((c) => c.code === "BSED");
+  const beedProgram = ALL_DEPARTMENT_COURSES.find((c) => c.code === "BEED");
+  const bsitProgram = ALL_DEPARTMENT_COURSES.find((c) => c.code === "BSIT");
+  const bscrimProgram = ALL_DEPARTMENT_COURSES.find((c) => c.code === "BSCRIM");
+  const bshmProgram = ALL_DEPARTMENT_COURSES.find((c) => c.code === "BSHM");
+  const bsbaPrograms = ALL_DEPARTMENT_COURSES.filter((c) => c.code === "BSBA");
+  const amRange = resolveTimePair(ev, "AM");
+  const pmRange = resolveTimePair(ev, "PM");
+  const sessionDescriptor = [ev.duration, ev.session, ev.sessionType].filter(Boolean).join(" ");
+  const baseShowAmSlot = shouldShowPeriodFromDuration(sessionDescriptor, "AM");
+  const baseShowPmSlot = shouldShowPeriodFromDuration(sessionDescriptor, "PM");
+  const hasAmData = hasVisibleRange(amRange);
+  const hasPmData = hasVisibleRange(pmRange);
+  // If session label is ambiguous but only one period has actual data, show only that period.
+  const showAmSlot = baseShowAmSlot && (hasAmData || !hasPmData);
+  const showPmSlot = baseShowPmSlot && (hasPmData || !hasAmData);
+
   return (
-    <div className="flex flex-col gap-5 lg:gap-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between border-b border-gray-100 pb-4">
-        <div className="flex items-start gap-3 min-w-0">
-          <span className="text-3xl leading-none shrink-0">{ev.icon || "📅"}</span>
+    <div className="overflow-hidden rounded-xl border border-[#07713c]/30 bg-[#f6fff8] p-2 shadow-sm sm:p-3">
+      <div className="border-b border-[#07713c]/20 bg-gradient-to-r from-[#e9f8ee] to-[#f6fff8] px-4 py-3 pb-5 sm:px-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="text-lg font-semibold text-gray-900 leading-tight">{ev.name}</h2>
-            <p className="mt-1 text-sm text-gray-500">
+            <h2 className="overflow-hidden text-ellipsis whitespace-nowrap text-lg font-semibold leading-tight text-[#07713c]">
+              {ev.name}
+            </h2>
+            <p className="mt-1 text-sm font-medium text-[#07713c]/85">
               {formatEventDateForDisplay(ev.date)}
-              {ev.venue ? (
-                <>
-                  <span className="mx-1.5 text-gray-300">·</span>
-                  {ev.venue}
-                </>
-              ) : null}
+              {ev.duration ? ` · ${ev.duration}` : ""}
             </p>
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 font-medium">
-            {ev.status}
-          </span>
-          <MandatoryYesNo ev={ev} />
-          {ev.is_all_departments && (
-            <span className="text-xs px-2.5 py-1 rounded-full bg-purple-50 text-purple-600">All departments</span>
-          )}
-          {ev.fine != null && (
-            <span className="text-sm font-semibold text-red-600 tabular-nums">Fines: ₱{ev.fine}</span>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10">
-        <div className="space-y-4 min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Schedule & details</p>
-          <div className="space-y-2.5">
-            <HRow label="Duration" value={ev.duration} />
-            <div className="flex gap-3 min-w-0">
-              <span className="text-gray-400 text-xs w-24 shrink-0 pt-0.5">Schedule</span>
-              <div className="min-w-0 flex-1">
-                <ScheduleBlocks timeSlots={ev.timeSlots} />
-              </div>
-            </div>
-          </div>
-          <div className="pt-2 border-t border-gray-100 space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Late (minutes)</p>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-              <HRow label="AM late in" value={graceMins(ev.amGraceInMinutes)} />
-              <HRow label="PM late in" value={graceMins(ev.pmGraceInMinutes)} />
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4 min-w-0 border-t border-gray-100 pt-4 lg:border-t-0 lg:pt-0 lg:border-l lg:pl-10 lg:border-gray-100">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Audience & notes</p>
-          <div className="space-y-2.5">
-            <HRow label="Audience" value={audience} small />
-            <HRow label="Notes" value={ev.audience_notes} small />
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`rounded-full px-3 py-1.5 text-sm font-semibold ${statusPillClass(ev.status)}`}>
+              {ev.status}
+            </span>
+            <span
+              className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
+                ev.is_mandatory ? "bg-red-100 text-red-700" : "bg-gray-200 text-gray-700"
+              }`}
+            >
+              {ev.is_mandatory ? "Mandatory" : "Not mandatory"}
+            </span>
+            {ev.fine != null && (
+              <span className="rounded-full bg-red-100 px-3 py-1.5 text-sm font-semibold text-red-700">
+                Fines: ₱{ev.fine}
+              </span>
+            )}
           </div>
         </div>
       </div>
 
-      {!ev.is_all_departments && Array.isArray(ev.audiences) && ev.audiences.length > 0 && (
-        <div className="border-t border-gray-100 pt-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">
-            Target audience
+      <div className={`grid grid-cols-1 pt-3 gap-2 sm:grid-cols-2 ${showAmSlot && showPmSlot ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
+        {showAmSlot && (
+          <div className="rounded-lg border border-[#07713c]/20 bg-white px-3 pb-3 pt-5">
+            <p className="text-[11px] uppercase tracking-wide text-[#07713c]/70">AM slot</p>
+            <p className="mt-2 text-sm font-semibold text-[#07713c]">{amRange.start} - {amRange.end}</p>
+            <p className="mt-1 text-xs text-[#07713c]/75">Late in {graceMins(ev.amGraceInMinutes)}</p>
+          </div>
+        )}
+        {showPmSlot && (
+          <div className="rounded-lg border border-[#07713c]/20 bg-white px-3 pb-3 pt-5">
+            <p className="text-[11px] uppercase tracking-wide text-[#07713c]/70">PM slot</p>
+            <p className="mt-2 text-sm font-semibold text-[#07713c]">{pmRange.start} - {pmRange.end}</p>
+            <p className="mt-1 text-xs text-[#07713c]/75">Late in {graceMins(ev.pmGraceInMinutes)}</p>
+          </div>
+        )}
+        <div className="rounded-lg border border-[#07713c]/20 bg-white px-3 pb-3 pt-5">
+          <p className="text-[11px] uppercase tracking-wide text-[#07713c]/70">Venue</p>
+          <p className="mt-2 text-sm font-semibold text-[#07713c]">{ev.venue || "—"}</p>
+        </div>
+        <div className="rounded-lg border border-[#07713c]/20 bg-white px-3 pb-3 pt-5">
+          <p className="text-[11px] uppercase tracking-wide text-[#07713c]/70">Audience</p>
+          <p className="mt-2 text-sm font-semibold text-[#07713c]">{audience}</p>
+        </div>
+      </div>
+
+      <div className="mt-3 rounded-lg border border-[#07713c]/20 bg-white px-3 py-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#07713c]/70">
+          Description & notes
+        </p>
+        <p className="mt-1.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-[#07713c]/85">
+          {ev.audience_notes || "—"}
+        </p>
+      </div>
+
+      {((ev.is_all_departments && ALL_DEPARTMENT_COURSES.length > 0) ||
+        (!ev.is_all_departments && Array.isArray(ev.audiences) && ev.audiences.length > 0)) && (
+        <div className="mt-3 rounded-lg border border-[#07713c]/20 bg-white px-3 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#07713c]/70">
+            Event Audience
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {ev.audiences.map((a, idx) => (
-              <div
-                key={idx}
-                className="rounded-lg border border-gray-100 bg-gray-50/90 p-3 text-xs space-y-1.5"
-              >
-                <Row label="Department" small value={a?.department_name ?? "—"} />
-                <Row label="Course code" small value={a?.course_code ?? "—"} />
-                <Row label="Course name" small value={a?.course_name ?? "—"} />
-                <Row label="Year level" small value={a?.year_level != null ? formatYearLevel(a.year_level) : "—"} />
-              </div>
-            ))}
-          </div>
+          {ev.is_all_departments ? (
+            <div className="mt-2.5 space-y-2.5">
+                {beedProgram && (
+                  <div className="rounded-lg border border-[#07713c]/20 bg-[#f6fff8] px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded border border-current/30 bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                        {beedProgram.code}
+                      </span>
+                      <span className="text-sm font-semibold text-blue-800">{beedProgram.name}</span>
+                    </div>
+                  </div>
+                )}
+
+                {bsedPrograms.length > 0 && (
+                  <div className="rounded-lg border border-[#07713c]/20 bg-[#f6fff8] px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded border border-current/30 bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                        BSED
+                      </span>
+                      <span className="text-sm font-semibold text-blue-800">Bachelor of Secondary Education</span>
+                    </div>
+                    <div className="mt-2 grid gap-1 sm:grid-cols-3">
+                      {bsedPrograms.map((p, idx) => (
+                        <div key={`bsed-${idx}`} className="rounded border border-blue-200/80 bg-white px-2 py-1.5 text-xs text-blue-700/90">
+                          {majorAcronym(p.major) || p.name}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid gap-2 grid-cols-1">
+                  {[bsitProgram, bscrimProgram, bshmProgram].filter(Boolean).map((p, idx) => (
+                    <div key={`prog-mid-${idx}`} className={`rounded-lg border px-3 py-2.5 ${courseWrapperClass(p.code)}`}>
+                      <div className="flex items-center gap-2">
+                        <span className={`rounded border border-current/30 px-2 py-0.5 text-[10px] font-semibold ${courseTagClass(p.code)}`}>{p.code}</span>
+                        <p className={`text-sm font-semibold ${courseTextClass(p.code)}`}>
+                          {p.name.replace("Bachelor of Science in ", "")}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+              {bsbaPrograms.length > 0 && (
+                <div className="rounded-lg border border-[#07713c]/20 bg-[#f6fff8] px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded border border-current/30 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                        BSBA
+                      </span>
+                      <span className="text-sm font-semibold text-amber-700">Bachelor of Science in Business Administration</span>
+                    </div>
+                    <div className="mt-2 grid gap-1 sm:grid-cols-3">
+                      {bsbaPrograms.map((p, idx) => (
+                        <div key={`bsba-${idx}`} className="rounded border border-amber-200/80 bg-white px-2 py-1.5 text-xs text-amber-700/90">
+                          {majorAcronym(p.major) || p.name}
+                        </div>
+                      ))}
+                    </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {ev.audiences.map((a, idx) => (
+                  <div key={idx} className="rounded-lg border border-[#07713c]/20 bg-[#f6fff8] p-3 text-xs space-y-1.5">
+                    <Row label="Department" small value={a?.department_name ?? "—"} />
+                    <Row label="Course code" small value={a?.course_code ?? "—"} />
+                    <Row label="Course name" small value={a?.course_name ?? "—"} />
+                    <Row label="Year level" small value={a?.year_level != null ? formatYearLevel(a.year_level) : "—"} />
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -371,22 +612,25 @@ export default function EventCard({ event: ev, variant = "default" }) {
         <Row label="PM late in" value={graceMins(ev.pmGraceInMinutes)} />
       </div>
 
-      {!ev.is_all_departments && Array.isArray(ev.audiences) && ev.audiences.length > 0 && (
+      {((ev.is_all_departments && ALL_DEPARTMENT_COURSES.length > 0) ||
+        (!ev.is_all_departments && Array.isArray(ev.audiences) && ev.audiences.length > 0)) && (
         <>
           <hr className="border-gray-100" />
           <div className="flex flex-col gap-2">
             <p className="text-xs font-medium text-gray-500">Target audience</p>
-            {ev.audiences.map((a, idx) => (
-              <div
-                key={idx}
-                className="rounded-lg border border-gray-100 bg-gray-50/80 p-3 text-xs space-y-1.5"
-              >
-                <Row label="Department" small value={a?.department_name ?? "—"} />
-                <Row label="Course code" small value={a?.course_code ?? "—"} />
-                <Row label="Course name" small value={a?.course_name ?? "—"} />
-                <Row label="Year level" small value={a?.year_level != null ? formatYearLevel(a.year_level) : "—"} />
-              </div>
-            ))}
+            {ev.is_all_departments
+              ? <AllDepartmentCourseNamesList className="grid grid-cols-1 gap-2" />
+              : ev.audiences.map((a, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-lg border border-gray-100 bg-gray-50/80 p-3 text-xs space-y-1.5"
+                  >
+                    <Row label="Department" small value={a?.department_name ?? "—"} />
+                    <Row label="Course code" small value={a?.course_code ?? "—"} />
+                    <Row label="Course name" small value={a?.course_name ?? "—"} />
+                    <Row label="Year level" small value={a?.year_level != null ? formatYearLevel(a.year_level) : "—"} />
+                  </div>
+                ))}
           </div>
         </>
       )}

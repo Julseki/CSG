@@ -227,6 +227,12 @@ export default function StudentAttendanceDashboard() {
   const [debouncedEventSearch, setDebouncedEventSearch] = useState("");
   const [historySessionFilter, setHistorySessionFilter] = useState("all");
   const [historyPeriodFilter, setHistoryPeriodFilter] = useState("all");
+  const [isStudentDetailModalOpen, setIsStudentDetailModalOpen] = useState(false);
+
+  const openStudentDetailModal = (studentId) => {
+    setSelectedId(studentId);
+    setIsStudentDetailModalOpen(true);
+  };
 
   useEffect(() => {
     const ms = 280;
@@ -363,6 +369,22 @@ export default function StudentAttendanceDashboard() {
     setHistoryPage((p) => Math.min(p, historyTotalPages));
   }, [historyTotalPages]);
 
+  useEffect(() => {
+    if (!isStudentDetailModalOpen) return undefined;
+
+    const { body, documentElement } = document;
+    const prevBodyOverflow = body.style.overflow;
+    const prevHtmlOverflow = documentElement.style.overflow;
+
+    body.style.overflow = "hidden";
+    documentElement.style.overflow = "hidden";
+
+    return () => {
+      body.style.overflow = prevBodyOverflow;
+      documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, [isStudentDetailModalOpen]);
+
   const pieSharePct = useMemo(() => {
     if (!student?.totalEvents) return { attended: 0, absent: 0 };
     return {
@@ -426,52 +448,12 @@ export default function StudentAttendanceDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* 1. Main summary */}
-      <section className="rounded-xl border border-[#07713c]/30 bg-white p-5 shadow-sm">
-        <h3 className="mb-4 text-sm font-semibold text-[#07713c]">1. Main summary</h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border-2 border-[#07713c]/30 bg-[#07713c]/10 p-4 text-center">
-            <p className="text-xs font-medium uppercase tracking-wide text-[#07713c]">Attendance rate ⭐</p>
-            <p className="mt-1 text-4xl font-extrabold tabular-nums text-[#07713c]">{student.attendanceRate}%</p>
-          </div>
-          <div className="rounded-lg border border-[#07713c]/30 bg-gray-50/80 p-4">
-            <p className="text-xs font-medium text-[#07713c]/85">Total events</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-[#07713c]">{student.totalEvents}</p>
-          </div>
-          <div className="rounded-lg border border-[#07713c]/30 bg-gray-50/80 p-4">
-            <p className="text-xs font-medium text-[#07713c]/85">Events attended</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-[#07713c]">{student.eventsAttended}</p>
-          </div>
-          <div className="rounded-lg border border-[#07713c]/30 bg-gray-50/80 p-4">
-            <p className="text-xs font-medium text-[#07713c]/85">Events missed</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-red-600">{student.eventsMissed}</p>
-          </div>
-        </div>
-        <p className="mt-4 text-sm text-[#07713c]">
-          Attended: <strong className="text-[#07713c]">{student.eventsAttended}</strong> / {student.totalEvents} · Missed:{" "}
-          <strong className="text-[#07713c]">{student.eventsMissed}</strong>
-        </p>
-
-        <div className="mt-4">
-          <div className="mb-1 flex justify-between text-xs text-[#07713c]">
-            <span>Progress</span>
-            <span className="tabular-nums font-medium">{student.attendanceRate}%</span>
-          </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
-            <div
-              className="h-full rounded-full bg-[#07713c] transition-all"
-              style={{ width: `${Math.min(100, student.attendanceRate)}%` }}
-            />
-          </div>
-        </div>
-      </section>
-
       {/* All students summary */}
       <section className="rounded-xl border border-[#07713c]/30 bg-white p-4 shadow-sm">
         <div className="mb-3">
           <h3 className="mb-3 text-sm font-semibold text-[#07713c]">All students</h3>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
-            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-end sm:gap-3">
               <div className="relative min-w-0 w-full max-w-md sm:flex-1">
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]/60">🔍</span>
                 <input
@@ -479,7 +461,7 @@ export default function StudentAttendanceDashboard() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search name, ID, or course"
-                  className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-9 pr-10 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30 [&::-webkit-search-cancel-button]:hidden"
+                  className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-9 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/70 focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30 [&::-webkit-search-cancel-button]:hidden"
                   aria-label="Search students by name, ID, or course"
                 />
                 {search.trim() !== "" && (
@@ -493,7 +475,7 @@ export default function StudentAttendanceDashboard() {
                   </button>
                 )}
               </div>
-              <label className="flex shrink-0 items-center gap-2 text-xs text-[#07713c]">
+              <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
                 Course
                 <select
                   value={rosterCourseFilter}
@@ -509,7 +491,7 @@ export default function StudentAttendanceDashboard() {
                   ))}
                 </select>
               </label>
-              <label className="flex shrink-0 items-center gap-2 text-xs text-[#07713c]">
+              <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
                 Status
                 <select
                   value={rosterStatusFilter}
@@ -525,7 +507,7 @@ export default function StudentAttendanceDashboard() {
                 </select>
               </label>
             </div>
-            <label className="flex shrink-0 items-center gap-2 text-xs text-[#07713c] lg:ml-auto">
+            <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c] lg:ml-auto lg:items-end">
               Rows per page
               <select
                 value={rosterPageSize}
@@ -553,6 +535,7 @@ export default function StudentAttendanceDashboard() {
                 <th className="px-3 py-2.5 text-left align-middle">Course</th>
                 <th className="min-w-[5.5rem] whitespace-nowrap px-3 py-2.5 text-center align-middle tabular-nums">Attendance</th>
                 <th className="px-3 py-2.5 text-left align-middle">Status</th>
+                <th className="px-3 py-2.5 text-center align-middle">Select</th>
               </tr>
             </thead>
             <tbody>
@@ -562,11 +545,11 @@ export default function StudentAttendanceDashboard() {
                   <tr
                     key={s.id}
                     tabIndex={0}
-                    onClick={() => setSelectedId(s.id)}
+                    onClick={() => openStudentDetailModal(s.id)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        setSelectedId(s.id);
+                        openStudentDetailModal(s.id);
                       }
                     }}
                     className={`cursor-pointer border-t border-[#07713c]/20 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#07713c]/40 ${
@@ -588,6 +571,23 @@ export default function StudentAttendanceDashboard() {
                         <span>{t.emoji}</span>
                         <span className="text-[#07713c]">{t.label}</span>
                       </span>
+                    </td>
+                    <td className="px-3 py-1.5 text-center">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedId(s.id);
+                        }}
+                        className={`rounded-md px-3 py-1 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-[#07713c]/30 ${
+                          s.id === selectedId
+                            ? "bg-[#07713c] text-white"
+                            : "border border-[#07713c]/40 bg-white text-[#07713c] hover:bg-[#07713c]/10"
+                        }`}
+                        aria-label={`Select ${s.name} for event history`}
+                      >
+                        Select
+                      </button>
                     </td>
                   </tr>
                 );
@@ -611,10 +611,11 @@ export default function StudentAttendanceDashboard() {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_280px]">
         <div className="space-y-6">
           {/* 2. Event history */}
+          {!isStudentDetailModalOpen && (
           <section className="rounded-xl border border-[#07713c]/30 bg-white shadow-sm overflow-hidden">
             <div className="border-b border-[#07713c]/30 px-5 py-3">
-              <h3 className="text-sm font-semibold text-[#07713c]">2. Event history</h3>
-              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+              <h3 className="text-sm font-semibold text-[#07713c]">Event history</h3>
+              <div className="mt-3 flex flex-wrap items-end gap-x-4 gap-y-2">
                 <div className="relative h-9 w-full min-w-[min(100%,16rem)] flex-[1_1_16rem] max-w-xl">
                   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]/60">🔍</span>
                   <input
@@ -622,7 +623,7 @@ export default function StudentAttendanceDashboard() {
                     value={historyEventSearch}
                     onChange={(e) => setHistoryEventSearch(e.target.value)}
                     placeholder="Search by event name or date"
-                    className="h-9 w-full rounded-lg border border-[#07713c]/40 bg-white py-0 pl-9 pr-10 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30 [&::-webkit-search-cancel-button]:hidden"
+                    className="h-9 w-full rounded-lg border border-[#07713c]/40 bg-white py-0 pl-9 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/70 focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30 [&::-webkit-search-cancel-button]:hidden"
                     aria-label="Filter events"
                   />
                   {historyEventSearch.trim() !== "" && (
@@ -639,7 +640,7 @@ export default function StudentAttendanceDashboard() {
                     </button>
                   )}
                 </div>
-                <label className="flex shrink-0 items-center gap-2 text-xs text-[#07713c]">
+                <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
                   <span className="whitespace-nowrap">Session</span>
                   <select
                     value={historySessionFilter}
@@ -651,7 +652,7 @@ export default function StudentAttendanceDashboard() {
                     <option value="Half day">Half day</option>
                   </select>
                 </label>
-                <label className="flex shrink-0 items-center gap-2 text-xs text-[#07713c]">
+                <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
                   <span className="whitespace-nowrap">Period</span>
                   <select
                     value={historyPeriodFilter}
@@ -664,7 +665,7 @@ export default function StudentAttendanceDashboard() {
                     <option value="PM">PM</option>
                   </select>
                 </label>
-                <label className="flex shrink-0 items-center gap-2 text-xs text-[#07713c] whitespace-nowrap">
+                <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c] whitespace-nowrap">
                   Events per page
                   <select
                     value={historyPageSize}
@@ -687,18 +688,18 @@ export default function StudentAttendanceDashboard() {
               <table
                 className={`w-full text-sm ${narrowTimeColumns ? "min-w-[720px]" : "min-w-[960px]"}`}
               >
-                <thead className="bg-gray-50 text-left text-xs font-medium text-[#07713c]">
+                <thead className="bg-gray-50 text-center text-xs font-medium text-[#07713c]">
                   <tr>
-                    <th className="px-4 py-2 align-bottom" rowSpan={2}>
+                    <th className="border-r border-[#07713c]/20 px-4 py-2 align-bottom" rowSpan={2}>
                       Event name
                     </th>
-                    <th className="px-4 py-2 align-bottom whitespace-nowrap" rowSpan={2}>
+                    <th className="border-r border-[#07713c]/20 px-4 py-2 align-bottom whitespace-nowrap" rowSpan={2}>
                       Date
                     </th>
-                    <th className="px-4 py-2 align-bottom whitespace-nowrap" rowSpan={2}>
+                    <th className="border-r border-[#07713c]/20 px-4 py-2 align-bottom whitespace-nowrap" rowSpan={2}>
                       Session
                     </th>
-                    <th className="px-4 py-2 align-bottom" rowSpan={2}>
+                    <th className="border-r border-[#07713c]/20 px-4 py-2 align-bottom" rowSpan={2}>
                       Status
                     </th>
                     {narrowTimeColumns ? (
@@ -715,7 +716,7 @@ export default function StudentAttendanceDashboard() {
                         </th>
                       </>
                     )}
-                    <th className="px-4 py-2 align-bottom text-right whitespace-nowrap" rowSpan={2}>
+                    <th className="border-l border-[#07713c]/30 px-4 py-2 align-bottom text-right whitespace-nowrap" rowSpan={2}>
                       Fines / penalty
                     </th>
                   </tr>
@@ -760,10 +761,10 @@ export default function StudentAttendanceDashboard() {
                     const rowIndex = (historyPageSafe - 1) * historyPageSize + i;
                     return (
                       <tr key={`${ev.name}-${ev.date}-${rowIndex}`} className="border-t border-[#07713c]/20">
-                        <td className="px-4 py-2.5 font-medium text-[#07713c]">{ev.name}</td>
-                        <td className="px-4 py-2.5 whitespace-nowrap text-[#07713c]">{formatEventDateForDisplay(ev.date)}</td>
-                        <td className="px-4 py-2.5 whitespace-nowrap text-[#07713c]">{row.sessionType}</td>
-                        <td className="px-4 py-2.5">
+                        <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center font-medium text-[#07713c]">{ev.name}</td>
+                        <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center whitespace-nowrap text-[#07713c]">{formatEventDateForDisplay(ev.date)}</td>
+                        <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center whitespace-nowrap text-[#07713c]">{row.sessionType}</td>
+                        <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center">
                           <span
                             className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
                               ev.attended ? "bg-[#07713c]/10 text-[#07713c]" : "bg-red-100 text-red-800"
@@ -775,19 +776,19 @@ export default function StudentAttendanceDashboard() {
                         {narrowTimeColumns ? (
                           historyPeriodFilter === "PM" ? (
                             <>
-                              <td className="border-l border-[#07713c]/30 px-3 py-2.5">
+                              <td className="border-l border-[#07713c]/30 px-3 py-2.5 text-center">
                                 <TimeSlot value={isHalf ? row.timeIn : row.pmTimeIn} />
                               </td>
-                              <td className="px-3 py-2.5">
+                              <td className="px-3 py-2.5 text-center">
                                 <TimeSlot value={isHalf ? row.timeOut : row.pmTimeOut} />
                               </td>
                             </>
                           ) : (
                             <>
-                              <td className="border-l border-[#07713c]/30 px-3 py-2.5">
+                              <td className="border-l border-[#07713c]/30 px-3 py-2.5 text-center">
                                 <TimeSlot value={isHalf ? row.timeIn : row.amTimeIn} />
                               </td>
-                              <td className="px-3 py-2.5">
+                              <td className="px-3 py-2.5 text-center">
                                 <TimeSlot value={isHalf ? row.timeOut : row.amTimeOut} />
                               </td>
                             </>
@@ -795,44 +796,44 @@ export default function StudentAttendanceDashboard() {
                         ) : isHalf ? (
                           halfDayPeriod === "PM" ? (
                             <>
-                              <td className="border-l border-[#07713c]/30 px-3 py-2.5">{emptyTimeCell}</td>
-                              <td className="px-3 py-2.5">{emptyTimeCell}</td>
-                              <td className="border-l border-[#07713c]/30 px-3 py-2.5">
+                              <td className="border-l border-[#07713c]/30 px-3 py-2.5 text-center">{emptyTimeCell}</td>
+                              <td className="px-3 py-2.5 text-center">{emptyTimeCell}</td>
+                              <td className="border-l border-[#07713c]/30 px-3 py-2.5 text-center">
                                 <TimeSlot value={row.timeIn} />
                               </td>
-                              <td className="px-3 py-2.5">
+                              <td className="px-3 py-2.5 text-center">
                                 <TimeSlot value={row.timeOut} />
                               </td>
                             </>
                           ) : (
                             <>
-                              <td className="border-l border-[#07713c]/30 px-3 py-2.5">
+                              <td className="border-l border-[#07713c]/30 px-3 py-2.5 text-center">
                                 <TimeSlot value={row.timeIn} />
                               </td>
-                              <td className="px-3 py-2.5">
+                              <td className="px-3 py-2.5 text-center">
                                 <TimeSlot value={row.timeOut} />
                               </td>
-                              <td className="border-l border-[#07713c]/30 px-3 py-2.5">{emptyTimeCell}</td>
-                              <td className="px-3 py-2.5">{emptyTimeCell}</td>
+                              <td className="border-l border-[#07713c]/30 px-3 py-2.5 text-center">{emptyTimeCell}</td>
+                              <td className="px-3 py-2.5 text-center">{emptyTimeCell}</td>
                             </>
                           )
                         ) : (
                           <>
-                            <td className="border-l border-[#07713c]/30 px-3 py-2.5">
+                            <td className="border-l border-[#07713c]/30 px-3 py-2.5 text-center">
                               <TimeSlot value={row.amTimeIn} />
                             </td>
-                            <td className="px-3 py-2.5">
+                            <td className="px-3 py-2.5 text-center">
                               <TimeSlot value={row.amTimeOut} />
                             </td>
-                            <td className="border-l border-[#07713c]/30 px-3 py-2.5">
+                            <td className="border-l border-[#07713c]/30 px-3 py-2.5 text-center">
                               <TimeSlot value={row.pmTimeIn} />
                             </td>
-                            <td className="px-3 py-2.5">
+                            <td className="px-3 py-2.5 text-center">
                               <TimeSlot value={row.pmTimeOut} />
                             </td>
                           </>
                         )}
-                        <td className="px-4 py-2.5 text-right tabular-nums">
+                        <td className="border-l border-[#07713c]/30 px-4 py-2.5 text-center tabular-nums">
                           {fine > 0 ? (
                             <span className="font-semibold text-red-700">₱{fine.toLocaleString("en-PH")}</span>
                           ) : (
@@ -845,14 +846,14 @@ export default function StudentAttendanceDashboard() {
                   )}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t-2 border-[#07713c]/30 bg-gray-50">
+                  <tr className="border-t border-[#07713c]/30 bg-gray-50">
                     <td
                       colSpan={historyTableColCount - 1}
                       className="px-4 py-3 text-right text-xs font-semibold text-[#07713c]"
                     >
                       {historyFiltersActive ? "Total penalties (matching filters)" : "Total penalties (event history)"}
                     </td>
-                    <td className="px-4 py-3 text-right text-sm font-bold tabular-nums text-red-800">
+                    <td className="border-l border-[#07713c]/30 px-4 py-3 text-right text-sm font-bold tabular-nums text-red-800">
                       ₱{totalEventHistoryFinesPhp.toLocaleString("en-PH")}
                     </td>
                   </tr>
@@ -874,10 +875,11 @@ export default function StudentAttendanceDashboard() {
               itemLabel="events"
             />
           </section>
+          )}
 
           {/* 3. Status indicator */}
           <section className="rounded-xl border border-[#07713c]/30 bg-white p-5 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-[#07713c]">3. Status indicator</h3>
+            <h3 className="mb-3 text-sm font-semibold text-[#07713c]">Status indicator</h3>
             <div className="flex flex-wrap items-center gap-3 text-sm">
               <span className="text-lg">{tier.emoji}</span>
               <span className="font-semibold text-[#07713c]">{tier.label}</span>
@@ -897,7 +899,7 @@ export default function StudentAttendanceDashboard() {
 
           {/* 4. Participation insights */}
           <section className="rounded-xl border border-[#07713c]/30 bg-white p-5 shadow-sm">
-            <h3 className="mb-4 text-sm font-semibold text-[#07713c]">4. Participation insights</h3>
+            <h3 className="mb-4 text-sm font-semibold text-[#07713c]">Participation insights</h3>
             <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-lg bg-gray-50 px-3 py-2">
                 <dt className="text-xs text-[#07713c]/85">Current attendance streak</dt>
@@ -1005,6 +1007,389 @@ export default function StudentAttendanceDashboard() {
           </section>
         </aside>
       </div>
+
+      {isStudentDetailModalOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4 backdrop-blur-[2px]"
+          onClick={() => setIsStudentDetailModalOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Student details modal"
+        >
+          <div
+            className="flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between bg-[#07713c] px-5 py-3">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-white/80">Student details</p>
+                <h3 className="text-sm font-semibold text-white sm:text-base">{student.name}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsStudentDetailModalOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-[#07713c] transition-colors hover:bg-yellow-300"
+                aria-label="Close student modal"
+              >
+                <span className="text-lg font-bold">×</span>
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 space-y-4 p-4 sm:p-5">
+              <section className="rounded-xl border border-[#07713c]/30 bg-white p-4 shadow-sm">
+                <h3 className="mb-3 text-sm font-semibold text-[#07713c]">1. Main summary</h3>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-lg border-2 border-[#07713c]/30 bg-[#07713c]/10 p-3 text-center">
+                    <p className="text-xs font-medium uppercase tracking-wide text-[#07713c]">Attendance rate ⭐</p>
+                    <p className="mt-1 text-3xl font-extrabold tabular-nums text-[#07713c]">{student.attendanceRate}%</p>
+                  </div>
+                  <div className="rounded-lg border border-[#07713c]/30 bg-gray-50/80 p-3">
+                    <p className="text-xs font-medium text-[#07713c]/85">Total events</p>
+                    <p className="mt-1 text-xl font-bold tabular-nums text-[#07713c]">{student.totalEvents}</p>
+                  </div>
+                  <div className="rounded-lg border border-[#07713c]/30 bg-gray-50/80 p-3">
+                    <p className="text-xs font-medium text-[#07713c]/85">Events attended</p>
+                    <p className="mt-1 text-xl font-bold tabular-nums text-[#07713c]">{student.eventsAttended}</p>
+                  </div>
+                  <div className="rounded-lg border border-[#07713c]/30 bg-gray-50/80 p-3">
+                    <p className="text-xs font-medium text-[#07713c]/85">Events missed</p>
+                    <p className="mt-1 text-xl font-bold tabular-nums text-red-600">{student.eventsMissed}</p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <div className="mb-1 flex justify-between text-xs text-[#07713c]">
+                    <span>Progress</span>
+                    <span className="tabular-nums font-medium">{student.attendanceRate}%</span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                    <div
+                      className="h-full rounded-full bg-[#07713c] transition-all"
+                      style={{ width: `${Math.min(100, student.attendanceRate)}%` }}
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section className="rounded-xl border border-[#07713c]/30 bg-white shadow-sm overflow-hidden">
+                <div className="border-b border-[#07713c]/30 px-5 py-3">
+                  <h3 className="text-sm font-semibold text-[#07713c]">Event history</h3>
+                  <div className="mt-3 flex flex-wrap items-end gap-x-4 gap-y-2">
+                    <div className="relative h-9 w-full min-w-[min(100%,16rem)] flex-[1_1_16rem] max-w-xl">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]/60">🔍</span>
+                      <input
+                        type="search"
+                        value={historyEventSearch}
+                        onChange={(e) => setHistoryEventSearch(e.target.value)}
+                        placeholder="Search by event name or date"
+                        className="h-9 w-full rounded-lg border border-[#07713c]/40 bg-white py-0 pl-9 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/70 focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30 [&::-webkit-search-cancel-button]:hidden"
+                        aria-label="Filter events"
+                      />
+                      {historyEventSearch.trim() !== "" && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setHistoryEventSearch("");
+                            setDebouncedEventSearch("");
+                          }}
+                          className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-[#07713c]/85 hover:bg-gray-100 hover:text-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
+                          aria-label="Clear event search"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                    <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
+                      <span className="whitespace-nowrap">Session</span>
+                      <select
+                        value={historySessionFilter}
+                        onChange={(e) => setHistorySessionFilter(e.target.value)}
+                        className="h-9 w-[9.5rem] rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
+                      >
+                        <option value="all">All</option>
+                        <option value="Whole day">Whole day</option>
+                        <option value="Half day">Half day</option>
+                      </select>
+                    </label>
+                    <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
+                      <span className="whitespace-nowrap">Period</span>
+                      <select
+                        value={historyPeriodFilter}
+                        onChange={(e) => setHistoryPeriodFilter(e.target.value)}
+                        className="h-9 w-[8.5rem] rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
+                        title="Half day: filter by morning (AM) or afternoon (PM). Whole day events stay listed for both."
+                      >
+                        <option value="all">AM &amp; PM</option>
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </select>
+                    </label>
+                    <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c] whitespace-nowrap">
+                      Events per page
+                      <select
+                        value={historyPageSize}
+                        onChange={(e) => {
+                          setHistoryPageSize(Number(e.target.value));
+                          setHistoryPage(1);
+                        }}
+                        className="h-9 min-w-[4.75rem] rounded-lg border border-[#07713c]/40 bg-white px-2 text-sm tabular-nums focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
+                      >
+                        {ROSTER_PAGE_SIZE_OPTIONS.map((n) => (
+                          <option key={n} value={n}>
+                            {n}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table
+                    className={`w-full text-sm ${narrowTimeColumns ? "min-w-[720px]" : "min-w-[960px]"}`}
+                  >
+                    <thead className="bg-gray-50 text-center text-xs font-medium text-[#07713c]">
+                      <tr>
+                        <th className="border-r border-[#07713c]/20 px-4 py-2 align-bottom" rowSpan={2}>
+                          Event name
+                        </th>
+                        <th className="border-r border-[#07713c]/20 px-4 py-2 align-bottom whitespace-nowrap" rowSpan={2}>
+                          Date
+                        </th>
+                        <th className="border-r border-[#07713c]/20 px-4 py-2 align-bottom whitespace-nowrap" rowSpan={2}>
+                          Session
+                        </th>
+                        <th className="border-r border-[#07713c]/20 px-4 py-2 align-bottom" rowSpan={2}>
+                          Status
+                        </th>
+                        {narrowTimeColumns ? (
+                          <th className="border-l border-[#07713c]/30 px-4 py-2 text-center" colSpan={2}>
+                            {historyPeriodFilter === "PM" ? "PM" : "AM"}
+                          </th>
+                        ) : (
+                          <>
+                            <th className="border-l border-[#07713c]/30 px-4 py-2 text-center" colSpan={2}>
+                              AM
+                            </th>
+                            <th className="border-l border-[#07713c]/30 px-4 py-2 text-center" colSpan={2}>
+                              PM
+                            </th>
+                          </>
+                        )}
+                        <th className="border-l border-[#07713c]/30 px-4 py-2 align-bottom text-right whitespace-nowrap" rowSpan={2}>
+                          Fines / penalty
+                        </th>
+                      </tr>
+                      <tr>
+                        {narrowTimeColumns ? (
+                          <>
+                            <th className="border-l border-[#07713c]/30 px-3 py-1.5">Time in</th>
+                            <th className="px-3 py-1.5">Time out</th>
+                          </>
+                        ) : (
+                          <>
+                            <th className="border-l border-[#07713c]/30 px-3 py-1.5">Time in</th>
+                            <th className="px-3 py-1.5">Time out</th>
+                            <th className="border-l border-[#07713c]/30 px-3 py-1.5">Time in</th>
+                            <th className="px-3 py-1.5">Time out</th>
+                          </>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedEventHistory.length === 0 ? (
+                        <tr>
+                          <td colSpan={historyTableColCount} className="px-4 py-10 text-center text-sm text-[#07713c]/85">
+                            No event records in history.
+                          </td>
+                        </tr>
+                      ) : filteredEventHistory.length === 0 ? (
+                        <tr>
+                          <td colSpan={historyTableColCount} className="px-4 py-10 text-center text-sm text-[#07713c]/85">
+                            No events match the current filters.
+                          </td>
+                        </tr>
+                      ) : (
+                      paginatedEventHistory.map((ev, i) => {
+                        const row = normalizeHistoryEvent(ev);
+                        const fine = getEventFinePhp(ev);
+                        const isHalf = row.sessionType === "Half day";
+                        const halfDayPeriod = isHalf ? getHalfDayAmPm(ev) : null;
+                        const emptyTimeCell = (
+                          <span className="text-[#07713c]/60">—</span>
+                        );
+                        const rowIndex = (historyPageSafe - 1) * historyPageSize + i;
+                        return (
+                          <tr key={`${ev.name}-${ev.date}-${rowIndex}`} className="border-t border-[#07713c]/20">
+                            <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center font-medium text-[#07713c]">{ev.name}</td>
+                            <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center whitespace-nowrap text-[#07713c]">{formatEventDateForDisplay(ev.date)}</td>
+                            <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center whitespace-nowrap text-[#07713c]">{row.sessionType}</td>
+                            <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center">
+                              <span
+                                className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                  ev.attended ? "bg-[#07713c]/10 text-[#07713c]" : "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {ev.attended ? "Attended" : "Absent"}
+                              </span>
+                            </td>
+                            {narrowTimeColumns ? (
+                              historyPeriodFilter === "PM" ? (
+                                <>
+                                  <td className="border-l border-[#07713c]/30 px-3 py-2.5 text-center">
+                                    <TimeSlot value={isHalf ? row.timeIn : row.pmTimeIn} />
+                                  </td>
+                                  <td className="px-3 py-2.5 text-center">
+                                    <TimeSlot value={isHalf ? row.timeOut : row.pmTimeOut} />
+                                  </td>
+                                </>
+                              ) : (
+                                <>
+                                  <td className="border-l border-[#07713c]/30 px-3 py-2.5 text-center">
+                                    <TimeSlot value={isHalf ? row.timeIn : row.amTimeIn} />
+                                  </td>
+                                  <td className="px-3 py-2.5 text-center">
+                                    <TimeSlot value={isHalf ? row.timeOut : row.amTimeOut} />
+                                  </td>
+                                </>
+                              )
+                            ) : isHalf ? (
+                              halfDayPeriod === "PM" ? (
+                                <>
+                                  <td className="border-l border-[#07713c]/30 px-3 py-2.5 text-center">{emptyTimeCell}</td>
+                                  <td className="px-3 py-2.5 text-center">{emptyTimeCell}</td>
+                                  <td className="border-l border-[#07713c]/30 px-3 py-2.5 text-center">
+                                    <TimeSlot value={row.timeIn} />
+                                  </td>
+                                  <td className="px-3 py-2.5 text-center">
+                                    <TimeSlot value={row.timeOut} />
+                                  </td>
+                                </>
+                              ) : (
+                                <>
+                                  <td className="border-l border-[#07713c]/30 px-3 py-2.5 text-center">
+                                    <TimeSlot value={row.timeIn} />
+                                  </td>
+                                  <td className="px-3 py-2.5 text-center">
+                                    <TimeSlot value={row.timeOut} />
+                                  </td>
+                                  <td className="border-l border-[#07713c]/30 px-3 py-2.5 text-center">{emptyTimeCell}</td>
+                                  <td className="px-3 py-2.5 text-center">{emptyTimeCell}</td>
+                                </>
+                              )
+                            ) : (
+                              <>
+                                <td className="border-l border-[#07713c]/30 px-3 py-2.5 text-center">
+                                  <TimeSlot value={row.amTimeIn} />
+                                </td>
+                                <td className="px-3 py-2.5 text-center">
+                                  <TimeSlot value={row.amTimeOut} />
+                                </td>
+                                <td className="border-l border-[#07713c]/30 px-3 py-2.5 text-center">
+                                  <TimeSlot value={row.pmTimeIn} />
+                                </td>
+                                <td className="px-3 py-2.5 text-center">
+                                  <TimeSlot value={row.pmTimeOut} />
+                                </td>
+                              </>
+                            )}
+                            <td className="border-l border-[#07713c]/30 px-4 py-2.5 text-center tabular-nums">
+                              {fine > 0 ? (
+                                <span className="font-semibold text-red-700">₱{fine.toLocaleString("en-PH")}</span>
+                              ) : (
+                                <span className="text-[#07713c]/60">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                      )}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t border-[#07713c]/30 bg-gray-50">
+                        <td
+                          colSpan={historyTableColCount - 1}
+                          className="px-4 py-3 text-right text-xs font-semibold text-[#07713c]"
+                        >
+                          {historyFiltersActive ? "Total penalties (matching filters)" : "Total penalties (event history)"}
+                        </td>
+                        <td className="border-l border-[#07713c]/30 px-4 py-3 text-right text-sm font-bold tabular-nums text-red-800">
+                          ₱{totalEventHistoryFinesPhp.toLocaleString("en-PH")}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+                <PaginationBar
+                  totalCount={historyTotal}
+                  page={historyPage}
+                  pageSize={historyPageSize}
+                  onPageChange={setHistoryPage}
+                  emptyLabel={
+                    sortedEventHistory.length === 0
+                      ? "No event records to show."
+                      : historyFiltersActive
+                        ? "No events match the current filters."
+                        : "No event records to show."
+                  }
+                  itemLabel="events"
+                />
+              </section>
+
+              <section className="rounded-xl border border-[#07713c]/30 bg-white p-4 shadow-sm">
+                <h3 className="mb-3 text-sm font-semibold text-[#07713c]">Participation insights</h3>
+                <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg bg-gray-50 px-3 py-2">
+                    <dt className="text-xs text-[#07713c]/85">Current attendance streak</dt>
+                    <dd className="text-sm font-semibold text-[#07713c]">
+                      {(student.streak ?? 0) > 0
+                        ? `Attended ${student.streak} event${student.streak === 1 ? "" : "s"} in a row`
+                        : "No active streak"}
+                    </dd>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 px-3 py-2">
+                    <dt className="text-xs text-[#07713c]/85">Participation trend</dt>
+                    <dd
+                      className={`text-sm font-semibold ${
+                        student.participationTrend === "Increasing" ? "text-[#07713c]" : "text-amber-700"
+                      }`}
+                    >
+                      {student.participationTrend === "Increasing" ? "📈 Increasing" : "📉 Decreasing"}
+                    </dd>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 px-3 py-2">
+                    <dt className="text-xs text-[#07713c]/85">Last attended event</dt>
+                    <dd className="text-sm font-medium text-[#07713c]">
+                      {student.lastAttendedEvent ? (
+                        <>
+                          {student.lastAttendedEvent.name}{" "}
+                          <span className="text-[#07713c]/85">
+                            ({formatEventDateForDisplay(student.lastAttendedEvent.date)})
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-[#07713c]/85">—</span>
+                      )}
+                    </dd>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 px-3 py-2">
+                    <dt className="text-xs text-[#07713c]/85">Last missed event</dt>
+                    <dd className="text-sm font-medium text-[#07713c]">
+                      {student.lastMissedEvent ? (
+                        <>
+                          {student.lastMissedEvent.name}{" "}
+                          <span className="text-[#07713c]/85">
+                            ({formatEventDateForDisplay(student.lastMissedEvent.date)})
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-[#07713c]/85">—</span>
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+              </section>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
