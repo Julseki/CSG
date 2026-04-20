@@ -179,8 +179,8 @@ function EventCardMinimal({ ev }) {
           <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400 mb-2">Schedule</p>
           <ScheduleBlocks timeSlots={ev.timeSlots} compact />
         </div>
-        <MiniCell label="Late AM">{`${graceMins(ev.amGraceInMinutes)} in / ${graceMins(ev.amGraceOutMinutes)} out`}</MiniCell>
-        <MiniCell label="Late PM">{`${graceMins(ev.pmGraceInMinutes)} in / ${graceMins(ev.pmGraceOutMinutes)} out`}</MiniCell>
+        <MiniCell label="Late AM (time in)">{graceMins(ev.amGraceInMinutes)}</MiniCell>
+        <MiniCell label="Late PM (time in)">{graceMins(ev.pmGraceInMinutes)}</MiniCell>
         <MiniCell label="Audience" className="md:col-span-2" dense>
           {audience}
         </MiniCell>
@@ -279,9 +279,7 @@ function EventCardModalHorizontal({ ev }) {
             <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Late (minutes)</p>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
               <HRow label="AM late in" value={graceMins(ev.amGraceInMinutes)} />
-              <HRow label="AM late out" value={graceMins(ev.amGraceOutMinutes)} />
               <HRow label="PM late in" value={graceMins(ev.pmGraceInMinutes)} />
-              <HRow label="PM late out" value={graceMins(ev.pmGraceOutMinutes)} />
             </div>
           </div>
         </div>
@@ -369,10 +367,8 @@ export default function EventCard({ event: ev, variant = "default" }) {
 
       <div className="flex flex-col gap-2.5">
         <p className="text-xs font-medium text-gray-500">Late (minutes)</p>
-        <Row label="AM late in"  value={graceMins(ev.amGraceInMinutes)} />
-        <Row label="AM late out" value={graceMins(ev.amGraceOutMinutes)} />
-        <Row label="PM late in"  value={graceMins(ev.pmGraceInMinutes)} />
-        <Row label="PM late out" value={graceMins(ev.pmGraceOutMinutes)} />
+        <Row label="AM late in" value={graceMins(ev.amGraceInMinutes)} />
+        <Row label="PM late in" value={graceMins(ev.pmGraceInMinutes)} />
       </div>
 
       {!ev.is_all_departments && Array.isArray(ev.audiences) && ev.audiences.length > 0 && (

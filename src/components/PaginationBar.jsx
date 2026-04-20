@@ -8,6 +8,7 @@ export default function PaginationBar({
   onPageChange,
   emptyLabel = "No records to show.",
   itemLabel = "",
+  className = "",
 }) {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize) || 1);
   const safePage = Math.min(page, totalPages);
@@ -16,7 +17,9 @@ export default function PaginationBar({
   const suffix = itemLabel ? ` ${itemLabel}` : "";
 
   return (
-    <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 text-sm text-gray-500">
+    <div
+      className={`px-4 py-3 flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 text-sm text-gray-500 ${className}`.trim()}
+    >
       <span>
         {totalCount === 0
           ? emptyLabel

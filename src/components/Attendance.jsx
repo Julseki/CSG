@@ -9,6 +9,8 @@ import { canOpenCreateUser, getDashboardRoleLabel } from "../utils/roles";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { useAttendancePageEvents } from "../hooks/useAttendancePageEvents";
 import { useAttendancePageEventDetail } from "../hooks/useAttendancePageEventDetail";
+import { formatEventDateForDisplay } from "../hooks/useGetEvents";
+import { formatDurationForEventsListWithSessionHint } from "../utils/eventDurationDisplay";
 
 void ChartJS;
 
@@ -26,31 +28,6 @@ const MOCK_FINE_PER_ABSENCE_PHP = 50;
 function formatPhp(n) {
   const v = Number(n) || 0;
   return `₱${v.toLocaleString("en-PH")}`;
-}
-
-const MONTH_NAMES_FULL = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
-/** e.g. "April 14, 2026" from YYYY-MM-DD or ISO string start */
-function formatShortDate(iso) {
-  if (!iso) return "—";
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso));
-  if (!m) return iso;
-  const monthName = MONTH_NAMES_FULL[Number(m[2]) - 1];
-  if (!monthName) return iso;
-  return `${monthName} ${Number(m[3])}, ${m[1]}`;
 }
 
 function ratePct(attended, total) {
@@ -295,7 +272,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
     const list = analyticsEventsSorted;
     const isBar = analyticsChartType === "bar";
     return {
-      labels: list.map((e) => formatShortDate(e.date)),
+      labels: list.map((e) => formatEventDateForDisplay(e.date)),
       datasets: [
         {
           label: "Attendance rate %",
@@ -355,7 +332,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
               const i = items[0]?.dataIndex;
               if (i == null || !analyticsEventsSorted[i]) return "";
               const ev = analyticsEventsSorted[i];
-              const dateStr = formatShortDate(ev.date);
+              const dateStr = formatEventDateForDisplay(ev.date);
               const name = String(ev.name ?? "").trim() || "Untitled event";
               return [dateStr, name];
             },
@@ -440,24 +417,17 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
         type: "Mandatory",
         requiresRegistration: "No",
         audience: "All departments",
-        duration:
-          getEventSessionType(detailEvent) === "whole_day"
-            ? "Whole Day"
-            : getEventSessionType(detailEvent) === "am"
-              ? "Half Day (AM)"
-              : "Half Day (PM)",
+        duration: formatDurationForEventsListWithSessionHint(detailEvent),
         scheduleAm:
           getEventSessionType(detailEvent) === "whole_day" || getEventSessionType(detailEvent) === "am"
-            ? "6:00 AM - 11:45 AM (late in 15m, out 0m)"
+            ? "6:00 AM - 11:45 AM (late in 15m)"
             : null,
         schedulePm:
           getEventSessionType(detailEvent) === "whole_day" || getEventSessionType(detailEvent) === "pm"
-            ? "1:00 PM - 5:00 PM (late in 15m, out 0m)"
+            ? "1:00 PM - 5:00 PM (late in 15m)"
             : null,
         lateAmIn: getEventSessionType(detailEvent) === "whole_day" || getEventSessionType(detailEvent) === "am" ? 15 : null,
-        lateAmOut: getEventSessionType(detailEvent) === "whole_day" || getEventSessionType(detailEvent) === "am" ? 0 : null,
         latePmIn: getEventSessionType(detailEvent) === "whole_day" || getEventSessionType(detailEvent) === "pm" ? 15 : null,
-        latePmOut: getEventSessionType(detailEvent) === "whole_day" || getEventSessionType(detailEvent) === "pm" ? 0 : null,
         notes: detailEvent.status === "upcoming" ? "No attendance recorded yet." : "Attendance records available.",
       }
     : null;
@@ -1050,7 +1020,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                   <h4 className="text-lg font-semibold text-[#07713c]">Schedule</h4>
                   <div className="mt-3 rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.06] px-3 py-2.5">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-[#07713c]/75">Event date</p>
-                    <p className="mt-0.5 text-base font-semibold text-[#07713c]">{formatShortDate(detailEvent.date)}</p>
+                    <p className="mt-0.5 text-base font-semibold text-[#07713c]">{formatEventDateForDisplay(detailEvent.date)}</p>
                   </div>
                   <div className="mt-4 space-y-4 text-sm">
                     {detailEventMeta.scheduleAm && (
@@ -1425,23 +1395,23 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[880px] text-sm">
-                <thead className="bg-[#07713c]/5 text-left text-xs font-semibold uppercase text-[#07713c]">
+                <thead className="border-b border-[#07713c]/30 bg-[#07713c] text-left text-xs font-semibold uppercase tracking-wide text-white">
                   <tr>
-                    <th className="px-4 py-2.5">Event name</th>
-                    <th className="px-4 py-2.5">Date</th>
-                    <th className="px-4 py-2.5">Session</th>
-                    <th className="px-4 py-2.5">Status</th>
-                    <th className="px-4 py-2.5 text-right tabular-nums">Attended</th>
-                    <th className="px-4 py-2.5 text-right tabular-nums">Absent</th>
-                    <th className="px-4 py-2.5 text-right tabular-nums">Rate</th>
-                    <th className="px-4 py-2.5 text-right text-red-600">Fines</th>
-                    <th className="px-4 py-2.5 text-center">Actions</th>
+                    <th className="px-4 py-2.5 align-middle">Event name</th>
+                    <th className="px-4 py-2.5 align-middle">Date</th>
+                    <th className="px-4 py-2.5 align-middle">Session</th>
+                    <th className="px-4 py-2.5 align-middle">Status</th>
+                    <th className="px-4 py-2.5 text-right align-middle tabular-nums">Attended</th>
+                    <th className="px-4 py-2.5 text-right align-middle tabular-nums">Absent</th>
+                    <th className="px-4 py-2.5 text-right align-middle tabular-nums">Rate</th>
+                    <th className="px-4 py-2.5 text-right align-middle tabular-nums">Fines</th>
+                    <th className="px-4 py-2.5 text-center align-middle">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-4 py-8 text-center text-sm text-[#07713c]">
+                      <td colSpan={9} className="px-4 py-8 text-center text-sm text-[#07713c]">
                         No events match the current filters.
                       </td>
                     </tr>
@@ -1449,13 +1419,9 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                   {paginatedFiltered.map((ev) => (
                     <tr key={ev.id} className="border-t border-[#07713c]/20 hover:bg-[#07713c]/10">
                       <td className="px-4 py-2.5 font-medium text-[#07713c]">{ev.name}</td>
-                      <td className="px-4 py-2.5 text-[#07713c]">{formatShortDate(ev.date)}</td>
+                      <td className="px-4 py-2.5 text-[#07713c]">{formatEventDateForDisplay(ev.date)}</td>
                       <td className="px-4 py-2.5 text-[#07713c]">
-                        {getEventSessionType(ev) === "whole_day"
-                          ? "Whole Day"
-                          : getEventSessionType(ev) === "am"
-                            ? "Half Day (AM)"
-                            : "Half Day (PM)"}
+                        {formatDurationForEventsListWithSessionHint(ev)}
                       </td>
                       <td className="px-4 py-2.5">
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(ev.status)}`}>
@@ -1580,7 +1546,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
               <div>
                 <h3 className="text-lg font-semibold text-[#07713c]">{detailEvent.name}</h3>
                 <p className="text-sm text-[#07713c]">
-                  {formatShortDate(detailEvent.date)} · <span className="capitalize">{detailEvent.status}</span>
+                  {formatEventDateForDisplay(detailEvent.date)} · <span className="capitalize">{detailEvent.status}</span>
                 </p>
               </div>
               <button
@@ -1635,7 +1601,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
               <h4 className="text-sm font-semibold text-[#07713c]">Schedule &amp; details</h4>
               <div className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                 <div className="rounded-lg bg-[#07713c]/5 p-2">
-                  <p className="text-xs text-[#07713c]">Duration</p>
+                  <p className="text-xs text-[#07713c]">Session</p>
                   <p className="font-medium">{detailEventMeta.duration}</p>
                 </div>
                 <div className="rounded-lg bg-[#07713c]/5 p-2">
@@ -1650,22 +1616,14 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
 
             <div className="mt-3 rounded-lg border border-[#07713c]/30 p-3">
               <h4 className="text-sm font-semibold text-[#07713c]">Late (minutes)</h4>
-              <div className="mt-2 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+              <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                 <div className="rounded-lg bg-[#07713c]/5 p-2">
                   <p className="text-xs text-[#07713c]">AM late in</p>
                   <p className="font-medium">{detailEventMeta.lateAmIn} mins</p>
                 </div>
                 <div className="rounded-lg bg-[#07713c]/5 p-2">
-                  <p className="text-xs text-[#07713c]">AM late out</p>
-                  <p className="font-medium">{detailEventMeta.lateAmOut} mins</p>
-                </div>
-                <div className="rounded-lg bg-[#07713c]/5 p-2">
                   <p className="text-xs text-[#07713c]">PM late in</p>
                   <p className="font-medium">{detailEventMeta.latePmIn} mins</p>
-                </div>
-                <div className="rounded-lg bg-[#07713c]/5 p-2">
-                  <p className="text-xs text-[#07713c]">PM late out</p>
-                  <p className="font-medium">{detailEventMeta.latePmOut} mins</p>
                 </div>
               </div>
             </div>

@@ -40,15 +40,23 @@ function useEventsListQuery(options = {}) {
   });
 }
 
+/** e.g. Feb 16, 2026 — short month, local calendar day for YYYY-MM-DD (avoids UTC shift). */
 export function formatEventDateForDisplay(dateStr) {
   if (!dateStr) return "—";
-  try {
-    const d = new Date(dateStr);
-    if (Number.isNaN(d.getTime())) return String(dateStr);
-    return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-  } catch {
-    return String(dateStr);
+  const s = String(dateStr).trim();
+  const ymd = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s);
+  let d;
+  if (ymd) {
+    d = new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]));
+  } else {
+    try {
+      d = new Date(s);
+    } catch {
+      return s;
+    }
   }
+  if (Number.isNaN(d.getTime())) return s;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 export function eventDateMs(d) {
@@ -105,7 +113,7 @@ function normalizeResponseToArray(data) {
 }
 
 /** Converts backend time strings (e.g. "07:30:00", "7:30") to locale time like "7:30 AM". */
-function formatSqlTimeForDisplay(value) {
+export function formatSqlTimeForDisplay(value) {
   if (value == null || value === "") return null;
   const s = String(value).trim();
   const m = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(s);
@@ -204,10 +212,22 @@ export function mapServerEventToDisplay(raw) {
         : raw.department != null && String(raw.department).trim() !== ""
           ? String(raw.department).trim()
           : null,
+    am_grace_in: amGraceIn != null && amGraceIn !== "" ? Number(amGraceIn) : null,
+    am_grace_out: amGraceOut != null && amGraceOut !== "" ? Number(amGraceOut) : null,
+    pm_grace_in: pmGraceIn != null && pmGraceIn !== "" ? Number(pmGraceIn) : null,
+    pm_grace_out: pmGraceOut != null && pmGraceOut !== "" ? Number(pmGraceOut) : null,
     amGraceInMinutes: amGraceIn != null && amGraceIn !== "" ? Number(amGraceIn) : null,
     amGraceOutMinutes: amGraceOut != null && amGraceOut !== "" ? Number(amGraceOut) : null,
     pmGraceInMinutes: pmGraceIn != null && pmGraceIn !== "" ? Number(pmGraceIn) : null,
     pmGraceOutMinutes: pmGraceOut != null && pmGraceOut !== "" ? Number(pmGraceOut) : null,
+    am_time_in: amIn,
+    am_time_out: amOut,
+    pm_time_in: pmIn,
+    pm_time_out: pmOut,
+    amTimeInDisplay: formatSqlTimeForDisplay(amIn),
+    amTimeOutDisplay: formatSqlTimeForDisplay(amOut),
+    pmTimeInDisplay: formatSqlTimeForDisplay(pmIn),
+    pmTimeOutDisplay: formatSqlTimeForDisplay(pmOut),
     reg: raw.reg ?? 0,
     attRate: raw.att_rate != null ? raw.att_rate : raw.attRate != null ? raw.attRate : null,
     fine,

@@ -2,39 +2,13 @@ import { useEffect, useState } from "react";
 import { useAddevent } from "../hooks/useAddevent";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { isCsgPresident } from "../utils/roles";
+import { AM_SESSION_TIME_OPTIONS, PM_SESSION_TIME_OPTIONS } from "../utils/eventTimeOptions";
 
 const STEPS = [
   { id: 1, label: "Basic Info" },
   { id: 2, label: "Audience" },
   { id: 3, label: "Confirm" },
 ];
-
-function formatTime12FromTotalMinutes(totalMinutes) {
-  const hour24 = Math.floor(totalMinutes / 60);
-  const minute = totalMinutes % 60;
-  const period = hour24 >= 12 ? "PM" : "AM";
-  let hour12 = hour24 % 12;
-  if (hour12 === 0) hour12 = 12;
-  return `${hour12}:${String(minute).padStart(2, "0")} ${period}`;
-}
-
-const AM_SESSION_TIME_OPTIONS = (() => {
-  const options = [];
-  // AM only: 6:00 AM to 11:45 AM
-  for (let m = 6 * 60; m <= 11 * 60 + 45; m += 15) {
-    options.push(formatTime12FromTotalMinutes(m));
-  }
-  return options;
-})();
-
-const PM_SESSION_TIME_OPTIONS = (() => {
-  const options = [];
-  // PM only: 12:00 PM to 6:00 PM
-  for (let m = 12 * 60; m <= 18 * 60; m += 15) {
-    options.push(formatTime12FromTotalMinutes(m));
-  }
-  return options;
-})();
 
 export default function AddEvent({ onBack, onNext }) {
   const { role, isGovernor, governorScope } = useGovernorScope();
@@ -200,39 +174,42 @@ export default function AddEvent({ onBack, onNext }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 [&_button]:cursor-pointer">
-      <div className="w-full max-w-3xl bg-gray-100 rounded-2xl shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="bg-[#008000] px-6 py-4 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-[3px] [&_button]:cursor-pointer">
+      {/* p-px + bg-[#07713c]: solid green frame (avoids white bleeding at rounded corners from bg-white) */}
+      <div className="w-full max-w-3xl rounded-2xl bg-[#07713c] p-px shadow-2xl">
+        <div className="overflow-hidden rounded-[calc(1rem-1px)] bg-white">
+        {/* Header — top radius matches inner panel so green fills the curve, not the white shell */}
+        <div className="flex items-center justify-between rounded-t-[calc(1rem-1px)] border-b border-[#055a2e] bg-[#07713c] px-6 py-4">
           <div>
             <h1 className="text-xl font-bold text-white">Add New Event</h1>
             <p className="text-sm text-white/90 mt-0.5">Step {step} Of 3 — {STEPS[step - 1].label}</p>
           </div>
           <button
+            type="button"
             onClick={onBack}
-            className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center text-gray-800 hover:bg-yellow-300 transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-[#07713c] transition-colors outline-none hover:bg-yellow-300 focus-visible:ring-2 focus-visible:ring-white/70"
           >
             <span className="text-lg font-bold">×</span>
           </button>
         </div>
 
         {/* Progress Stepper */}
-        <div className="bg-white border-b border-gray-200 px-6 py-3">
+        <div className="border-b border-[#07713c]/30 bg-white px-6 py-3">
           <div className="flex items-center gap-4">
             {STEPS.map((s, i) => (
               <div key={s.id} className="flex items-center gap-2">
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    step >= s.id ? "bg-[#008000] text-white" : "bg-gray-200 text-gray-500"
+                    step >= s.id ? "bg-[#07713c] text-white" : "bg-[#07713c]/12 text-[#07713c]/65"
                   }`}
                 >
                   {s.id}
                 </div>
-                <span className={`text-sm font-medium ${step >= s.id ? "text-[#008000]" : "text-gray-400"}`}>
+                <span className={`text-sm font-medium ${step >= s.id ? "text-[#07713c]" : "text-[#07713c]/45"}`}>
                   {s.label}
                 </span>
                 {i < STEPS.length - 1 && (
-                  <div className="w-8 h-0.5 bg-gray-200 mx-1" />
+                  <div className="mx-1 h-0.5 w-8 bg-[#07713c]/20" />
                 )}
               </div>
             ))}
@@ -240,7 +217,7 @@ export default function AddEvent({ onBack, onNext }) {
         </div>
 
         {/* Form Content */}
-        <main className="max-h-[80vh] overflow-y-auto px-6 pb-6 pt-4">
+        <main className="max-h-[80vh] overflow-y-auto px-6 pb-6 pt-4 [scrollbar-width:thin] [scrollbar-color:rgba(7,113,60,0.28)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#07713c]/30 [&::-webkit-scrollbar-thumb]:hover:bg-[#07713c]/40 [&::-webkit-scrollbar-track]:bg-transparent">
         {step === 1 && (
           <div className="space-y-6">
             {Object.values(errors).filter(Boolean).length > 0 && (
@@ -253,13 +230,13 @@ export default function AddEvent({ onBack, onNext }) {
 
             {/* Event Name */}
             <div>
-              <label className="block text-sm font-semibold text-[#008000] mb-1">Event Name *</label>
+              <label className="block text-sm font-semibold text-[#07713c] mb-1">Event Name *</label>
               <input
                 type="text"
                 value={eventName}
                 onChange={(e) => { setEventName(e.target.value); setErrors((prev) => ({ ...prev, eventName: null })); }}
                 placeholder="Eg, General Assembly"
-                className={`w-full px-4 py-2.5 border rounded-lg bg-gray-50 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000] ${errors.eventName ? "border-red-500" : "border-gray-300"}`}
+                className={`w-full rounded-lg border px-4 py-2.5 text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 ${errors.eventName ? "border-red-500 bg-red-50/30" : "border-[#07713c]/35 bg-white"}`}
               />
               {errors.eventName && <p className="text-xs text-red-600 mt-1">{errors.eventName}</p>}
             </div>
@@ -267,34 +244,34 @@ export default function AddEvent({ onBack, onNext }) {
             {/* Event Date & Venue */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-[#008000] mb-1">Event Date *</label>
+                <label className="block text-sm font-semibold text-[#07713c] mb-1">Event Date *</label>
                 <div className="flex gap-2">
                   <input
                     type="date"
                     value={eventDate}
                     onChange={(e) => { setEventDate(e.target.value); setErrors((prev) => ({ ...prev, eventDate: null })); }}
-                    className={`flex-1 px-4 py-2.5 border rounded-lg bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#008000] ${errors.eventDate ? "border-red-500" : "border-gray-300"}`}
+                    className={`flex-1 rounded-lg border px-4 py-2.5 text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 ${errors.eventDate ? "border-red-500 bg-red-50/30" : "border-[#07713c]/35 bg-white"}`}
                   />
                 </div>
                 {errors.eventDate && <p className="text-xs text-red-600 mt-1">{errors.eventDate}</p>}
               </div>
               <div>
-                <label className="block text-sm font-semibold text-[#008000] mb-1">Event Venue *</label>
+                <label className="block text-sm font-semibold text-[#07713c] mb-1">Event Venue *</label>
                 <input
                   type="text"
                   value={venue}
                   onChange={(e) => { setVenue(e.target.value); setErrors((prev) => ({ ...prev, venue: null })); }}
                   placeholder="E.G, City Gym"
-                  className={`w-full px-4 py-2.5 border rounded-lg bg-gray-50 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#008000] ${errors.venue ? "border-red-500" : "border-gray-300"}`}
+                  className={`w-full rounded-lg border px-4 py-2.5 text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 ${errors.venue ? "border-red-500 bg-red-50/30" : "border-[#07713c]/35 bg-white"}`}
                 />
                 {errors.venue && <p className="text-xs text-red-600 mt-1">{errors.venue}</p>}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-[#008000] mb-1">Fines</label>
+              <label className="block text-sm font-semibold text-[#07713c] mb-1">Fines</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]/70">₱</span>
                 <input
                   type="number"
                   min="0"
@@ -305,7 +282,7 @@ export default function AddEvent({ onBack, onNext }) {
                     setErrors((prev) => ({ ...prev, fineAmount: null }));
                   }}
                   placeholder="0"
-                  className={`w-full pl-8 pr-4 py-2.5 border rounded-lg bg-gray-50 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000] ${errors.fineAmount ? "border-red-500" : "border-gray-300"}`}
+                  className={`w-full rounded-lg border py-2.5 pl-8 pr-4 text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 ${errors.fineAmount ? "border-red-500 bg-red-50/30" : "border-[#07713c]/35 bg-white"}`}
                 />
               </div>
               {errors.fineAmount && <p className="text-xs text-red-600 mt-1">{errors.fineAmount}</p>}
@@ -313,7 +290,7 @@ export default function AddEvent({ onBack, onNext }) {
 
             {/* Event Duration */}
             <div>
-              <label className="block text-sm font-semibold text-[#008000] mb-2">Event Duration *</label>
+              <label className="block text-sm font-semibold text-[#07713c] mb-2">Event Duration *</label>
               <div className="grid grid-cols-2 gap-4">
                 <button
                   type="button"
@@ -323,7 +300,7 @@ export default function AddEvent({ onBack, onNext }) {
                     setUsePmHalf(true);
                   }}
                   className={`p-4 rounded-lg border-2 text-left transition-colors ${
-                    duration === "whole" ? "border-[#008000] bg-green-50" : "border-gray-300 bg-white hover:border-gray-400"
+                    duration === "whole" ? "border-[#07713c] bg-green-50" : "border-gray-300 bg-white hover:border-gray-400"
                   }`}
                 >
                   <span className="text-2xl">☀️</span>
@@ -338,7 +315,7 @@ export default function AddEvent({ onBack, onNext }) {
                     setUsePmHalf(false);
                   }}
                   className={`p-4 rounded-lg border-2 text-left transition-colors ${
-                    duration === "half" ? "border-[#008000] bg-green-50" : "border-gray-300 bg-white hover:border-gray-400"
+                    duration === "half" ? "border-[#07713c] bg-green-50" : "border-gray-300 bg-white hover:border-gray-400"
                   }`}
                 >
                   <span className="text-2xl">🌓</span>
@@ -382,11 +359,11 @@ export default function AddEvent({ onBack, onNext }) {
 
             {/* AM Session */}
             {(duration === "whole" || (duration === "half" && useAmHalf)) && (
-            <div className="border-2 border-green-200 rounded-lg p-4 bg-green-50/30">
-              <h3 className="text-sm font-semibold text-[#008000] mb-4">Am Session - Time In / Out</h3>
+            <div className="rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] p-4">
+              <h3 className="text-sm font-semibold text-[#07713c] mb-4">Am Session - Time In / Out</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Time In</label>
+                  <label className="mb-1 block text-xs font-medium text-[#07713c]">Time In</label>
                   <div className="flex gap-2">
                     <select
                       value={amTimeIn}
@@ -394,7 +371,7 @@ export default function AddEvent({ onBack, onNext }) {
                         setAmTimeIn(e.target.value);
                         setErrors((prev) => ({ ...prev, amTimeIn: null }));
                       }}
-                      className={`flex-1 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000] ${errors.amTimeIn ? "border-red-500" : "border-gray-300"}`}
+                      className={`flex-1 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.amTimeIn ? "border-red-500" : "border-gray-300"}`}
                     >
                       <option value="">Select time</option>
                       {AM_SESSION_TIME_OPTIONS.map((timeOption) => (
@@ -403,12 +380,12 @@ export default function AddEvent({ onBack, onNext }) {
                         </option>
                       ))}
                     </select>
-                    <span className="flex items-center px-2 text-gray-500">🕐</span>
+                    <span className="flex items-center px-2 text-[#07713c]/60">🕐</span>
                   </div>
                   {errors.amTimeIn && <p className="text-xs text-red-600 mt-1">{errors.amTimeIn}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Time Out</label>
+                  <label className="mb-1 block text-xs font-medium text-[#07713c]">Time Out</label>
                   <div className="flex gap-2">
                     <select
                       value={amTimeOut}
@@ -416,7 +393,7 @@ export default function AddEvent({ onBack, onNext }) {
                         setAmTimeOut(e.target.value);
                         setErrors((prev) => ({ ...prev, amTimeOut: null }));
                       }}
-                      className={`flex-1 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000] ${errors.amTimeOut ? "border-red-500" : "border-gray-300"}`}
+                      className={`flex-1 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.amTimeOut ? "border-red-500" : "border-gray-300"}`}
                     >
                       <option value="">Select time</option>
                       {AM_SESSION_TIME_OPTIONS.map((timeOption) => (
@@ -425,12 +402,12 @@ export default function AddEvent({ onBack, onNext }) {
                         </option>
                       ))}
                     </select>
-                    <span className="flex items-center px-2 text-gray-500">🕐</span>
+                    <span className="flex items-center px-2 text-[#07713c]/60">🕐</span>
                   </div>
                   {errors.amTimeOut && <p className="text-xs text-red-600 mt-1">{errors.amTimeOut}</p>}
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Late — Time In (minutes)</label>
+                  <label className="mb-1 block text-xs font-medium text-[#07713c]">Late — Time In (minutes)</label>
                   <input
                     type="number"
                     min="0"
@@ -440,7 +417,7 @@ export default function AddEvent({ onBack, onNext }) {
                       setAmGraceInMinutes(e.target.value === "" ? 0 : Number(e.target.value));
                       setErrors((prev) => ({ ...prev, amGraceInMinutes: null }));
                     }}
-                    className={`w-full max-w-xs px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000] ${errors.amGraceInMinutes ? "border-red-500" : "border-gray-300"}`}
+                    className={`w-full max-w-xs px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.amGraceInMinutes ? "border-red-500" : "border-gray-300"}`}
                     placeholder="e.g. 15"
                   />
                   {errors.amGraceInMinutes && <p className="text-xs text-red-600 mt-1">{errors.amGraceInMinutes}</p>}
@@ -451,11 +428,11 @@ export default function AddEvent({ onBack, onNext }) {
 
             {/* PM Session */}
             {(duration === "whole" || (duration === "half" && usePmHalf)) && (
-            <div className="border-2 border-green-200 rounded-lg p-4 bg-green-50/30">
-              <h3 className="text-sm font-semibold text-[#008000] mb-4">Pm Session - Time In / Out</h3>
+            <div className="rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] p-4">
+              <h3 className="text-sm font-semibold text-[#07713c] mb-4">Pm Session - Time In / Out</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Time In</label>
+                  <label className="mb-1 block text-xs font-medium text-[#07713c]">Time In</label>
                   <div className="flex gap-2">
                     <select
                       value={pmTimeIn}
@@ -463,7 +440,7 @@ export default function AddEvent({ onBack, onNext }) {
                         setPmTimeIn(e.target.value);
                         setErrors((prev) => ({ ...prev, pmTimeIn: null }));
                       }}
-                      className={`flex-1 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000] ${errors.pmTimeIn ? "border-red-500" : "border-gray-300"}`}
+                      className={`flex-1 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.pmTimeIn ? "border-red-500" : "border-gray-300"}`}
                     >
                       <option value="">Select time</option>
                       {PM_SESSION_TIME_OPTIONS.map((timeOption) => (
@@ -472,12 +449,12 @@ export default function AddEvent({ onBack, onNext }) {
                         </option>
                       ))}
                     </select>
-                    <span className="flex items-center px-2 text-gray-500">🕐</span>
+                    <span className="flex items-center px-2 text-[#07713c]/60">🕐</span>
                   </div>
                   {errors.pmTimeIn && <p className="text-xs text-red-600 mt-1">{errors.pmTimeIn}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Time Out</label>
+                  <label className="mb-1 block text-xs font-medium text-[#07713c]">Time Out</label>
                   <div className="flex gap-2">
                     <select
                       value={pmTimeOut}
@@ -485,7 +462,7 @@ export default function AddEvent({ onBack, onNext }) {
                         setPmTimeOut(e.target.value);
                         setErrors((prev) => ({ ...prev, pmTimeOut: null }));
                       }}
-                      className={`flex-1 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000] ${errors.pmTimeOut ? "border-red-500" : "border-gray-300"}`}
+                      className={`flex-1 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.pmTimeOut ? "border-red-500" : "border-gray-300"}`}
                     >
                       <option value="">Select time</option>
                       {PM_SESSION_TIME_OPTIONS.map((timeOption) => (
@@ -494,12 +471,12 @@ export default function AddEvent({ onBack, onNext }) {
                         </option>
                       ))}
                     </select>
-                    <span className="flex items-center px-2 text-gray-500">🕐</span>
+                    <span className="flex items-center px-2 text-[#07713c]/60">🕐</span>
                   </div>
                   {errors.pmTimeOut && <p className="text-xs text-red-600 mt-1">{errors.pmTimeOut}</p>}
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Late — Time In (minutes)</label>
+                  <label className="mb-1 block text-xs font-medium text-[#07713c]">Late — Time In (minutes)</label>
                   <input
                     type="number"
                     min="0"
@@ -509,7 +486,7 @@ export default function AddEvent({ onBack, onNext }) {
                       setPmGraceInMinutes(e.target.value === "" ? 0 : Number(e.target.value));
                       setErrors((prev) => ({ ...prev, pmGraceInMinutes: null }));
                     }}
-                    className={`w-full max-w-xs px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000] ${errors.pmGraceInMinutes ? "border-red-500" : "border-gray-300"}`}
+                    className={`w-full max-w-xs px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.pmGraceInMinutes ? "border-red-500" : "border-gray-300"}`}
                     placeholder="e.g. 15"
                   />
                   {errors.pmGraceInMinutes && <p className="text-xs text-red-600 mt-1">{errors.pmGraceInMinutes}</p>}
@@ -522,7 +499,7 @@ export default function AddEvent({ onBack, onNext }) {
 
         {step === 2 && (
           <div className="space-y-6">
-            <h2 className="text-base font-semibold text-[#008000]">Audience Details</h2>
+            <h2 className="text-base font-semibold text-[#07713c]">Audience Details</h2>
 
             {/* Year level & Department */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -531,7 +508,7 @@ export default function AddEvent({ onBack, onNext }) {
                 <select
                   value={yearLevel}
                   onChange={(e) => setYearLevel(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000]"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55"
                 >
                   <option>All Year Levels</option>
                   <option>1st Year</option>
@@ -555,7 +532,7 @@ export default function AddEvent({ onBack, onNext }) {
                   <select
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000]"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55"
                   >
                     <option>All Departments</option>
                     <option>BSBA</option>
@@ -575,7 +552,7 @@ export default function AddEvent({ onBack, onNext }) {
                 <select
                   value={major}
                   onChange={(e) => setMajor(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000]"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55"
                 >
                   {majorOptions.map((majorOption) => (
                     <option key={majorOption} value={majorOption}>
@@ -593,7 +570,7 @@ export default function AddEvent({ onBack, onNext }) {
                 type="button"
                 onClick={() => setIsMandatory((v) => !v)}
                 className={`px-4 py-1.5 text-xs font-medium rounded-full border ${
-                  isMandatory ? "bg-[#008000] text-white border-[#008000]" : "bg-white text-gray-700 border-gray-300"
+                  isMandatory ? "bg-[#07713c] text-white border-[#07713c]" : "bg-white text-gray-700 border-gray-300"
                 }`}
               >
                 {isMandatory ? "Yes, mandatory" : "No, optional"}
@@ -607,7 +584,7 @@ export default function AddEvent({ onBack, onNext }) {
                 value={audienceNotes}
                 onChange={(e) => setAudienceNotes(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000]"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55"
               />
             </div>
           </div>
@@ -615,36 +592,36 @@ export default function AddEvent({ onBack, onNext }) {
 
         {step === 3 && (
   <div className="space-y-6">
-    <h2 className="text-base font-semibold text-[#008000]">Confirm Event Details</h2>
+    <h2 className="text-base font-semibold text-[#07713c]">Confirm Event Details</h2>
 
     {/* Basic Info summary */}
-    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm space-y-2">
+    <div className="space-y-2 rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] p-4 shadow-sm">
       <div className="flex justify-between text-sm">
-        <span className="font-semibold text-gray-700">Event Name</span>
-        <span className="text-gray-900">{eventName || "-"}</span>
+        <span className="font-semibold text-[#07713c]">Event Name</span>
+        <span className="text-[#07713c]">{eventName || "-"}</span>
       </div>
       <div className="flex justify-between text-sm">
-        <span className="font-semibold text-gray-700">Date</span>
-        <span className="text-gray-900">{eventDate || "-"}</span>
+        <span className="font-semibold text-[#07713c]">Date</span>
+        <span className="text-[#07713c]">{eventDate || "-"}</span>
       </div>
       <div className="flex justify-between text-sm">
-        <span className="font-semibold text-gray-700">Venue</span>
-        <span className="text-gray-900">{venue || "-"}</span>
+        <span className="font-semibold text-[#07713c]">Venue</span>
+        <span className="text-[#07713c]">{venue || "-"}</span>
       </div>
       <div className="flex justify-between text-sm">
-        <span className="font-semibold text-gray-700">Duration</span>
-        <span className="text-gray-900">
+        <span className="font-semibold text-[#07713c]">Duration</span>
+        <span className="text-[#07713c]">
           {duration === "whole" ? "Whole Day (AM + PM)" : "Half Day (AM or PM only)"}
         </span>
       </div>
       <div className="flex justify-between text-sm">
-        <span className="font-semibold text-gray-700">Fines</span>
-        <span className="text-gray-900">{fineAmount ? `₱${fineAmount}` : "-"}</span>
+        <span className="font-semibold text-[#07713c]">Fines</span>
+        <span className="text-[#07713c]">{fineAmount ? `₱${fineAmount}` : "-"}</span>
       </div>
 
       {/* AM Session */}
       {(duration === "whole" || (duration === "half" && useAmHalf)) && (
-        <div className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-700">
+        <div className="mt-3 border-t border-[#07713c]/15 pt-3 text-xs text-[#07713c]">
           <p className="font-semibold mb-1">AM Session</p>
           <p>Time In: {amTimeIn || "-"}</p>
           <p>Time Out: {amTimeOut || "-"}</p>
@@ -654,7 +631,7 @@ export default function AddEvent({ onBack, onNext }) {
 
       {/* PM Session */}
       {(duration === "whole" || (duration === "half" && usePmHalf)) && (
-        <div className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-700">
+        <div className="mt-3 border-t border-[#07713c]/15 pt-3 text-xs text-[#07713c]">
           <p className="font-semibold mb-1">PM Session</p>
           <p>Time In: {pmTimeIn || "-"}</p>
           <p>Time Out: {pmTimeOut || "-"}</p>
@@ -663,7 +640,7 @@ export default function AddEvent({ onBack, onNext }) {
       )}
 
       {/* Audience */}
-      <div className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-700">
+      <div className="mt-3 border-t border-[#07713c]/15 pt-3 text-xs text-[#07713c]">
         <p className="font-semibold mb-1">Audience</p>
         <p>Year Level: {yearLevel}</p>
         <p>Department: {department}</p>
@@ -691,13 +668,14 @@ export default function AddEvent({ onBack, onNext }) {
           <button
             type="button"
             onClick={handleNext}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#008000] text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#07713c] px-6 py-3 font-medium text-white transition-colors hover:brightness-95"
           >
             Next
             <span>→</span>
           </button>
         </div>
         </main>
+        </div>
       </div>
     </div>
   );

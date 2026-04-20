@@ -17,6 +17,33 @@ function loadDepartmentStudents() {
   }
 }
 
+const ALL_MAJORS = "All Majors";
+
+const COURSE_MAJOR_OPTIONS = {
+  BSBA: [
+    "Financial Management",
+    "Human Resource Development Management",
+    "Marketing Management",
+  ],
+  BSED: ["English", "Math", "Filipino"],
+};
+
+/** Mock penalty schedule (₱) from attendance status — replace with policy/API later */
+const FINE_LATE_PHP = 25;
+const FINE_ABSENT_PHP = 50;
+
+function formatPhp(n) {
+  const v = Math.max(0, Number(n) || 0);
+  return `₱${v.toLocaleString("en-PH")}`;
+}
+
+function getFinePhpForStatus(status) {
+  const s = String(status || "").toLowerCase();
+  if (s === "absent") return FINE_ABSENT_PHP;
+  if (s === "late") return FINE_LATE_PHP;
+  return 0;
+}
+
 const STUDENT_STATS = [
   { label: "Total Departments", value: 248, },
   { label: "Present Today", value: 214, },
@@ -115,6 +142,11 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
       return matchesSearch && matchesDepartment && matchesYear && matchesMajor;
     });
   }, [search, department, year, major, students, isGovernor, governorScope, role, majorOptions, selectedCourseKey]);
+
+  const totalFinesFiltered = useMemo(
+    () => filteredStudents.reduce((sum, s) => sum + getFinePhpForStatus(s.status), 0),
+    [filteredStudents],
+  );
 
   const handleAddStudent = () => {
     if (!newStudent.id.trim() || !newStudent.name.trim() || !newStudent.course.trim() || !newStudent.year.trim()) {
@@ -309,21 +341,49 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
                 </select>
               </div>
 
+              {filteredStudents.length > 0 && (
+                <p className="text-xs text-[#07713c]/90 mb-2">
+                  Total fines (this view): <span className="font-semibold tabular-nums">{formatPhp(totalFinesFiltered)}</span>
+                  <span className="text-[#07713c]/70"> · Late {formatPhp(FINE_LATE_PHP)} · Absent {formatPhp(FINE_ABSENT_PHP)} · Present {formatPhp(0)}</span>
+                </p>
+              )}
+
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                <table className="w-full min-w-[720px] table-fixed border-collapse text-sm">
+                  <colgroup>
+                    <col className="w-[14%]" />
+                    <col className="w-[26%]" />
+                    <col className="w-[14%]" />
+                    <col className="w-[12%]" />
+                    <col className="w-[14%]" />
+                    <col className="w-[20%]" />
+                  </colgroup>
+                  <thead className="border-b border-[#07713c]/30 bg-[#07713c]">
                     <tr>
-                      <th className="text-left py-3 px-4 font-medium text-[#07713c]">Student ID</th>
-                      <th className="text-left py-3 px-4 font-medium text-[#07713c]">Name</th>
-                      <th className="text-left py-3 px-4 font-medium text-[#07713c]">Course</th>
-                      <th className="text-left py-3 px-4 font-medium text-[#07713c]">Year</th>
-                      <th className="text-left py-3 px-4 font-medium text-[#07713c]">Status</th>
+                      <th className="align-middle px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">
+                        Student ID
+                      </th>
+                      <th className="align-middle px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">
+                        Name
+                      </th>
+                      <th className="align-middle px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">
+                        Course
+                      </th>
+                      <th className="align-middle px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">
+                        Year
+                      </th>
+                      <th className="align-middle px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">
+                        Status
+                      </th>
+                      <th className="align-middle px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-white">
+                        Fine (₱)
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredStudents.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="py-8 px-4 text-center text-[#07713c]/85 text-sm">
+                        <td colSpan={6} className="py-8 px-4 text-center text-[#07713c]/85 text-sm">
                           No students yet. Use <strong>Add Students</strong> to create a record.
                         </td>
                       </tr>
@@ -332,16 +392,25 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
                       <tr
                         key={student.id}
                         onClick={() => setSelectedStudent(student)}
-                        className={`cursor-pointer border-b border-gray-100 hover:bg-gray-50 ${selectedStudent?.id === student.id ? "bg-green-50" : ""}`}
+                        className={`cursor-pointer border-b border-[#07713c]/15 ${
+                          selectedStudent?.id === student.id
+                            ? "bg-[#07713c]/10"
+                            : "hover:bg-[#07713c]/[0.04]"
+                        }`}
                       >
-                        <td className="py-3 px-4 text-[#07713c]">{student.id}</td>
-                        <td className="py-3 px-4 font-medium text-[#07713c]">{student.name}</td>
-                        <td className="py-3 px-4 text-[#07713c]">{student.course}</td>
-                        <td className="py-3 px-4 text-[#07713c]">{student.year}</td>
-                        <td className="py-3 px-4">
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getBadgeClass(student.status)}`}>
+                        <td className="align-middle py-3 px-3 text-[#07713c] font-mono text-xs sm:text-sm">{student.id}</td>
+                        <td className="align-middle py-3 px-3 min-w-0 font-medium text-[#07713c]">
+                          <span className="line-clamp-2 break-words">{student.name}</span>
+                        </td>
+                        <td className="align-middle py-3 px-3 text-[#07713c]">{student.course}</td>
+                        <td className="align-middle py-3 px-3 text-[#07713c] whitespace-nowrap">{student.year}</td>
+                        <td className="align-middle py-3 px-3 text-center">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getBadgeClass(student.status)}`}>
                             {student.status}
                           </span>
+                        </td>
+                        <td className="align-middle py-3 px-3 text-right tabular-nums font-medium text-[#07713c]">
+                          {formatPhp(getFinePhpForStatus(student.status))}
                         </td>
                       </tr>
                     ))
@@ -381,7 +450,7 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
                       <span className="text-[#07713c]/85">Section</span>
                       <span className="font-medium text-[#07713c] text-right">{selectedStudent.section}</span>
                     </div>
-                    <div className="flex items-center justify-between gap-4 py-1.5">
+                    <div className="flex items-center justify-between gap-4 py-1.5 border-b border-gray-100">
                       <span className="text-[#07713c]/85">Attendance</span>
                       <span
                         className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
@@ -395,6 +464,11 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
                         {selectedStudent.status}
                       </span>
                     </div>
+                    <div className="flex items-center justify-between gap-4 py-1.5">
+                      <span className="text-[#07713c]/85">Penalty / fine</span>
+                      <span className="font-semibold text-[#07713c] tabular-nums">{formatPhp(getFinePhpForStatus(selectedStudent.status))}</span>
+                    </div>
+                    <p className="text-[10px] text-[#07713c]/70 -mt-1 mb-1">Late {formatPhp(FINE_LATE_PHP)} · Absent {formatPhp(FINE_ABSENT_PHP)} · Present {formatPhp(0)}</p>
                   </div>
 
                   <div className="mt-5 grid grid-cols-2 gap-2.5">
@@ -511,6 +585,10 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
               <p><span className="font-semibold">Course:</span> {selectedStudent.course}</p>
               <p><span className="font-semibold">Year:</span> {selectedStudent.year}</p>
               <p><span className="font-semibold">Section:</span> {selectedStudent.section}</p>
+              <p>
+                <span className="font-semibold">Penalty (mock):</span>{" "}
+                {formatPhp(getFinePhpForStatus(selectedStudent.status))} ({selectedStudent.status})
+              </p>
             </div>
             <div className="px-4 py-3 border-t border-gray-200 flex justify-end">
               <button type="button" onClick={() => setShowProfileModal(false)} className="px-4 py-2 rounded-lg bg-[#008000] text-white">

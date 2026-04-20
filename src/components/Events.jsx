@@ -4,11 +4,40 @@ import PaginationBar from "./PaginationBar";
 import SidebarNavIcon from "./SidebarNavIcon";
 import UserCircleIcon from "./UserCircleIcon";
 import { useGetAllEvents } from "../hooks/useGetAllEvents";
+import { useEditEvent } from "../hooks/useEditEvent";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { canOpenCreateUser, getDashboardRoleLabel } from "../utils/roles";
+import { formatEventDateForDisplay, formatSqlTimeForDisplay } from "../hooks/useGetEvents";
+import {
+  formatDurationForEventsList,
+  getEventSessionKindForFilter,
+  resolveEventDurationUi,
+} from "../utils/eventDurationDisplay";
+import {
+  AM_SESSION_TIME_OPTIONS,
+  EVENT_TIME_SELECT_CLASS,
+  PM_SESSION_TIME_OPTIONS,
+  sqlTimeToSessionSelectValue,
+  twelveHourLabelToSqlTime,
+} from "../utils/eventTimeOptions";
+
+/** Legacy "Half Day" rows → concrete value for session `<select>` (no Half Day option). */
+function durationNormalizedForSessionEdit(ev) {
+  const d = String(ev?.duration ?? "").trim();
+  if (d === "Half Day") {
+    const { sessionFilter } = resolveEventDurationUi(ev);
+    if (sessionFilter === "am_only") return "AM Only";
+    if (sessionFilter === "pm_only") return "PM Only";
+    return "Whole Day";
+  }
+  if (d === "Whole Day" || d === "AM Only" || d === "PM Only") return d;
+  return d || "Whole Day";
+}
 
 const FINE_PER_ABSENT = 50; // Pesos per absent student
-const EVENTS_PAGE_SIZE = 10;
+const EVENTS_LIST_PAGE_SIZE = 10;
+/** Grid uses 12 so a 4-column row fills evenly (e.g. 3 full rows). */
+const EVENTS_GRID_PAGE_SIZE = 12;
 
 function normStatusKey(status) {
   const n = String(status ?? "").trim().toLowerCase();
@@ -16,6 +45,12 @@ function normStatusKey(status) {
   if (n === "completed") return "completed";
   if (n === "upcoming") return "upcoming";
   return n;
+}
+
+/** Completed or ongoing events cannot be edited (only upcoming / not-yet-active rows). */
+function isEventLockedFromEditing(status) {
+  const k = normStatusKey(status);
+  return k === "completed" || k === "ongoing";
 }
 
 /** Label shown in badges (API may still send "Active"). */
@@ -27,15 +62,6 @@ function displayEventStatus(status) {
   return status ? String(status) : "—";
 }
 
-/** Value for status `<select>` (always one of Ongoing | Completed | Upcoming). */
-function statusSelectValue(status) {
-  const k = normStatusKey(status);
-  if (k === "ongoing") return "Ongoing";
-  if (k === "completed") return "Completed";
-  if (k === "upcoming") return "Upcoming";
-  return "Upcoming";
-}
-
 function getEventStatusClass(status) {
   const k = normStatusKey(status);
   if (k === "completed") return "bg-green-100 text-green-800";
@@ -44,26 +70,22 @@ function getEventStatusClass(status) {
   return "bg-gray-100 text-gray-800";
 }
 
-function getDefaultFinesForEvent(ev) {
-  if (ev.attRate == null) return null;
-  const absentCount = Math.round((ev.reg * (100 - ev.attRate)) / 100);
-  return absentCount * FINE_PER_ABSENT;
+/** Event modal “Status:” value — bg + border pill (esp. upcoming: blue fill + blue border). */
+function getEventModalStatusBadgeClass(status) {
+  const k = normStatusKey(status);
+  if (k === "completed") return "bg-green-100 text-green-900 border border-green-300";
+  if (k === "ongoing") return "bg-orange-100 text-orange-900 border border-orange-300";
+  if (k === "upcoming") return "bg-blue-100 text-blue-900 border border-blue-300";
+  return "bg-gray-100 text-gray-800 border border-gray-300";
 }
 
-/** e.g. February/28/1999 — full month name, day, year (slashes). */
-function formatEventDateReadable(dateStr) {
-  if (dateStr == null || String(dateStr).trim() === "") return "—";
-  const s = String(dateStr).trim();
-  const ymd = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s);
-  let d;
-  if (ymd) {
-    d = new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]));
-  } else {
-    d = new Date(s);
-  }
-  if (Number.isNaN(d.getTime())) return s;
-  const month = d.toLocaleString("en-US", { month: "long" });
-  return `${month}/${d.getDate()}/${d.getFullYear()}`;
+function getDefaultFinesForEvent(ev) {
+  if (ev.attRate == null) return null;
+  const reg = Number(ev.reg) || 0;
+  const rate = Number(ev.attRate);
+  if (!Number.isFinite(rate)) return null;
+  const absentCount = Math.round((reg * (100 - rate)) / 100);
+  return Math.max(0, absentCount * FINE_PER_ABSENT);
 }
 
 /** Course code from one `audiences[]` row (snake_case / camelCase / program_* aliases). */
@@ -95,36 +117,288 @@ function getAudienceScopeLabel(ev) {
   return "—";
 }
 
+function finiteGraceMinutes(v) {
+  if (v == null || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** `YYYY-MM-DD` for `<input type="date" />` from API date string. */
+function eventYmdForDateInput(dateStr) {
+  if (!dateStr) return "";
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(String(dateStr).trim());
+  if (!m) return "";
+  return `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
+}
+
+function applySchedulePatch(prev, partial) {
+  const next = { ...prev, ...partial };
+  if ("am_time_in" in partial) next.amTimeInDisplay = formatSqlTimeForDisplay(partial.am_time_in ?? null);
+  if ("am_time_out" in partial) next.amTimeOutDisplay = formatSqlTimeForDisplay(partial.am_time_out ?? null);
+  if ("pm_time_in" in partial) next.pmTimeInDisplay = formatSqlTimeForDisplay(partial.pm_time_in ?? null);
+  if ("pm_time_out" in partial) next.pmTimeOutDisplay = formatSqlTimeForDisplay(partial.pm_time_out ?? null);
+  return next;
+}
+
+/** Times + grace for modal (fields from API mapper or raw snake_case keys). */
+function getEventScheduleFields(ev) {
+  const amIn = ev.amTimeInDisplay ?? formatSqlTimeForDisplay(ev.am_time_in ?? ev.amTimeIn);
+  const amOut = ev.amTimeOutDisplay ?? formatSqlTimeForDisplay(ev.am_time_out ?? ev.amTimeOut);
+  const pmIn = ev.pmTimeInDisplay ?? formatSqlTimeForDisplay(ev.pm_time_in ?? ev.pmTimeIn);
+  const pmOut = ev.pmTimeOutDisplay ?? formatSqlTimeForDisplay(ev.pm_time_out ?? ev.pmTimeOut);
+  return {
+    amIn,
+    amOut,
+    pmIn,
+    pmOut,
+    amGraceIn: finiteGraceMinutes(ev.amGraceInMinutes ?? ev.am_grace_in),
+    pmGraceIn: finiteGraceMinutes(ev.pmGraceInMinutes ?? ev.pm_grace_in),
+  };
+}
+
+const scheduleInputClass =
+  "w-full max-w-[11rem] rounded-lg border border-[#07713c]/40 bg-white px-2 py-1.5 text-left text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15";
+
+function EventModalSchedule({ ev, readOnly, onPatch }) {
+  const { sessionFilter } = resolveEventDurationUi(ev);
+  const s = getEventScheduleFields(ev);
+  const hasAmData = s.amIn || s.amOut || s.amGraceIn != null;
+  const hasPmData = s.pmIn || s.pmOut || s.pmGraceIn != null;
+  const showAmBlock = readOnly
+    ? sessionFilter === "whole"
+      ? hasAmData
+      : sessionFilter === "am_only"
+    : sessionFilter === "whole" || sessionFilter === "am_only";
+  const showPmBlock = readOnly
+    ? sessionFilter === "whole"
+      ? hasPmData
+      : sessionFilter === "pm_only"
+    : sessionFilter === "whole" || sessionFilter === "pm_only";
+  const summary =
+    ev.timeSlots != null && String(ev.timeSlots).trim() !== "" ? String(ev.timeSlots).trim() : "";
+
+  const row = (label, value) => (
+    <div className="border-b border-[#07713c]/10 py-1.5 text-left last:border-0">
+      <span className="block text-[#07713c]/80">{label}</span>
+      <span className="mt-0.5 block font-medium tabular-nums text-[#07713c]">{value ?? "—"}</span>
+    </div>
+  );
+
+  const gAmIn = finiteGraceMinutes(ev.amGraceInMinutes ?? ev.am_grace_in);
+  const gPmIn = finiteGraceMinutes(ev.pmGraceInMinutes ?? ev.pm_grace_in);
+
+  if (!readOnly && onPatch) {
+    return (
+      <div>
+        <p className="mb-2 text-xs font-semibold text-[#07713c]">Time in / out &amp; late threshold</p>
+        <div className="space-y-3">
+          {showAmBlock && (
+            <div className="rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] px-3 py-2">
+              <p className="mb-2 text-xs font-medium text-[#07713c]">AM Session</p>
+              <div className="space-y-3 text-sm">
+                <div className="grid grid-cols-1 gap-3 text-left sm:grid-cols-2 sm:gap-4">
+                  <div className="flex w-full min-w-0 flex-col gap-1.5 text-left">
+                    <span className="text-xs font-medium text-[#07713c]/85">Time in</span>
+                    <select
+                      className={EVENT_TIME_SELECT_CLASS}
+                      value={sqlTimeToSessionSelectValue(ev.am_time_in ?? ev.amTimeIn, "am")}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        onPatch({ am_time_in: v ? twelveHourLabelToSqlTime(v) : null });
+                      }}
+                    >
+                      <option value="">Select time</option>
+                      {AM_SESSION_TIME_OPTIONS.map((timeOption) => (
+                        <option key={`am-in-${timeOption}`} value={timeOption}>
+                          {timeOption}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex w-full min-w-0 flex-col gap-1.5 text-left">
+                    <span className="text-xs font-medium text-[#07713c]/85">Time out</span>
+                    <select
+                      className={EVENT_TIME_SELECT_CLASS}
+                      value={sqlTimeToSessionSelectValue(ev.am_time_out ?? ev.amTimeOut, "am")}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        onPatch({ am_time_out: v ? twelveHourLabelToSqlTime(v) : null });
+                      }}
+                    >
+                      <option value="">Select time</option>
+                      {AM_SESSION_TIME_OPTIONS.map((timeOption) => (
+                        <option key={`am-out-${timeOption}`} value={timeOption}>
+                          {timeOption}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-medium text-[#07713c]/85">Late — time in (minutes)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    className={`${scheduleInputClass} max-w-xs`}
+                    value={gAmIn ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value === "" ? 0 : Math.max(0, Number(e.target.value));
+                      onPatch({ amGraceInMinutes: v, am_grace_in: v });
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          {showPmBlock && (
+            <div className="rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] px-3 py-2">
+              <p className="mb-2 text-xs font-medium text-[#07713c]">PM Session</p>
+              <div className="space-y-3 text-sm">
+                <div className="grid grid-cols-1 gap-3 text-left sm:grid-cols-2 sm:gap-4">
+                  <div className="flex w-full min-w-0 flex-col gap-1.5 text-left">
+                    <span className="text-xs font-medium text-[#07713c]/85">Time in</span>
+                    <select
+                      className={EVENT_TIME_SELECT_CLASS}
+                      value={sqlTimeToSessionSelectValue(ev.pm_time_in ?? ev.pmTimeIn, "pm")}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        onPatch({ pm_time_in: v ? twelveHourLabelToSqlTime(v) : null });
+                      }}
+                    >
+                      <option value="">Select time</option>
+                      {PM_SESSION_TIME_OPTIONS.map((timeOption) => (
+                        <option key={`pm-in-${timeOption}`} value={timeOption}>
+                          {timeOption}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex w-full min-w-0 flex-col gap-1.5 text-left">
+                    <span className="text-xs font-medium text-[#07713c]/85">Time out</span>
+                    <select
+                      className={EVENT_TIME_SELECT_CLASS}
+                      value={sqlTimeToSessionSelectValue(ev.pm_time_out ?? ev.pmTimeOut, "pm")}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        onPatch({ pm_time_out: v ? twelveHourLabelToSqlTime(v) : null });
+                      }}
+                    >
+                      <option value="">Select time</option>
+                      {PM_SESSION_TIME_OPTIONS.map((timeOption) => (
+                        <option key={`pm-out-${timeOption}`} value={timeOption}>
+                          {timeOption}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-medium text-[#07713c]/85">Late — time in (minutes)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    className={`${scheduleInputClass} max-w-xs`}
+                    value={gPmIn ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value === "" ? 0 : Math.max(0, Number(e.target.value));
+                      onPatch({ pmGraceInMinutes: v, pm_grace_in: v });
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (!showAmBlock && !showPmBlock) {
+    return (
+      <div>
+        <label className="mb-1 block text-xs font-semibold text-[#07713c]">Time in / out & late threshold</label>
+        <p className="min-h-[2.5rem] rounded-lg border border-[#07713c]/30 bg-[#07713c]/5 px-3 py-2 text-sm text-[#07713c]">
+          {summary || "—"}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <p className="mb-2 text-xs font-semibold text-[#07713c]">Time in / out & late threshold</p>
+      <div className="space-y-3">
+        {showAmBlock && (
+          <div className="rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] px-3 py-2">
+            <p className="mb-2 text-xs font-medium text-[#07713c]">AM Session</p>
+            <div className="text-sm">
+              {row("Time in", s.amIn)}
+              {row("Time out", s.amOut)}
+              {row("Late — time in", s.amGraceIn != null ? `${s.amGraceIn} min` : null)}
+            </div>
+          </div>
+        )}
+        {showPmBlock && (
+          <div className="rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] px-3 py-2">
+            <p className="mb-2 text-xs font-medium text-[#07713c]">PM Session</p>
+            <div className="text-sm">
+              {row("Time in", s.pmIn)}
+              {row("Time out", s.pmOut)}
+              {row("Late — time in", s.pmGraceIn != null ? `${s.pmGraceIn} min` : null)}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreateUserOpen }) {
   const { data: apiEvents = [], isPending: isEventsLoading, isError: isEventsError } =
     useGetAllEvents();
+  const editEventMutation = useEditEvent();
   const { role, isGovernor, governorScope } = useGovernorScope();
   const [showLogout, setShowLogout] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportMode, setReportMode] = useState("export");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Status");
+  const [sessionKindFilter, setSessionKindFilter] = useState("all");
   const [viewMode, setViewMode] = useState("list"); // list | grid
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [editableEvent, setEditableEvent] = useState(null);
+  /** 'view' = read-only modal; 'edit' = editable (frontend only until API exists) */
+  const [eventModalMode, setEventModalMode] = useState("edit");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
   const [editSaveError, setEditSaveError] = useState(null);
+  const [showEditNotAllowedModal, setShowEditNotAllowedModal] = useState(false);
+  const [editNotAllowedEventLabel, setEditNotAllowedEventLabel] = useState("");
   const [eventsPage, setEventsPage] = useState(1);
   const activeNav = "events";
   const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
   const isAdmin = !isGovernor;
   /** Admins and department governors can create and edit events */
   const canManageEvents = isAdmin || isGovernor;
+  /**
+   * Display amount for the Fines column — never 0 (uses {@link FINE_PER_ABSENT} as minimum).
+   */
   const getFinesForEvent = (ev) => {
-    // When the API doesn't provide attRate, read `fine` directly.
-    if (ev.attRate == null) {
-      if (ev.fine != null && ev.fine !== "") return Number(ev.fine) || 0;
-      return null;
+    if (ev.attRate != null) {
+      const computed = getDefaultFinesForEvent(ev);
+      if (computed != null) {
+        return computed <= 0 ? FINE_PER_ABSENT : computed;
+      }
     }
-    // Otherwise compute default fines from attRate/reg.
-    return getDefaultFinesForEvent(ev);
+    if (ev.fine != null && ev.fine !== "") {
+      const n = Number(ev.fine);
+      if (Number.isFinite(n)) {
+        const v = Math.max(0, n);
+        return v <= 0 ? FINE_PER_ABSENT : v;
+      }
+    }
+    return FINE_PER_ABSENT;
   };
 
   const now = new Date();
@@ -145,38 +419,124 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
     { id: "settings", label: "Settings" },
   ];
 
-  const allEvents = apiEvents;
+  /** Live events from API only. */
+  const allEvents = useMemo(() => [...apiEvents], [apiEvents]);
 
-  const openEventModal = (ev) => {
-    if (!canManageEvents) return;
+  const openEventModal = (ev, mode = "edit") => {
     setEditSaveError(null);
     setSelectedEvent(ev);
-    setEditableEvent({ ...ev });
+    const wantEdit = mode === "edit" && !isEventLockedFromEditing(ev.status);
+    const openEdit = canManageEvents && wantEdit;
+    setEditableEvent(() => {
+      if (!openEdit) return { ...ev };
+      const duration = durationNormalizedForSessionEdit(ev);
+      let fine = ev.fine;
+      if (fine == null || fine === "") {
+        fine = getFinesForEvent(ev);
+      } else {
+        const n = Number(fine);
+        fine = Number.isFinite(n) ? n : getFinesForEvent(ev);
+      }
+      return { ...ev, duration, fine, fineAmount: fine };
+    });
+    setEventModalMode(!canManageEvents || !wantEdit ? "view" : "edit");
   };
 
   const closeEventModal = () => {
     setSelectedEvent(null);
     setEditableEvent(null);
     setEditSaveError(null);
+    setEventModalMode("edit");
   };
 
   const handleDeleteSelectedEvent = () => {
     if (!canManageEvents) return;
     setDeleteError(null);
     if (!selectedEvent) return;
-    setDeleteError("Deleting events from this app is not available. Remove them on the server if needed.");
+    setDeleteError("Delete is not wired to the backend yet — this is UI only.");
   };
 
   const saveEditableEvent = () => {
     if (!canManageEvents) return;
     if (!editableEvent) return;
-    setEditSaveError("Saving changes is not available in this app. Update the event on the server.");
+    const eventId = editableEvent.id ?? editableEvent._id;
+    if (eventId == null || String(eventId).trim() === "") {
+      setEditSaveError("Missing event id.");
+      return;
+    }
+
+    const payload = {
+      name: String(editableEvent.name ?? "").trim(),
+      date: eventYmdForDateInput(editableEvent.date),
+      venue: String(editableEvent.venue ?? "").trim(),
+      duration: String(editableEvent.duration ?? "Whole Day").trim(),
+      am_time_in: editableEvent.am_time_in ?? null,
+      am_time_out: editableEvent.am_time_out ?? null,
+      pm_time_in: editableEvent.pm_time_in ?? null,
+      pm_time_out: editableEvent.pm_time_out ?? null,
+      am_grace_in: Math.max(0, Number(editableEvent.am_grace_in ?? editableEvent.amGraceInMinutes ?? 0) || 0),
+      pm_grace_in: Math.max(0, Number(editableEvent.pm_grace_in ?? editableEvent.pmGraceInMinutes ?? 0) || 0),
+      audience_notes: editableEvent.audience_notes ?? "",
+      fine_amount: Math.max(0, Number(editableEvent.fine ?? editableEvent.fineAmount ?? 0) || 0),
+    };
+
+    if (!payload.name || !payload.date || !payload.venue) {
+      setEditSaveError("Event name, date, and venue are required.");
+      return;
+    }
+
+    setEditSaveError(null);
+    editEventMutation.mutate(
+      { id: eventId, payload },
+      {
+        onSuccess: () => {
+          closeEventModal();
+        },
+        onError: (error) => {
+          const msg =
+            error?.response?.data?.message ??
+            error?.message ??
+            "Could not save event changes.";
+          setEditSaveError(msg);
+        },
+      },
+    );
   };
 
-  // Filter events by status and search
+  const patchEditableEventSchedule = (partial) => {
+    setEditableEvent((prev) => (prev ? applySchedulePatch(prev, partial) : prev));
+  };
+
+  const openDeleteFromRow = (ev) => {
+    if (!canManageEvents) return;
+    setEditableEvent(null);
+    setSelectedEvent(ev);
+    setDeleteError(null);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleEditClick = (ev, e) => {
+    e?.stopPropagation?.();
+    if (!canManageEvents) return;
+    if (isEventLockedFromEditing(ev.status)) {
+      const label = ev.name != null && String(ev.name).trim() !== "" ? String(ev.name).trim() : "This event";
+      setEditNotAllowedEventLabel(label);
+      setShowEditNotAllowedModal(true);
+      return;
+    }
+    openEventModal(ev, "edit");
+  };
+
+  // Filter events by status, session kind, and search
   const filteredEvents = allEvents.filter((ev) => {
     const matchesStatus =
       statusFilter === "All Status" || normStatusKey(ev.status) === normStatusKey(statusFilter);
+    const kind = getEventSessionKindForFilter(ev);
+    const matchesSession =
+      sessionKindFilter === "all" ||
+      (sessionKindFilter === "whole" && kind === "whole") ||
+      (sessionKindFilter === "am" && kind === "am") ||
+      (sessionKindFilter === "pm" && kind === "pm");
     const q = search.toLowerCase().trim();
     const matchesSearch =
       !q ||
@@ -184,21 +544,22 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
       ev.venue?.toLowerCase().includes(q) ||
       getAudienceScopeLabel(ev).toLowerCase().includes(q) ||
       (ev.audience_notes && String(ev.audience_notes).toLowerCase().includes(q));
-    return matchesStatus && matchesSearch;
+    return matchesStatus && matchesSession && matchesSearch;
   });
 
   const eventsTotal = filteredEvents.length;
-  const eventsTotalPages = Math.max(1, Math.ceil(eventsTotal / EVENTS_PAGE_SIZE) || 1);
+  const eventsPageSize = viewMode === "grid" ? EVENTS_GRID_PAGE_SIZE : EVENTS_LIST_PAGE_SIZE;
+  const eventsTotalPages = Math.max(1, Math.ceil(eventsTotal / eventsPageSize) || 1);
   const eventsPageSafe = Math.min(eventsPage, eventsTotalPages);
 
   const paginatedEvents = useMemo(() => {
-    const start = (eventsPageSafe - 1) * EVENTS_PAGE_SIZE;
-    return filteredEvents.slice(start, start + EVENTS_PAGE_SIZE);
-  }, [filteredEvents, eventsPageSafe]);
+    const start = (eventsPageSafe - 1) * eventsPageSize;
+    return filteredEvents.slice(start, start + eventsPageSize);
+  }, [filteredEvents, eventsPageSafe, eventsPageSize]);
 
   useEffect(() => {
     setEventsPage(1);
-  }, [search, statusFilter]);
+  }, [search, statusFilter, sessionKindFilter, viewMode]);
 
   useEffect(() => {
     setEventsPage((p) => Math.min(p, eventsTotalPages));
@@ -211,9 +572,9 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50 [&_button]:cursor-pointer">
-      {/* Sidebar */}
-      <aside className="w-64 shrink-0 bg-[#07713C] text-white flex flex-col">
+    <div className="flex min-h-screen bg-[#07713c]/[0.04] [&_button]:cursor-pointer">
+      {/* Sidebar — same green as Attendance */}
+      <aside className="w-64 shrink-0 bg-[#07713c] text-white flex flex-col">
         <div className="p-6 space-y-4">
           <img src="/logo.png" alt="NMCI" className="w-16 h-16 rounded-full bg-white/10 object-contain mx-auto" />
           <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif]">Northern Mindanao Colleges, Inc.</p>
@@ -277,14 +638,14 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#008000] leading-tight">Events</h1>
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#07713c]/30 bg-white px-6 py-4">
+          <h1 className="font-[Inter,sans-serif] text-[28px] font-extrabold leading-tight text-[#07713c]">Events</h1>
           <div className="flex items-center gap-4">
             <div className="relative flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setShowLogout((prev) => !prev)}
-                className="inline-flex h-10 w-10 items-center justify-center text-[#008000] rounded-lg hover:bg-green-50"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-[#07713c] hover:bg-[#07713c]/10"
                 aria-label="Account menu"
                 aria-expanded={showLogout}
                 aria-haspopup="true"
@@ -292,7 +653,7 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
                 <UserCircleIcon className="h-5 w-5" />
               </button>
               {showLogout && (
-                <div className="absolute right-0 top-full mt-1 py-1 bg-white rounded-lg shadow-lg border border-gray-200 min-w-[100px]">
+                <div className="absolute right-0 top-full z-10 mt-1 min-w-[100px] rounded-lg border border-[#07713c]/30 bg-white py-1 shadow-lg">
                   <button onClick={() => { setShowLogout(false); onLogout(); }} className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">
                     Logout
                   </button>
@@ -304,43 +665,54 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
 
         <main className="flex-1 p-6 overflow-auto">
           {isEventsLoading && (
-            <p className="mb-3 text-sm text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">Loading events…</p>
+            <p className="mb-3 rounded-lg border border-[#07713c]/30 bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-[#07713c]">Loading events…</p>
           )}
           {isEventsError && (
-            <p className="mb-3 text-sm text-amber-900 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">Could not load events.</p>
+            <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">Could not load events.</p>
           )}
           {/* Search, Filter, View, Add */}
           <div className="flex flex-wrap gap-4 mb-4 items-center">
             <div className="relative flex-1 min-w-[200px]">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]/45">🔍</span>
               <input
                 type="text"
                 placeholder="Search Event"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#008000] focus:border-[#008000]"
+                className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-4 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
               />
             </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#008000]"
+              className="rounded-lg border border-[#07713c]/40 bg-white px-4 py-2 text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
             >
               <option value="All Status">All Status</option>
               <option value="Ongoing">Ongoing</option>
               <option value="Completed">Completed</option>
               <option value="Upcoming">Upcoming</option>
             </select>
-            <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+            <select
+              value={sessionKindFilter}
+              onChange={(e) => setSessionKindFilter(e.target.value)}
+              className="rounded-lg border border-[#07713c]/40 bg-white px-4 py-2 text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
+              aria-label="Filter by session"
+            >
+              <option value="all">All sessions</option>
+              <option value="whole">Whole day</option>
+              <option value="am">AM session</option>
+              <option value="pm">PM session</option>
+            </select>
+            <div className="flex overflow-hidden rounded-lg border border-[#07713c]/40">
               <button
                 onClick={() => setViewMode("list")}
-                className={`px-3 py-2 text-sm ${viewMode === "list" ? "bg-[#008000] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                className={`px-3 py-2 text-sm ${viewMode === "list" ? "bg-[#07713c] text-white" : "bg-white text-[#07713c]/80 hover:bg-[#07713c]/10"}`}
               >
                 ☰
               </button>
               <button
                 onClick={() => setViewMode("grid")}
-                className={`px-3 py-2 text-sm ${viewMode === "grid" ? "bg-[#008000] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                className={`px-3 py-2 text-sm ${viewMode === "grid" ? "bg-[#07713c] text-white" : "bg-white text-[#07713c]/80 hover:bg-[#07713c]/10"}`}
               >
                 ⊞
               </button>
@@ -349,7 +721,7 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
               <button
                 type="button"
                 onClick={() => setShowAddEvent(true)}
-                className="px-4 py-2 bg-[#008000] text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                className="rounded-lg bg-[#07713c] px-4 py-2 text-sm font-medium text-white transition-colors hover:brightness-95"
               >
                 + Add Event
               </button>
@@ -357,27 +729,38 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
           </div>
 
           {/* Events Content - List or Grid */}
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+          <div className="overflow-hidden rounded-xl border border-[#07713c]/30 bg-white shadow-sm">
             {viewMode === "list" ? (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                <table className="w-full min-w-[960px] table-fixed border-collapse text-sm">
+                  <colgroup>
+                    <col className="w-[18%]" />
+                    <col className="w-[11%]" />
+                    <col className="w-[9%]" />
+                    <col className="w-[14%]" />
+                    <col className="w-[16%]" />
+                    <col className="w-[8%]" />
+                    <col className="w-[10%]" />
+                    <col className="w-[14%]" />
+                  </colgroup>
+                  <thead className="border-b border-[#07713c]/30 bg-[#07713c]">
                     <tr>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Event Name</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Date</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Duration</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Venue</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Audience</th>
-                      <th className="sticky right-0 z-10 bg-gray-50 text-right py-3 px-4 font-medium text-gray-700 whitespace-nowrap">
+                      <th className="align-middle px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Event Name</th>
+                      <th className="align-middle px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Date</th>
+                      <th className="align-middle px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Session</th>
+                      <th className="align-middle px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Venue</th>
+                      <th className="align-middle px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Audience</th>
+                      <th className="whitespace-nowrap px-3 py-3 text-right align-middle text-xs font-semibold uppercase tracking-wide text-white">
                         Fines
                       </th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
+                      <th className="align-middle px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Status</th>
+                      <th className="align-middle px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-white">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredEvents.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-10 px-4 text-center text-sm text-gray-500">
+                        <td colSpan={8} className="px-4 py-10 text-center text-sm text-[#07713c]/70">
                           No event records.
                         </td>
                       </tr>
@@ -385,34 +768,66 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
                       paginatedEvents.map((ev, i) => {
                         const fineVal = getFinesForEvent(ev);
                         return (
-                          <tr key={eventRowKey(ev, i)} className="border-b border-gray-100 hover:bg-gray-50">
-                            <td className="py-3 px-4">
-                              <button
-                                type="button"
-                                className="inline-flex items-center gap-1 text-[#008000] hover:underline"
-                                onClick={() => openEventModal(ev)}
-                              >
-                                <span className="mr-1">{ev.icon}</span>
-                                <span>{ev.name}</span>
-                              </button>
+                          <tr
+                            key={eventRowKey(ev, i)}
+                            className="cursor-pointer border-b border-[#07713c]/15 hover:bg-[#07713c]/[0.04]"
+                            onClick={() => openEventModal(ev, "view")}
+                          >
+                            <td className="min-w-0 px-3 py-3 align-middle">
+                              <span className="block truncate font-medium text-[#07713c]">{ev.name}</span>
                             </td>
-                            <td className="py-3 px-4">{formatEventDateReadable(ev.date)}</td>
-                            <td className="py-3 px-4">{ev.duration}</td>
-                            <td className="py-3 px-4">📍 {ev.venue}</td>
-                            <td className="py-3 px-4 text-gray-700 max-w-[200px]">
-                              <span className="line-clamp-2" title={getAudienceScopeLabel(ev)}>
+                            <td className="whitespace-nowrap px-3 py-3 align-middle text-[#07713c]">{formatEventDateForDisplay(ev.date)}</td>
+                            <td className="px-3 py-3 align-middle text-[#07713c]">{formatDurationForEventsList(ev)}</td>
+                            <td className="min-w-0 px-3 py-3 align-middle text-[#07713c]">
+                              <span className="line-clamp-2 break-words" title={ev.venue}>
+                                {ev.venue}
+                              </span>
+                            </td>
+                            <td className="min-w-0 px-3 py-3 align-middle text-[#07713c]">
+                              <span className="line-clamp-2 break-words" title={getAudienceScopeLabel(ev)}>
                                 {getAudienceScopeLabel(ev)}
                               </span>
                             </td>
-                            <td className="sticky right-0 z-10 bg-white py-3 px-4 text-right tabular-nums whitespace-nowrap align-middle">
-                              <span className="inline-block min-w-[4.5rem] text-sm font-medium text-gray-900">
-                                {fineVal != null ? `₱${fineVal}` : "—"}
-                              </span>
+                            <td className="align-middle py-3 px-3 text-right tabular-nums text-sm font-semibold text-red-600">
+                              ₱{Number(fineVal).toLocaleString("en-PH")}
                             </td>
-                            <td className="py-3 px-4">
-                              <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getEventStatusClass(ev.status)}`}>
+                            <td className="align-middle py-3 px-3 text-center">
+                              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getEventStatusClass(ev.status)}`}>
                                 {displayEventStatus(ev.status)}
                               </span>
+                            </td>
+                            <td className="align-middle py-3 px-3 text-right">
+                              <div
+                                className="flex flex-wrap items-center justify-end gap-1"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <button
+                                  type="button"
+                                  className="rounded-md px-2 py-1 text-xs font-medium text-[#07713c] hover:bg-[#07713c]/10"
+                                  onClick={() => openEventModal(ev, "view")}
+                                >
+                                  View
+                                </button>
+                                {canManageEvents && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      title="Edit event"
+                                      className="rounded-md px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50"
+                                      onClick={(e) => handleEditClick(ev, e)}
+                                    >
+                                      Edit
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="px-2 py-1 rounded-md text-xs font-medium text-red-600 hover:bg-red-50"
+                                      onClick={() => openDeleteFromRow(ev)}
+                                    >
+                                      Delete
+                                    </button>
+                                  </>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );
@@ -424,34 +839,77 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
                 {filteredEvents.length === 0 ? (
-                  <div className="col-span-full py-10 text-center text-sm text-gray-500">No event records.</div>
+                  <div className="col-span-full py-10 text-center text-sm text-[#07713c]/70">No event records.</div>
                 ) : (
                   paginatedEvents.map((ev, i) => (
                     <div
                       key={eventRowKey(ev, i)}
-                      className="rounded-lg border border-gray-200 p-4 hover:border-[#008000]/50 hover:shadow-md transition-all cursor-pointer"
-                      onClick={() => openEventModal(ev)}
+                      role="button"
+                      tabIndex={0}
+                      className="cursor-pointer rounded-xl border border-[#07713c]/30 bg-white p-4 transition-all hover:border-[#07713c]/50 hover:bg-[#07713c]/[0.06] hover:shadow-md"
+                      onClick={() => openEventModal(ev, "view")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openEventModal(ev, "view");
+                        }
+                      }}
                     >
-                      <div className="flex items-start justify-between gap-2 mb-3">
-                        <span className="text-2xl">{ev.icon}</span>
-                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${getEventStatusClass(ev.status)}`}>
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <h3 className="min-w-0 flex-1 line-clamp-2 text-base font-semibold leading-snug text-[#07713c] sm:text-[1.0625rem]">
+                          {ev.name}
+                        </h3>
+                        <span
+                          className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-sm font-medium ${getEventStatusClass(ev.status)}`}
+                        >
                           {displayEventStatus(ev.status)}
                         </span>
                       </div>
-                      <h3 className="font-semibold text-gray-900 mb-2 line-clamp-1">{ev.name}</h3>
-                      <p className="text-xs text-gray-500 mb-1">📅 {formatEventDateReadable(ev.date)}</p>
-                      <p className="text-xs text-gray-500 mb-1">📍 {ev.venue}</p>
-                      <p className="text-xs text-gray-600 mb-1">{ev.duration}</p>
-                      <p className="text-xs text-gray-600 mb-2 line-clamp-2" title={getAudienceScopeLabel(ev)}>
-                        <span className="font-medium text-gray-700">Audience: </span>{getAudienceScopeLabel(ev)}
+                      <p className="mb-1 text-xs text-[#07713c]/85">{formatEventDateForDisplay(ev.date)}</p>
+                      <p className="mb-1 text-xs text-[#07713c]/85">{ev.venue}</p>
+                      <p className="mb-1 text-xs text-[#07713c]">{formatDurationForEventsList(ev)}</p>
+                      <p className="mb-2 line-clamp-2 text-xs text-[#07713c]/90" title={getAudienceScopeLabel(ev)}>
+                        <span className="font-medium text-[#07713c]">Audience: </span>{getAudienceScopeLabel(ev)}
                       </p>
-                      <div className="pt-2 border-t border-gray-100">
+                      <div className="border-t border-[#07713c]/15 pt-2">
                         <div className="flex items-baseline justify-between gap-3">
-                          <span className="text-xs font-medium text-amber-700 shrink-0">Fines</span>
-                          <span className="text-sm font-medium text-gray-900 tabular-nums text-right min-w-[4.5rem]">
-                            {getFinesForEvent(ev) != null ? `₱${getFinesForEvent(ev)}` : "—"}
+                          <span className="shrink-0 text-xs font-medium text-[#07713c]">Fines</span>
+                          <span className="min-w-[4.5rem] text-right text-sm font-semibold tabular-nums text-red-600">
+                            ₱{Number(getFinesForEvent(ev)).toLocaleString("en-PH")}
                           </span>
                         </div>
+                      </div>
+                      <div
+                        className="mt-3 flex flex-wrap justify-end gap-1.5"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          className="rounded-md bg-[#07713c]/10 px-2.5 py-1 text-xs font-medium text-[#07713c] hover:bg-[#07713c]/20"
+                          onClick={() => openEventModal(ev, "view")}
+                        >
+                          View
+                        </button>
+                        {canManageEvents && (
+                          <>
+                            <button
+                              type="button"
+                              title="Edit event"
+                              className="rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                              onClick={(e) => handleEditClick(ev, e)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-md bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-100"
+                              onClick={() => openDeleteFromRow(ev)}
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   ))
@@ -461,7 +919,7 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
             <PaginationBar
               totalCount={eventsTotal}
               page={eventsPage}
-              pageSize={EVENTS_PAGE_SIZE}
+              pageSize={eventsPageSize}
               onPageChange={setEventsPage}
               emptyLabel="No records to show."
               itemLabel="events"
@@ -474,8 +932,8 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
       {showReportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl overflow-hidden">
-            <div className="bg-[#008000] px-5 py-3">
-              <h3 className="text-white font-semibold">
+            <div className="bg-[#07713c] px-5 py-3">
+              <h3 className="font-semibold text-white">
                 {reportMode === "settings"
                   ? `${roleLabel} Settings`
                   : reportMode === "import"
@@ -495,10 +953,10 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     type="button"
-                    className="rounded-xl border border-gray-300 p-4 text-left hover:border-[#008000] hover:bg-green-50 transition-colors"
+                    className="rounded-xl border border-[#07713c]/30 p-4 text-left transition-colors hover:border-[#07713c] hover:bg-[#07713c]/10"
                     onClick={() => setShowReportModal(false)}
                   >
-                    <p className="font-semibold text-gray-900">
+                    <p className="font-semibold text-[#07713c]">
                       {reportMode === "import" ? "Import Attendance" : "Export Attendance"}
                     </p>
                     <p className="text-xs text-gray-500">
@@ -509,10 +967,10 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
                   </button>
                   <button
                     type="button"
-                    className="rounded-xl border border-gray-300 p-4 text-left hover:border-[#008000] hover:bg-green-50 transition-colors"
+                    className="rounded-xl border border-[#07713c]/30 p-4 text-left transition-colors hover:border-[#07713c] hover:bg-[#07713c]/10"
                     onClick={() => setShowReportModal(false)}
                   >
-                    <p className="font-semibold text-gray-900">
+                    <p className="font-semibold text-[#07713c]">
                       {reportMode === "import" ? "Import Students" : "Export Students"}
                     </p>
                     <p className="text-xs text-gray-500">
@@ -525,8 +983,50 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
               )}
             </div>
             <div className="px-4 py-3 border-t border-gray-200 flex justify-end">
-              <button type="button" onClick={() => setShowReportModal(false)} className="px-4 py-2 rounded-lg bg-[#008000] text-white cursor-pointer">
+              <button type="button" onClick={() => setShowReportModal(false)} className="cursor-pointer rounded-lg bg-[#07713c] px-4 py-2 text-white hover:brightness-95">
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit blocked: Completed / Ongoing */}
+      {showEditNotAllowedModal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-not-allowed-title"
+          onClick={() => setShowEditNotAllowedModal(false)}
+        >
+          <div
+            className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-[#07713c] px-5 py-3">
+              <h3 id="edit-not-allowed-title" className="text-sm font-semibold text-white sm:text-base">
+                Editing not permitted
+              </h3>
+            </div>
+            <div className="space-y-3 px-5 py-4 text-sm leading-relaxed text-[#07713c]/90">
+              <p>
+                <span className="font-semibold text-[#07713c]">{editNotAllowedEventLabel}</span>
+                <span className="text-[#07713c]/80"> cannot be edited at this time.</span>
+              </p>
+              <p>
+                For institutional accuracy, events whose status is <strong className="text-[#07713c]">Completed</strong> or{" "}
+                <strong className="text-[#07713c]">Ongoing</strong> are locked from modification in this module. If a
+                correction is required, please contact your administrator.
+              </p>
+            </div>
+            <div className="flex justify-end border-t border-gray-200 px-5 py-3">
+              <button
+                type="button"
+                className="rounded-lg bg-[#07713c] px-4 py-2 text-sm font-medium text-white transition-colors hover:brightness-95"
+                onClick={() => setShowEditNotAllowedModal(false)}
+              >
+                OK
               </button>
             </div>
           </div>
@@ -535,90 +1035,186 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
 
       {/* Event details / edit modal */}
       {selectedEvent && editableEvent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-xl bg-white rounded-2xl shadow-2xl overflow-hidden">
-            <div className="bg-[#008000] px-6 py-3">
-              <h2 className="text-sm sm:text-base font-semibold text-white">Event Details</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-[3px]">
+          <div className="flex max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between bg-[#07713c] px-6 py-3">
+              <h2 className="text-sm font-semibold text-white sm:text-base">
+                {eventModalMode === "view" ? "Event details" : "Edit event"}
+              </h2>
+              <button
+                type="button"
+                onClick={closeEventModal}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-[#07713c] transition-colors hover:bg-yellow-300"
+                aria-label="Close event modal"
+              >
+                <span className="text-lg font-bold">×</span>
+              </button>
             </div>
-            <div className="p-6 space-y-4 text-sm">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 text-sm [scrollbar-width:thin] [scrollbar-color:rgba(7,113,60,0.28)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#07713c]/30 [&::-webkit-scrollbar-thumb]:hover:bg-[#07713c]/40 [&::-webkit-scrollbar-track]:bg-transparent sm:p-5">
+              {eventModalMode === "edit" && (
+                <p className="rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.06] px-3 py-2 text-xs text-[#07713c]">
+                  Save is connected to the API. Delete is still frontend-only.
+                </p>
+              )}
               {editSaveError && (
                 <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 p-2 rounded-lg">{editSaveError}</p>
               )}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Event Name</label>
+                <label className="mb-1 block text-xs font-semibold text-[#07713c]">Event Name</label>
                 <input
                   type="text"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  readOnly={eventModalMode === "view"}
+                  className={`w-full rounded-lg border border-[#07713c]/40 px-3 py-2 text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 ${eventModalMode === "view" ? "bg-[#07713c]/5" : "bg-white"}`}
                   value={editableEvent.name || ""}
                   onChange={(e) => setEditableEvent({ ...editableEvent, name: e.target.value })}
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Date</label>
-                  <p className="text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-                    {formatEventDateReadable(editableEvent.date)}
-                  </p>
+                  <label className="mb-1 block text-xs font-semibold text-[#07713c]">Date</label>
+                  {eventModalMode === "view" ? (
+                    <p className="rounded-lg border border-[#07713c]/30 bg-[#07713c]/5 px-3 py-2 text-sm text-[#07713c]">
+                      {formatEventDateForDisplay(editableEvent.date)}
+                    </p>
+                  ) : (
+                    <input
+                      type="date"
+                      className="w-full rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
+                      value={eventYmdForDateInput(editableEvent.date)}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setEditableEvent((prev) =>
+                          prev && v ? { ...prev, date: v } : prev,
+                        );
+                      }}
+                    />
+                  )}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Duration</label>
-                  <select
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                    value={editableEvent.duration || "Whole Day"}
-                    onChange={(e) => setEditableEvent({ ...editableEvent, duration: e.target.value })}
-                  >
-                    <option value="Whole Day">Whole Day</option>
-                    <option value="Half Day">Half Day</option>
-                  </select>
+                  <label className="mb-1 block text-xs font-semibold text-[#07713c]">Session</label>
+                  {eventModalMode === "view" ? (
+                    <p className="rounded-lg border border-[#07713c]/30 bg-[#07713c]/5 px-3 py-2 text-sm text-[#07713c]">
+                      {formatDurationForEventsList(selectedEvent)}
+                    </p>
+                  ) : (
+                    <select
+                      className="w-full rounded-lg border border-[#07713c]/40 px-3 py-2 text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 bg-white"
+                      value={
+                        ["Whole Day", "AM Only", "PM Only"].includes(String(editableEvent.duration ?? "").trim())
+                          ? String(editableEvent.duration).trim()
+                          : "Whole Day"
+                      }
+                      onChange={(e) =>
+                        setEditableEvent((prev) => (prev ? { ...prev, duration: e.target.value } : prev))
+                      }
+                    >
+                      <option value="Whole Day">Whole Day</option>
+                      <option value="AM Only">AM Only</option>
+                      <option value="PM Only">PM Only</option>
+                    </select>
+                  )}
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Venue</label>
+                <label className="mb-1 block text-xs font-semibold text-[#07713c]">Venue</label>
                 <input
                   type="text"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  readOnly={eventModalMode === "view"}
+                  className={`w-full rounded-lg border border-[#07713c]/40 px-3 py-2 text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 ${eventModalMode === "view" ? "bg-[#07713c]/5" : "bg-white"}`}
                   value={editableEvent.venue || ""}
                   onChange={(e) => setEditableEvent({ ...editableEvent, venue: e.target.value })}
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Audience scope</label>
-                <p className="text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 min-h-[2.5rem]">
+                <label className="mb-1 block text-xs font-semibold text-[#07713c]">Fines</label>
+                {eventModalMode === "view" ? (
+                  <p className="rounded-lg border border-[#07713c]/30 bg-[#07713c]/5 px-3 py-2 text-sm font-semibold tabular-nums text-red-600">
+                    ₱{Number(getFinesForEvent(selectedEvent)).toLocaleString("en-PH")}
+                  </p>
+                ) : (
+                  <div className="flex items-center gap-1 rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 focus-within:border-[#07713c]/55 focus-within:ring-1 focus-within:ring-[#07713c]/15">
+                    <span className="shrink-0 text-sm font-semibold tabular-nums text-red-600">₱</span>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      inputMode="numeric"
+                      className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm font-semibold tabular-nums text-red-600 placeholder:text-red-600/40 focus:outline-none focus:ring-0"
+                      placeholder="0"
+                      value={
+                        editableEvent.fine == null || editableEvent.fine === ""
+                          ? ""
+                          : Number(editableEvent.fine)
+                      }
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        setEditableEvent((prev) => {
+                          if (!prev) return prev;
+                          if (raw === "") return { ...prev, fine: null, fineAmount: null };
+                          const n = Number(raw);
+                          if (!Number.isFinite(n)) return prev;
+                          const v = Math.max(0, n);
+                          return { ...prev, fine: v, fineAmount: v };
+                        });
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+              <EventModalSchedule
+                ev={editableEvent}
+                readOnly={eventModalMode === "view"}
+                onPatch={eventModalMode === "edit" ? patchEditableEventSchedule : undefined}
+              />
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-[#07713c]">Audience scope</label>
+                <p className="min-h-[2.5rem] rounded-lg border border-[#07713c]/30 bg-[#07713c]/5 px-3 py-2 text-sm text-[#07713c]">
                   {getAudienceScopeLabel(editableEvent)}
                 </p>
               </div>
-              {(editableEvent.audience_notes != null && String(editableEvent.audience_notes).trim() !== "") && (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Audience notes</label>
-                  <p className="text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 whitespace-pre-wrap">
-                    {editableEvent.audience_notes}
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-[#07713c]">Audience notes</label>
+                {eventModalMode === "view" ? (
+                  <p className="min-h-[2.5rem] whitespace-pre-wrap rounded-lg border border-[#07713c]/30 bg-[#07713c]/5 px-3 py-2 text-sm text-[#07713c]">
+                    {editableEvent.audience_notes != null && String(editableEvent.audience_notes).trim() !== ""
+                      ? editableEvent.audience_notes
+                      : "—"}
                   </p>
-                </div>
-              )}
-              {editableEvent.created_by_username && (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Created by</label>
-                  <p className="text-sm text-gray-600">{editableEvent.created_by_username}</p>
-                </div>
-              )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Status</label>
-                  <select
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                    value={statusSelectValue(editableEvent.status)}
-                    onChange={(e) => setEditableEvent({ ...editableEvent, status: e.target.value })}
+                ) : (
+                  <textarea
+                    rows={3}
+                    className="w-full rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-[#07713c] placeholder:text-[#07713c]/40 focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
+                    placeholder="Optional notes for this audience…"
+                    value={editableEvent.audience_notes ?? ""}
+                    onChange={(e) =>
+                      setEditableEvent((prev) => (prev ? { ...prev, audience_notes: e.target.value } : prev))
+                    }
+                  />
+                )}
+              </div>
+              <div className="space-y-1.5 text-sm text-[#07713c]">
+                <p>
+                  <span className="font-semibold">Created by:</span>{" "}
+                  {editableEvent.created_by_username != null && String(editableEvent.created_by_username).trim() !== ""
+                    ? editableEvent.created_by_username
+                    : "—"}
+                </p>
+                <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="font-semibold">Status:</span>
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getEventModalStatusBadgeClass(editableEvent.status)}`}
                   >
-                    <option value="Ongoing">Ongoing</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Upcoming">Upcoming</option>
-                  </select>
-                </div>
+                    {displayEventStatus(editableEvent.status).toLowerCase()}
+                  </span>
+                </p>
+                {eventModalMode === "edit" && (
+                  <p className="text-xs text-[#07713c]/70">Status is updated automatically by the system.</p>
+                )}
               </div>
             </div>
-            <div className="px-6 py-3 border-t border-gray-200 flex items-center justify-end">
+            <div className="flex items-center justify-end border-t border-gray-200 px-4 py-3 sm:px-5">
               <div className="flex gap-2">
-                {canManageEvents && (
+                {canManageEvents && eventModalMode === "edit" && (
                   <button
                     type="button"
                     onClick={() => setShowDeleteConfirm(true)}
@@ -627,20 +1223,16 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
                     Delete
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={closeEventModal}
-                  className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={saveEditableEvent}
-                  className="px-4 py-2 text-sm rounded-lg bg-[#008000] text-white hover:bg-green-700"
-                >
-                  Save Changes
-                </button>
+                {canManageEvents && eventModalMode === "edit" && (
+                  <button
+                    type="button"
+                    onClick={saveEditableEvent}
+                    disabled={editEventMutation.isPending}
+                    className="rounded-lg bg-[#07713c] px-4 py-2 text-sm text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {editEventMutation.isPending ? "Saving..." : "Save Changes"}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -659,7 +1251,7 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
                 Delete <span className="font-semibold">{selectedEvent.name}</span>?
               </p>
               <p className="text-xs text-gray-500">
-                This app does not delete events. Anything removed must be done on the server.
+                Backend delete is not implemented yet — this confirms intent only.
               </p>
               {deleteError && <p className="text-xs text-red-700 bg-red-50 border border-red-200 p-2 rounded-lg">{deleteError}</p>}
             </div>

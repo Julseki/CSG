@@ -3,21 +3,9 @@ import { Chart as ChartJS } from "chart.js/auto";
 import { Pie } from "react-chartjs-2";
 import PaginationBar from "./PaginationBar";
 import { useStudentDashboardDetail, useStudentDashboardList } from "../hooks/useStudentDashboard";
+import { formatEventDateForDisplay } from "../hooks/useGetEvents";
 
 void ChartJS;
-
-function formatDisplayDate(iso) {
-  if (!iso) return "—";
-  const s = String(iso).trim();
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
-  if (m) {
-    const mo = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][
-      Number(m[2]) - 1
-    ];
-    return `${mo} ${Number(m[3])}, ${m[1]}`;
-  }
-  return s;
-}
 
 function getActivityTier(rate) {
   if (rate >= 90) return { key: "active", label: "Active", emoji: "🟢", range: "90–100%" };
@@ -321,7 +309,7 @@ export default function StudentAttendanceDashboard() {
         const name = String(ev.name ?? "").toLowerCase();
         const dateRaw = String(ev.date ?? "");
         const dateLower = dateRaw.toLowerCase();
-        const displayDate = formatDisplayDate(ev.date).toLowerCase();
+        const displayDate = formatEventDateForDisplay(ev.date).toLowerCase();
         return name.includes(q) || dateLower.includes(q) || displayDate.includes(q);
       });
     }
@@ -558,13 +546,13 @@ export default function StudentAttendanceDashboard() {
         </div>
         <div className="overflow-x-auto rounded-lg border border-[#07713c]/20">
           <table className="w-full min-w-[520px] text-sm">
-            <thead className="bg-gray-50 text-xs font-medium uppercase text-[#07713c]">
+            <thead className="border-b border-[#07713c]/30 bg-[#07713c] text-xs font-semibold uppercase tracking-wide text-white">
               <tr>
-                <th className="px-3 py-2.5 text-left">Student ID</th>
-                <th className="px-3 py-2.5 text-left">Name</th>
-                <th className="px-3 py-2.5 text-left">Course</th>
-                <th className="px-3 py-2.5 text-center tabular-nums whitespace-nowrap min-w-[5.5rem]">Attendance</th>
-                <th className="px-3 py-2.5 text-left">Status</th>
+                <th className="px-3 py-2.5 text-left align-middle">Student ID</th>
+                <th className="px-3 py-2.5 text-left align-middle">Name</th>
+                <th className="px-3 py-2.5 text-left align-middle">Course</th>
+                <th className="min-w-[5.5rem] whitespace-nowrap px-3 py-2.5 text-center align-middle tabular-nums">Attendance</th>
+                <th className="px-3 py-2.5 text-left align-middle">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -607,7 +595,9 @@ export default function StudentAttendanceDashboard() {
             </tbody>
           </table>
         </div>
-        {filteredRoster.length === 0 && <p className="py-4 text-center text-sm text-[#07713c]/85">No students match this search.</p>}
+        {filteredRoster.length === 0 && (
+          <p className="py-4 text-center text-sm text-[#07713c]/85">No students match this search.</p>
+        )}
         <PaginationBar
           totalCount={rosterTotal}
           page={rosterPage}
@@ -771,7 +761,7 @@ export default function StudentAttendanceDashboard() {
                     return (
                       <tr key={`${ev.name}-${ev.date}-${rowIndex}`} className="border-t border-[#07713c]/20">
                         <td className="px-4 py-2.5 font-medium text-[#07713c]">{ev.name}</td>
-                        <td className="px-4 py-2.5 whitespace-nowrap text-[#07713c]">{formatDisplayDate(ev.date)}</td>
+                        <td className="px-4 py-2.5 whitespace-nowrap text-[#07713c]">{formatEventDateForDisplay(ev.date)}</td>
                         <td className="px-4 py-2.5 whitespace-nowrap text-[#07713c]">{row.sessionType}</td>
                         <td className="px-4 py-2.5">
                           <span
@@ -934,7 +924,7 @@ export default function StudentAttendanceDashboard() {
                     <>
                       {student.lastAttendedEvent.name}{" "}
                       <span className="text-[#07713c]/85">
-                        ({formatDisplayDate(student.lastAttendedEvent.date)})
+                        ({formatEventDateForDisplay(student.lastAttendedEvent.date)})
                       </span>
                     </>
                   ) : (
@@ -949,7 +939,7 @@ export default function StudentAttendanceDashboard() {
                     <>
                       {student.lastMissedEvent.name}{" "}
                       <span className="text-[#07713c]/85">
-                        ({formatDisplayDate(student.lastMissedEvent.date)})
+                        ({formatEventDateForDisplay(student.lastMissedEvent.date)})
                       </span>
                     </>
                   ) : (
