@@ -178,6 +178,10 @@ export default function AddEvent({ onBack, onNext }) {
     }
   };
 
+  const preventNumberScrollChange = (e) => {
+    e.currentTarget.blur();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-[3px] [&_button]:cursor-pointer">
       {/* p-px + bg-[#07713c]: solid green frame (avoids white bleeding at rounded corners from bg-white) */}
@@ -281,6 +285,7 @@ export default function AddEvent({ onBack, onNext }) {
                   type="number"
                   min="0"
                   step="1"
+                  onWheel={preventNumberScrollChange}
                   value={fineAmount}
                   onChange={(e) => {
                     setFineAmount(e.target.value);
@@ -417,6 +422,7 @@ export default function AddEvent({ onBack, onNext }) {
                     type="number"
                     min="0"
                     step="1"
+                    onWheel={preventNumberScrollChange}
                     value={amGraceInMinutes}
                     onChange={(e) => {
                       setAmGraceInMinutes(e.target.value === "" ? 0 : Number(e.target.value));
@@ -486,6 +492,7 @@ export default function AddEvent({ onBack, onNext }) {
                     type="number"
                     min="0"
                     step="1"
+                    onWheel={preventNumberScrollChange}
                     value={pmGraceInMinutes}
                     onChange={(e) => {
                       setPmGraceInMinutes(e.target.value === "" ? 0 : Number(e.target.value));

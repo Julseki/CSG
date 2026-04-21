@@ -205,6 +205,7 @@ export default function HomePage({
   console.log("EVENTS", eventBundle);
   
   const currentEvent = eventBundle?.current ?? null;
+  const currentEventStatus = String(currentEvent?.status ?? "").trim().toLowerCase();
 
   const sidebarEventHeading = useMemo(() => {
     if (!currentEvent) return "Current Event";
@@ -346,8 +347,8 @@ export default function HomePage({
             <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#07713c] leading-tight">
               SELECT DEPARTMENT
             </h1>
-            <p className="text-xs text-[#07713c]/75 mt-0.5">
-              Choose Your College To Log Your Attendance
+            <p className="text-sm text-[#07713c]/75 mt-0.5">
+              Please log in and choose your college to log attendance
             </p>
           </div>
 
@@ -408,13 +409,39 @@ export default function HomePage({
         </header>
 
         <main className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
-          <section className="mb-4 rounded-xl border border-[#07713c]/30 bg-white p-4 shadow-sm">
-            {currentEvent &&
-              String(currentEvent.status ?? "").trim().toLowerCase() === "upcoming" && (
-                <p className="mb-2 rounded-lg border border-amber-400/70 bg-amber-100 px-3 py-2 text-center text-xs font-bold uppercase tracking-wide text-amber-950 shadow-sm">
-                  First upcoming event
+          <section
+            className={`mb-4 rounded-xl bg-white p-4 shadow-sm ${
+              currentEventStatus === "ongoing" || currentEventStatus === "active"
+                ? ""
+                : "border border-[#07713c]/30"
+            }`}
+          >
+            {currentEvent && (currentEventStatus === "upcoming" || currentEventStatus === "ongoing" || currentEventStatus === "active") && (
+              <div
+                className={`mb-3 flex items-center justify-between gap-2 rounded-lg bg-[#07713c]/5 px-3 py-2 ${
+                  currentEventStatus === "upcoming" ? "border border-[#07713c]/25" : ""
+                }`}
+              >
+                <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#07713c]/85">
+                  Ongoing Event
                 </p>
-              )}
+                {currentEventStatus === "upcoming" ? (
+                  <span className="inline-flex items-center rounded-full border border-[#07713c]/30 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-[#07713c]">
+                    Upcoming
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-2 px-1 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#07713c]">
+                    <span className="px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-[#07713c]">
+                      LIVE
+                    </span>
+                    <span className="relative inline-flex h-2.5 w-2.5" aria-hidden="true">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/60" />
+                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-600" />
+                    </span>
+                  </span>
+                )}
+              </div>
+            )}
             <EventSummaryStrip
               event={currentEvent}
               onClick={currentEvent ? () => setDetailEvent(currentEvent) : undefined}

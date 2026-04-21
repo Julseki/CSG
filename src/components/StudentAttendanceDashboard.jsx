@@ -688,7 +688,7 @@ export default function StudentAttendanceDashboard() {
               <table
                 className={`w-full text-sm ${narrowTimeColumns ? "min-w-[720px]" : "min-w-[960px]"}`}
               >
-                <thead className="bg-gray-50 text-center text-xs font-medium text-[#07713c]">
+                <thead className="border-b border-[#07713c]/20 bg-gray-50 text-center text-xs font-medium text-[#07713c]">
                   <tr>
                     <th className="border-r border-[#07713c]/20 px-4 py-2 align-bottom" rowSpan={2}>
                       Event name
@@ -1145,7 +1145,7 @@ export default function StudentAttendanceDashboard() {
                   <table
                     className={`w-full text-sm ${narrowTimeColumns ? "min-w-[720px]" : "min-w-[960px]"}`}
                   >
-                    <thead className="bg-gray-50 text-center text-xs font-medium text-[#07713c]">
+                    <thead className="border-b border-[#07713c]/20 bg-gray-50 text-center text-xs font-medium text-[#07713c]">
                       <tr>
                         <th className="border-r border-[#07713c]/20 px-4 py-2 align-bottom" rowSpan={2}>
                           Event name
