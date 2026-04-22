@@ -386,7 +386,6 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
     const payload = {
       studentId: details.studentId,
       attendanceKind: details.attendanceKind,
-      courseKey: selectedCourseKey, // ✅ only 3 fields needed
     };
 
     console.log("[StudentTimeInOut] Submitting payload:", payload);

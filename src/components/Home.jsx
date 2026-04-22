@@ -7,12 +7,15 @@ import normiBackground from "../assets/normi-background.jpg";
 import normiLogoPng from "../assets/NORMI_LOGO.png";
 import { useGetCurrentEvent } from "../hooks/useGetCurrentEvent";
 import { formatEventDateForDisplay } from "../hooks/useGetEvents";
+import { useSubmitAttendance } from "../hooks/useSubmitAttendance";
 
 const UPCOMING_EVENTS_PAGE_SIZE = 3;
 const ONGOING_EVENTS_PAGE_SIZE = 1;
 
-export default function HomeMock() {
+export default function Home() {
   const [userId, setUserId] = useState("");
+  const [submitMessage, setSubmitMessage] = useState("");
+  const [submitError, setSubmitError] = useState("");
   const [detailEvent, setDetailEvent] = useState(null);
   const [showUpcomingModal, setShowUpcomingModal] = useState(false);
   const [upcomingPage, setUpcomingPage] = useState(1);
@@ -88,6 +91,26 @@ export default function HomeMock() {
     }
   }, [ongoingPage, totalOngoingPages]);
 
+  const { mutate: submitAttendance, isPending: isSubmittingAttendance } = useSubmitAttendance({
+    onSuccess: () => {
+      setSubmitError("");
+      setSubmitMessage("Attendance submitted successfully.");
+      setUserId("");
+    },
+    onError: (error) => {
+      setSubmitMessage("");
+      setSubmitError(error?.response?.data?.message || "Failed to submit attendance.");
+    },
+  });
+
+  const handleSubmitAttendance = () => {
+    const studentId = userId.trim();
+    if (!studentId) return;
+    setSubmitMessage("");
+    setSubmitError("");
+    submitAttendance({ studentId });
+  };
+
   return (
     <main
       className="relative pt-50 min-h-screen px-4 py-6 pt-24 sm:px-8 lg:px-12 bg-cover bg-center bg-no-repeat [&_button]:cursor-pointer"
@@ -151,7 +174,7 @@ export default function HomeMock() {
               <label htmlFor="student-id" className="mb-2 block text-sm font-medium text-[#07713c]">
                 Student ID
               </label>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-2">
                 <input
                   id="student-id"
                   type="text"
@@ -162,10 +185,14 @@ export default function HomeMock() {
                 />
                 <button
                   type="button"
+                  onClick={handleSubmitAttendance}
+                  disabled={!userId.trim() || isSubmittingAttendance}
                   className="rounded-lg bg-[#07713c] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#055c30] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#07713c]"
                 >
-                  Submit
+                  {isSubmittingAttendance ? "Submitting..." : "Submit"}
                 </button>
+                {submitMessage ? <p className="text-sm text-green-700">{submitMessage}</p> : null}
+                {submitError ? <p className="text-sm text-red-600">{submitError}</p> : null}
               </div>
             </div>
           </div>

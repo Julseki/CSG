@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import LoginDashboard from "./components/LoginDashboard";
-import HomePage from "./components/HomePage";
-import HomeMock from "./components/HomeMock";
+import Home from "./components/Home";
 import Dashboard from "./components/Dashboard";
 import Attendance from "./components/Attendance";
 import StudentAttendancePage from "./components/StudentAttendancePage";
@@ -124,17 +123,8 @@ function App() {
         <>
           <Route
             path="/"
-            element={
-              <HomePage
-                onLogin={() => navigate("/login")}
-                onCollegeLoginSuccess={(loginData, collegeKey) =>
-                  // Department sign-in from the homepage should only land in Time In/Out.
-                  handleLoginSuccess(loginData, { redirectTo: timeInOutRoute, collegeKey })
-                }
-              />
-            }
+            element={<Home />}
           />
-          <Route path="/home" element={<HomeMock />} />
           <Route path="/login" element={<LoginDashboard onLoginSuccess={(data) => handleLoginSuccess(data)} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </>
@@ -155,7 +145,6 @@ function App() {
               )
             }
           />
-          <Route path="/home" element={<HomeMock />} />
           {isDepartmentOnlyLogin ? (
             <>
               <Route

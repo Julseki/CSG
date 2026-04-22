@@ -1017,7 +1017,7 @@ export default function StudentAttendanceDashboard() {
           aria-label="Student details modal"
         >
           <div
-            className="flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+            className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between bg-[#07713c] px-5 py-3">
@@ -1034,7 +1034,7 @@ export default function StudentAttendanceDashboard() {
                 <span className="text-lg font-bold">×</span>
               </button>
             </div>
-            <div className="min-h-0 flex-1 space-y-4 p-4 sm:p-5">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
               <section className="rounded-xl border border-[#07713c]/30 bg-white p-4 shadow-sm">
                 <h3 className="mb-3 text-sm font-semibold text-[#07713c]">1. Main summary</h3>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
