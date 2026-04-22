@@ -37,7 +37,7 @@ export default function Navbar({ showSettings = false }) {
               <button
                 type="button"
                 onClick={() => setIsSettingsOpen((v) => !v)}
-                className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-[#07713c]/25 text-[#07713c] hover:bg-[#07713c]/8"
+                className="inline-flex h-10 w-10 cursor-pointer items-center justify-center text-[#07713c]"
                 aria-label="Settings"
                 aria-expanded={isSettingsOpen}
                 aria-haspopup="true"

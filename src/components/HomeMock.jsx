@@ -1,47 +1,38 @@
 import { useEffect, useMemo, useState } from "react";
 import Navbar from "./Navbar";
 import EventCard from "./EventCard";
+import UpcomingEventsList from "./UpcomingEventsList";
+import PaginationBar from "./PaginationBar";
 import normiBackground from "../assets/normi-background.jpg";
+import normiLogoPng from "../assets/NORMI_LOGO.png";
+import { useGetCurrentEvent } from "../hooks/useGetCurrentEvent";
+import { formatEventDateForDisplay } from "../hooks/useGetEvents";
 
-const MOCK_EVENT = {
-  id: "evt-101",
-  name: "Normi Tech Expo 2026",
-  date: "2026-04-22",
-  status: "Ongoing",
-  duration: "Whole day",
-  venue: "Main Gymnasium",
-  timeSlots: "AM: 08:00 AM - 12:00 PM, PM: 01:00 PM - 05:00 PM",
-  is_mandatory: true,
-  is_all_departments: true,
-  fine: 50,
-  audience_notes: "Attendance is required for all departments.",
-  audiences: [],
-};
-
-function formatDuration(ms) {
-  if (ms <= 0) return "Ended";
-  const totalSeconds = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
+const UPCOMING_EVENTS_PAGE_SIZE = 3;
+const ONGOING_EVENTS_PAGE_SIZE = 1;
 
 export default function HomeMock() {
   const [userId, setUserId] = useState("");
   const [detailEvent, setDetailEvent] = useState(null);
-  const eventWindow = useMemo(() => {
-    const now = Date.now();
-    const startMs = now - 45 * 60 * 1000; // started 45 minutes ago
-    const endMs = now + 75 * 60 * 1000; // ends in 75 minutes
-    return { startMs, endMs };
-  }, []);
-  const [nowMs, setNowMs] = useState(Date.now());
-
-  useEffect(() => {
-    const timer = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const [showUpcomingModal, setShowUpcomingModal] = useState(false);
+  const [upcomingPage, setUpcomingPage] = useState(1);
+  const [ongoingPage, setOngoingPage] = useState(1);
+  const { data: eventBundle, isPending: isCurrentEventLoading } = useGetCurrentEvent();
+  const currentEvent = eventBundle?.current ?? null;
+  const ongoingEvents = useMemo(() => {
+    const list = Array.isArray(eventBundle?.ongoing) ? eventBundle.ongoing : [];
+    if (list.length > 0) return list;
+    const normalized = String(currentEvent?.status ?? "").trim().toLowerCase();
+    return normalized === "ongoing" || normalized === "active" ? [currentEvent] : [];
+  }, [eventBundle, currentEvent]);
+  const upcomingEvents = useMemo(() => {
+    if (!Array.isArray(eventBundle?.upcoming)) return [];
+    return eventBundle.upcoming;
+  }, [eventBundle]);
+  const upcomingEvent = useMemo(() => {
+    if (!Array.isArray(eventBundle?.upcoming)) return null;
+    return eventBundle.upcoming[0] ?? null;
+  }, [eventBundle]);
 
   useEffect(() => {
     if (!detailEvent) return;
@@ -52,92 +43,159 @@ export default function HomeMock() {
     return () => document.removeEventListener("keydown", onKey);
   }, [detailEvent]);
 
-  const isLive = nowMs >= eventWindow.startMs && nowMs <= eventWindow.endMs;
-  const hasOngoingEvent = isLive;
-  const timeLeft = formatDuration(eventWindow.endMs - nowMs);
-  const startTime = new Date(eventWindow.startMs).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const endTime = new Date(eventWindow.endMs).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const totalOngoingPages = Math.max(
+    1,
+    Math.ceil(ongoingEvents.length / ONGOING_EVENTS_PAGE_SIZE) || 1,
+  );
+  const safeOngoingPage = Math.min(ongoingPage, totalOngoingPages);
+  const selectedOngoingEvent = useMemo(() => {
+    const start = (safeOngoingPage - 1) * ONGOING_EVENTS_PAGE_SIZE;
+    return ongoingEvents[start] ?? null;
+  }, [ongoingEvents, safeOngoingPage]);
+  const hasOngoingEvent = ongoingEvents.length > 0;
+  const ongoingEventTimeDisplay = useMemo(() => {
+    const raw = String(selectedOngoingEvent?.timeSlots ?? "").trim();
+    if (!raw) return "—";
+    return raw
+      .replace(/\s*,\s*(?=(AM|PM):)/gi, "\n")
+      .replace(/,\s*out\s*\d+m/gi, "")
+      .replace(/\(\s*late\s+in\s*(\d+m)\s*\)/gi, "(late in $1)")
+      .trim();
+  }, [selectedOngoingEvent]);
+  const totalUpcomingPages = Math.max(
+    1,
+    Math.ceil(upcomingEvents.length / UPCOMING_EVENTS_PAGE_SIZE) || 1,
+  );
+  const safeUpcomingPage = Math.min(upcomingPage, totalUpcomingPages);
+  const pagedUpcomingEvents = useMemo(() => {
+    const start = (safeUpcomingPage - 1) * UPCOMING_EVENTS_PAGE_SIZE;
+    return upcomingEvents.slice(start, start + UPCOMING_EVENTS_PAGE_SIZE);
+  }, [safeUpcomingPage, upcomingEvents]);
+
+  useEffect(() => {
+    setUpcomingPage(1);
+  }, [showUpcomingModal]);
+
+  useEffect(() => {
+    if (upcomingPage > totalUpcomingPages) {
+      setUpcomingPage(totalUpcomingPages);
+    }
+  }, [upcomingPage, totalUpcomingPages]);
+
+  useEffect(() => {
+    if (ongoingPage > totalOngoingPages) {
+      setOngoingPage(totalOngoingPages);
+    }
+  }, [ongoingPage, totalOngoingPages]);
 
   return (
     <main
-      className="relative pt-50 min-h-screen px-4 py-6 pt-24 sm:px-8 lg:px-12 bg-cover bg-center bg-no-repeat"
+      className="relative pt-50 min-h-screen px-4 py-6 pt-24 sm:px-8 lg:px-12 bg-cover bg-center bg-no-repeat [&_button]:cursor-pointer"
       style={{ backgroundImage: `url("${normiBackground}")` }}
     >
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#0b5f33]/40 via-[#0b5f33]/24 to-[#0b5f33]/45" />
       <Navbar showSettings />
       <section className="relative mx-auto w-full max-w-xl rounded-2xl border border-white/50 bg-white/92 px-5 py-6 sm:px-8 shadow-xl backdrop-blur-[2px] text-center">
         <div className="mt-2 px-1 sm:px-3 flex justify-center">
-          {hasOngoingEvent ? (
+          {isCurrentEventLoading ? (
+            <div className="w-full max-w-md rounded-lg p-6 text-center">
+              <p className="text-xl font-semibold text-gray-900">Loading current event...</p>
+            </div>
+          ) : hasOngoingEvent && selectedOngoingEvent ? (
             <button
               type="button"
-              onClick={() => setDetailEvent(MOCK_EVENT)}
+              onClick={() => setDetailEvent(selectedOngoingEvent)}
               className="flex w-full max-w-md flex-col items-center justify-center rounded-lg p-6 text-center transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#07713c]"
             >
               <div className="mb-4 flex justify-center">
                 <img
-                  src="/logo.png"
+                  src={normiLogoPng}
                   alt="Normi Logo"
                   className="h-24 w-24 sm:h-28 sm:w-28 object-contain"
                 />
               </div>
-              <div className="flex items-center justify-center gap-4">
-                <span className="inline-flex items-center gap-2 text-base font-bold text-red-600">
-                  <span className="inline-flex h-3.5 w-3.5 rounded-full bg-red-600" />
-                  LIVE
+              <p className="mt-1 inline-flex items-center justify-center gap-1 text-xs font-semibold text-red-600 sm:text-sm">
+                <span>Live</span>
+                <span className="relative inline-flex h-2 w-2" aria-hidden="true">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/70" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-red-600" />
                 </span>
-              </div>
-
-              <p className="mt-3 text-2xl sm:text-3xl font-bold text-gray-900">{MOCK_EVENT.name}</p>
-              <p className="mt-2 text-lg font-medium text-gray-700">Venue: {MOCK_EVENT.venue}</p>
-              <p className="mt-1 text-lg font-medium text-gray-700">
-                Time: {startTime} - {endTime}
               </p>
-              <p className="mt-3 text-xl sm:text-2xl font-bold text-[#07713c]">Time left: {timeLeft}</p>
+              <p className="mt-2 text-2xl sm:text-3xl font-bold text-gray-900">{selectedOngoingEvent?.name || "—"}</p>
+              <p className="mt-2 text-lg font-medium text-gray-700">Venue: {selectedOngoingEvent?.venue || "—"}</p>
+              <p className="mt-1 whitespace-pre-line text-lg font-medium text-gray-700">{ongoingEventTimeDisplay}</p>
+              <p className="mt-3 text-xl sm:text-2xl font-bold text-[#07713c]">Status: {selectedOngoingEvent?.status || "Ongoing"}</p>
             </button>
           ) : (
             <div className="w-full max-w-md rounded-lg p-6 text-center">
               <div className="mb-4 flex justify-center">
                 <img
-                  src="/logo.png"
+                  src={normiLogoPng}
                   alt="Normi Logo"
                   className="h-20 w-20 object-contain"
                 />
               </div>
               <p className="text-2xl font-bold text-gray-900">No ongoing event</p>
               <p className="mt-2 text-base text-gray-700">There is no live event right now. Please check back later.</p>
-              <p className="mt-3 text-sm font-medium text-[#07713c]">
-                Next scheduled window: {startTime} - {endTime}
-              </p>
+              {upcomingEvent && (
+                <p className="mt-3 text-sm font-medium text-[#07713c]">
+                  Next event: {upcomingEvent.name} on {upcomingEvent.date ? formatEventDateForDisplay(upcomingEvent.date) : "TBA"}
+                </p>
+              )}
             </div>
           )}
         </div>
-
-        <div className="mt-6 flex justify-center">
-          <div className="w-full max-w-md text-left">
-            <label htmlFor="student-id" className="mb-2 block text-sm font-medium text-[#07713c]">
-              Student ID
-            </label>
-            <input
-              id="student-id"
-              type="text"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder="Enter student id"
-              className="block w-full appearance-none rounded-lg border-[1.5px] border-[#07713c] bg-white px-3 py-2 text-sm text-[#07713c] shadow-none outline-none [box-shadow:none] hover:border-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-0 focus:ring-transparent focus-visible:border-[#07713c] focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent focus-visible:[box-shadow:none]"
-            />
+        {hasOngoingEvent && (
+          <div className="mt-6 flex justify-center">
+            <div className="w-full max-w-md text-left">
+              <label htmlFor="student-id" className="mb-2 block text-sm font-medium text-[#07713c]">
+                Student ID
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  id="student-id"
+                  type="text"
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value)}
+                  placeholder="Enter student id"
+                  className="block w-full appearance-none rounded-lg border-[1.5px] border-[#07713c] bg-white px-3 py-2 text-sm text-[#07713c] shadow-none outline-none [box-shadow:none] hover:border-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-0 focus:ring-transparent focus-visible:border-[#07713c] focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent focus-visible:[box-shadow:none]"
+                />
+                <button
+                  type="button"
+                  className="rounded-lg bg-[#07713c] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#055c30] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#07713c]"
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
           </div>
+        )}
+
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setShowUpcomingModal(true)}
+            className="rounded-lg bg-[#07713c] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#055c30] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#07713c]"
+          >
+            View Upcoming Events
+          </button>
         </div>
+
+        {ongoingEvents.length > 1 && (
+          <PaginationBar
+            totalCount={ongoingEvents.length}
+            page={safeOngoingPage}
+            pageSize={ONGOING_EVENTS_PAGE_SIZE}
+            onPageChange={setOngoingPage}
+            itemLabel="ongoing events"
+            className="mt-4 border-t-0 px-0 pb-0"
+          />
+        )}
       </section>
 
       {detailEvent && (
         <div
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-black/50" 
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 backdrop-blur-[3px]"
           role="dialog"
           aria-modal="true"
           aria-label="Event details"
@@ -167,6 +225,50 @@ export default function HomeMock() {
             <div className="min-h-0 overflow-y-auto p-5 sm:p-7 [scrollbar-width:thin] [scrollbar-color:rgba(7,113,60,0.28)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#07713c]/30 [&::-webkit-scrollbar-thumb]:hover:bg-[#07713c]/40 [&::-webkit-scrollbar-track]:bg-transparent">
               <EventCard event={detailEvent} variant="modalHorizontal" />
             </div>
+          </div>
+        </div>
+      )}
+
+      {showUpcomingModal && (
+        <div
+          className="fixed inset-0 z-[190] flex items-center justify-center p-4 backdrop-blur-[3px]"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Upcoming events"
+          onClick={() => setShowUpcomingModal(false)}
+        >
+          <div
+            className="w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-2xl bg-white shadow-2xl border border-[#066336]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between bg-[#07713c] px-4 py-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-white">Upcoming Events</h2>
+              <button
+                type="button"
+                onClick={() => setShowUpcomingModal(false)}
+                className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-[#07713c] hover:bg-yellow-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+              >
+                <span className="text-lg font-bold leading-none">×</span>
+              </button>
+            </div>
+            <div className="max-h-[70vh] overflow-y-auto p-4">
+              <UpcomingEventsList
+                events={pagedUpcomingEvents}
+                isLoading={isCurrentEventLoading}
+                emptyMessage="No upcoming events available."
+                onEventClick={(event) => {
+                  setShowUpcomingModal(false);
+                  setDetailEvent(event);
+                }}
+              />
+            </div>
+            <PaginationBar
+              totalCount={upcomingEvents.length}
+              page={safeUpcomingPage}
+              pageSize={UPCOMING_EVENTS_PAGE_SIZE}
+              onPageChange={setUpcomingPage}
+              itemLabel="upcoming events"
+            />
           </div>
         </div>
       )}
