@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import LoginDashboard from "./components/LoginDashboard";
 import HomePage from "./components/HomePage";
+import HomeMock from "./components/HomeMock";
 import Dashboard from "./components/Dashboard";
 import Attendance from "./components/Attendance";
 import StudentAttendancePage from "./components/StudentAttendancePage";
@@ -133,6 +134,7 @@ function App() {
               />
             }
           />
+          <Route path="/home" element={<HomeMock />} />
           <Route path="/login" element={<LoginDashboard onLoginSuccess={(data) => handleLoginSuccess(data)} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </>
@@ -153,6 +155,7 @@ function App() {
               )
             }
           />
+          <Route path="/home" element={<HomeMock />} />
           {isDepartmentOnlyLogin ? (
             <>
               <Route
