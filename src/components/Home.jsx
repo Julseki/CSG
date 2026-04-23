@@ -8,6 +8,7 @@ import normiLogoPng from "../assets/NORMI_LOGO.png";
 import { useGetCurrentEvent } from "../hooks/useGetCurrentEvent";
 import { formatEventDateForDisplay } from "../hooks/useGetEvents";
 import { useSubmitAttendance } from "../hooks/useSubmitAttendance";
+import toast from "react-hot-toast";
 
 const UPCOMING_EVENTS_PAGE_SIZE = 3;
 const ONGOING_EVENTS_PAGE_SIZE = 1;
@@ -21,8 +22,6 @@ function sqlTimeToMinutes(value) {
 
 export default function Home() {
   const [userId, setUserId] = useState("");
-  const [submitMessage, setSubmitMessage] = useState("");
-  const [submitError, setSubmitError] = useState("");
   const [detailEvent, setDetailEvent] = useState(null);
   const [showUpcomingModal, setShowUpcomingModal] = useState(false);
   const [upcomingPage, setUpcomingPage] = useState(1);
@@ -165,16 +164,14 @@ export default function Home() {
       const message = data?.message ? String(data.message) : "";
 
       if (status === "time_out_not_active") {
-        setSubmitMessage("");
-        setSubmitError(
+        toast.error(
           message ||
             "Time out is not active yet. Please tap again during the time out schedule.",
         );
         return;
       }
 
-      setSubmitError("");
-      setSubmitMessage(message || "Attendance submitted successfully.");
+      toast.success(message || "Attendance submitted successfully.");
 
       // Keep the input for non-recorded outcomes (e.g. time-out window not active yet).
       if (status !== "time_out_not_active" && status !== "already_submitted") {
@@ -182,16 +179,13 @@ export default function Home() {
       }
     },
     onError: (error) => {
-      setSubmitMessage("");
-      setSubmitError(error?.response?.data?.message || "Failed to submit attendance.");
+      toast.error(error?.response?.data?.message || "Failed to submit attendance.");
     },
   });
 
   const handleSubmitAttendance = () => {
     const studentId = userId.trim();
     if (!studentId) return;
-    setSubmitMessage("");
-    setSubmitError("");
     const payload = {
       studentId,
       attendanceKind,
@@ -318,8 +312,6 @@ export default function Home() {
                 >
                   {isSubmittingAttendance ? "Submitting..." : "Submit"}
                 </button>
-                {submitMessage ? <p className="text-sm text-green-700">{submitMessage}</p> : null}
-                {submitError ? <p className="text-sm text-red-600">{submitError}</p> : null}
               </div>
             </div>
           </div>
