@@ -669,12 +669,12 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
               <button
                 type="button"
                 onClick={() => setShowLogout((prev) => !prev)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-[#07713c] hover:bg-[#07713c]/10"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-[#07713c] hover:bg-[#07713c]/10"
                 aria-label="Account menu"
                 aria-expanded={showLogout}
                 aria-haspopup="true"
               >
-                <UserCircleIcon className="h-5 w-5" />
+                <UserCircleIcon />
               </button>
               {showLogout && (
                 <div className="absolute right-0 top-full z-10 mt-1 min-w-[100px] rounded-lg border border-[#07713c]/30 bg-white py-1 shadow-lg">

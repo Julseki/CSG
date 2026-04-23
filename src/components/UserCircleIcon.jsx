@@ -1,5 +1,5 @@
 /** User-in-circle outline (profile / account menu), uses currentColor. */
-export default function UserCircleIcon({ className = "h-5 w-5" }) {
+export default function UserCircleIcon({ className = "h-8 w-8" }) {
   return (
     <svg
       className={className}

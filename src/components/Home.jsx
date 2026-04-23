@@ -12,6 +12,13 @@ import { useSubmitAttendance } from "../hooks/useSubmitAttendance";
 const UPCOMING_EVENTS_PAGE_SIZE = 3;
 const ONGOING_EVENTS_PAGE_SIZE = 1;
 
+function sqlTimeToMinutes(value) {
+  if (!value) return null;
+  const m = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(String(value).trim());
+  if (!m) return null;
+  return Number(m[1]) * 60 + Number(m[2]);
+}
+
 export default function Home() {
   const [userId, setUserId] = useState("");
   const [submitMessage, setSubmitMessage] = useState("");
@@ -20,6 +27,9 @@ export default function Home() {
   const [showUpcomingModal, setShowUpcomingModal] = useState(false);
   const [upcomingPage, setUpcomingPage] = useState(1);
   const [ongoingPage, setOngoingPage] = useState(1);
+  const [now, setNow] = useState(() => new Date());
+  const [useTestTime, setUseTestTime] = useState(false);
+  const [testTime, setTestTime] = useState("");
   const { data: eventBundle, isPending: isCurrentEventLoading } = useGetCurrentEvent();
   const currentEvent = eventBundle?.current ?? null;
   const ongoingEvents = useMemo(() => {
@@ -56,6 +66,59 @@ export default function Home() {
     return ongoingEvents[start] ?? null;
   }, [ongoingEvents, safeOngoingPage]);
   const hasOngoingEvent = ongoingEvents.length > 0;
+  const displayNow = useMemo(() => {
+    if (!useTestTime || !testTime) return now;
+    const m = /^(\d{1,2}):(\d{2})$/.exec(testTime.trim());
+    if (!m) return now;
+    const hh = Number(m[1]);
+    const mm = Number(m[2]);
+    if (!Number.isFinite(hh) || !Number.isFinite(mm) || hh < 0 || hh > 23 || mm < 0 || mm > 59) {
+      return now;
+    }
+    const d = new Date(now);
+    d.setHours(hh, mm, 0, 0);
+    return d;
+  }, [useTestTime, testTime, now]);
+  const attendancePhase = useMemo(() => {
+    if (!selectedOngoingEvent) return null;
+
+    const amIn = sqlTimeToMinutes(selectedOngoingEvent.am_time_in);
+    const amOut = sqlTimeToMinutes(selectedOngoingEvent.am_time_out);
+    const pmIn = sqlTimeToMinutes(selectedOngoingEvent.pm_time_in);
+    const pmOut = sqlTimeToMinutes(selectedOngoingEvent.pm_time_out);
+    const nowMinutes = displayNow.getHours() * 60 + displayNow.getMinutes();
+
+    const usePmSlot = pmIn != null && nowMinutes >= pmIn;
+    const slot = usePmSlot ? "PM" : "AM";
+    const slotIn = usePmSlot ? pmIn : amIn;
+    const slotOut = usePmSlot ? pmOut : amOut;
+
+    if (slotIn != null && nowMinutes < slotIn) {
+      return {
+        label: "Time In Not Yet Active",
+        className: "text-amber-700",
+        dotClassName: "bg-amber-500/80",
+      };
+    }
+
+    if (slotOut != null && nowMinutes >= slotOut) {
+      return {
+        label: "Time Out",
+        className: "text-red-600",
+        dotClassName: "bg-red-500/80",
+      };
+    }
+
+    return {
+      label: "Time In",
+      className: "text-[#07713c]",
+      dotClassName: "bg-[#07713c]/80",
+    };
+  }, [selectedOngoingEvent, displayNow]);
+  const attendanceKind = useMemo(
+    () => (attendancePhase?.label === "Time Out" ? "out" : "in"),
+    [attendancePhase],
+  );
   const ongoingEventTimeDisplay = useMemo(() => {
     const raw = String(selectedOngoingEvent?.timeSlots ?? "").trim();
     if (!raw) return "—";
@@ -91,11 +154,32 @@ export default function Home() {
     }
   }, [ongoingPage, totalOngoingPages]);
 
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
   const { mutate: submitAttendance, isPending: isSubmittingAttendance } = useSubmitAttendance({
-    onSuccess: () => {
+    onSuccess: (data) => {
+      const status = String(data?.status ?? "").toLowerCase();
+      const message = data?.message ? String(data.message) : "";
+
+      if (status === "time_out_not_active") {
+        setSubmitMessage("");
+        setSubmitError(
+          message ||
+            "Time out is not active yet. Please tap again during the time out schedule.",
+        );
+        return;
+      }
+
       setSubmitError("");
-      setSubmitMessage("Attendance submitted successfully.");
-      setUserId("");
+      setSubmitMessage(message || "Attendance submitted successfully.");
+
+      // Keep the input for non-recorded outcomes (e.g. time-out window not active yet).
+      if (status !== "time_out_not_active" && status !== "already_submitted") {
+        setUserId("");
+      }
     },
     onError: (error) => {
       setSubmitMessage("");
@@ -108,7 +192,17 @@ export default function Home() {
     if (!studentId) return;
     setSubmitMessage("");
     setSubmitError("");
-    submitAttendance({ studentId });
+    const payload = {
+      studentId,
+      attendanceKind,
+      ...(useTestTime && testTime
+        ? {
+            simulatedTapTime: testTime,
+            simulatedDate: new Date(now).toISOString().slice(0, 10),
+          }
+        : {}),
+    };
+    submitAttendance(payload);
   };
 
   return (
@@ -171,10 +265,43 @@ export default function Home() {
         {hasOngoingEvent && (
           <div className="mt-6 flex justify-center">
             <div className="w-full max-w-md text-left">
-              <label htmlFor="student-id" className="mb-2 block text-sm font-medium text-[#07713c]">
-                Student ID
-              </label>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <label htmlFor="student-id" className="block text-sm font-medium text-[#07713c]">
+                  Student ID
+                </label>
+                {attendancePhase && (
+                  <p className={`inline-flex items-center justify-end gap-1 text-xs font-semibold sm:text-sm ${attendancePhase.className}`}>
+                    <span>{attendancePhase.label}</span>
+                    <span className="relative inline-flex h-2 w-2" aria-hidden="true">
+                      <span className={`absolute inline-flex h-full w-full animate-ping rounded-full ${attendancePhase.dotClassName}`} />
+                      <span className={`relative inline-flex h-2 w-2 rounded-full ${attendancePhase.dotClassName}`} />
+                    </span>
+                  </p>
+                )}
+              </div>
               <div className="flex flex-col gap-2">
+                <div className="rounded-lg border border-[#07713c]/25 bg-[#f1faf4] p-2.5">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="inline-flex items-center gap-2 text-xs font-medium text-[#07713c]">
+                      <input
+                        type="checkbox"
+                        checked={useTestTime}
+                        onChange={(e) => setUseTestTime(e.target.checked)}
+                      />
+                      Use test time
+                    </label>
+                    <input
+                      type="time"
+                      value={testTime}
+                      disabled={!useTestTime}
+                      onChange={(e) => setTestTime(e.target.value)}
+                      className="rounded-lg border border-[#07713c]/40 bg-white px-2.5 py-1.5 text-xs text-[#07713c] disabled:opacity-60"
+                    />
+                    <span className="text-[11px] text-[#07713c]/80">
+                      {useTestTime && testTime ? `Simulated: ${testTime}` : "Using real current time"}
+                    </span>
+                  </div>
+                </div>
                 <input
                   id="student-id"
                   type="text"

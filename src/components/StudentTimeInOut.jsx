@@ -218,6 +218,7 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
   const [selectedCollegeKey, setSelectedCollegeKey] = useState(null);
   const [selectedCourseKey, setSelectedCourseKey] = useState(null);
   const [capturePreview, setCapturePreview] = useState(null);
+  const [submitMessage, setSubmitMessage] = useState("");
   const [deptMismatch, setDeptMismatch] = useState(false);
   const [details, setDetails] = useState({
     studentId: "",
@@ -374,14 +375,29 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
   };
 
   const { mutate: submitAttendance, isPending } = useSubmitAttendance({
-    onSuccess: () => goNext(),
+    onSuccess: (data) => {
+      const status = String(data?.status ?? "").toLowerCase();
+      const message = data?.message ? String(data.message) : "";
+
+      if (status === "time_out_not_active" || status === "already_submitted") {
+        setSubmitMessage(message || "Attendance was already submitted.");
+        return;
+      }
+
+      setSubmitMessage("");
+      goNext();
+    },
     onError: (error) => {
-      console.error(error.response?.data?.message || "Submission failed.");
+      const message =
+        error?.response?.data?.message || error?.message || "Submission failed.";
+      setSubmitMessage(String(message));
+      console.error(message);
     },
   });
 
   const handleSubmit = () => {
     if (!canNextFrom3) return;
+    setSubmitMessage("");
 
     const payload = {
       studentId: details.studentId,
@@ -790,6 +806,11 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
                 >
                   {isPending ? "Submitting…" : "Submit Attendance"}
                 </button>
+                {submitMessage && (
+                  <p className="mt-3 text-sm font-medium text-[#B00020]">
+                    {submitMessage}
+                  </p>
+                )}
               </div>
             </>
           )}

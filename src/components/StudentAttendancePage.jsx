@@ -131,12 +131,12 @@ export default function StudentAttendancePage({ onLogout, onNavigate, onOpenCrea
               <button
                 type="button"
                 onClick={() => setShowLogout((prev) => !prev)}
-                className="inline-flex h-10 w-10 items-center justify-center text-[#07713c] rounded-lg hover:bg-green-50"
+                className="inline-flex h-11 w-11 items-center justify-center text-[#07713c] rounded-lg hover:bg-green-50"
                 aria-label="Account menu"
                 aria-expanded={showLogout}
                 aria-haspopup="true"
               >
-                <UserCircleIcon className="h-5 w-5" />
+                <UserCircleIcon />
               </button>
               {showLogout && (
                 <div className="absolute right-0 top-full mt-1 py-1 bg-white rounded-lg shadow-lg border border-gray-200 min-w-[100px] z-10">
