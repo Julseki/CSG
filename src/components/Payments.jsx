@@ -4,7 +4,7 @@ import { Line } from "react-chartjs-2";
 import SidebarNavIcon from "./SidebarNavIcon";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { canOpenCreateUser, getDashboardRoleLabel } from "../utils/roles";
-import { formatEventDateForDisplay } from "../hooks/useGetEvents";
+import { formatDateTimeShort, formatEventDateForDisplay } from "../hooks/useGetEvents";
 import PaginationBar from "./PaginationBar";
 
 void ChartJS;
@@ -214,6 +214,8 @@ function buildReceiptHtml(receipt, logoUrl) {
       .value { font-weight: 600; }
       .summary { margin-top: 18px; border-top: 1px solid #e5e7eb; padding-top: 12px; }
       .row { display: flex; justify-content: space-between; margin: 6px 0; font-size: 14px; }
+      .row-divider { border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 8px; }
+      .new-balance { font-size: 18px; font-weight: 700; color: #07713C; }
       .total { font-size: 18px; font-weight: 700; color: #07713C; }
       .foot { margin-top: 20px; font-size: 12px; color: #6b7280; }
     </style>
@@ -230,7 +232,7 @@ function buildReceiptHtml(receipt, logoUrl) {
       <div class="content">
         <div class="grid">
           <div><span class="label">Receipt No:</span> <span class="value">${receipt.receiptNo}</span></div>
-          <div><span class="label">Date:</span> <span class="value">${new Date(receipt.createdAt).toLocaleString()}</span></div>
+          <div><span class="label">Date:</span> <span class="value">${formatDateTimeShort(receipt.createdAt)}</span></div>
           <div><span class="label">Student ID:</span> <span class="value">${receipt.studentId}</span></div>
           <div><span class="label">Student Name:</span> <span class="value">${receipt.studentName}</span></div>
           <div><span class="label">Course / Year:</span> <span class="value">${receipt.course} · ${receipt.year}</span></div>
@@ -238,9 +240,8 @@ function buildReceiptHtml(receipt, logoUrl) {
         </div>
         <div class="summary">
           <div class="row"><span>Previous Balance</span><strong>${formatPhp(receipt.previousBalance)}</strong></div>
-          <div class="row"><span>Amount Paid</span><strong>${formatPhp(receipt.amountPaid)}</strong></div>
-          <div class="row"><span>New Balance</span><strong>${formatPhp(receipt.newBalance)}</strong></div>
-          <div class="row total"><span>Total Received</span><span>${formatPhp(receipt.amountPaid)}</span></div>
+          <div class="row row-divider"><span>Amount Paid</span><strong>${formatPhp(receipt.amountPaid)}</strong></div>
+          <div class="row new-balance"><span>New Balance</span><strong>${formatPhp(receipt.newBalance)}</strong></div>
         </div>
         ${receipt.note ? `<div class="foot"><strong>Note:</strong> ${receipt.note}</div>` : ""}
       </div>
@@ -567,12 +568,32 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
     window.setTimeout(() => w.print(), 250);
   };
 
+  const createReceiptFromSelectedRow = (row) => {
+    if (!row) return null;
+    const previousBalance = Math.max(0, (Number(row.remaining) || 0) + (Number(row.paidAmount) || 0));
+    return {
+      receiptNo: makeReceiptNumber(),
+      createdAt: new Date().toISOString(),
+      encodedBy: roleLabel || "CSG/Governor",
+      studentId: row.studentId,
+      studentName: row.studentName,
+      course: row.course,
+      year: row.year,
+      previousBalance,
+      amountPaid: Number(row.paidAmount) || 0,
+      newBalance: Number(row.remaining) || 0,
+      note: "",
+    };
+  };
+
   const openEditFineModal = (event) => {
     if (!modalStudent) return;
     setEditingFine({ studentId: modalStudent.studentId, eventId: event.id, eventName: event.name });
     setEditFineAmountInput(String(Number(event.fine) || 0));
     setEditFineError("");
   };
+
+  const canGenerateReceipt = selectedRow && (selectedRow.status === "Partial" || selectedRow.status === "Paid");
 
   const handleSaveFineEdit = () => {
     if (!editingFine) return;
@@ -710,7 +731,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="rounded-lg border border-[#07713c]/40 bg-white px-4 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                    className="px-4 py-2 border border-[#07713c]/40 rounded-lg text-sm focus:outline-none focus:ring-0 focus:border-[#07713c]/40"
                   >
                     <option>All</option>
                     <option>Unpaid</option>
@@ -828,13 +849,21 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                     <button type="button" onClick={openRecordPaymentModal} className="px-3 py-2 rounded-lg bg-[#07713C] text-white text-sm hover:bg-[#055a2e]">Record Payment</button>
                     <button type="button" onClick={() => setModalStudentId(selectedRow.studentId)} className="px-3 py-2 rounded-lg border border-[#07713c]/40 text-[#07713c] text-sm hover:bg-gray-50">View Attendance</button>
                   </div>
-                  {lastReceipt && lastReceipt.studentId === selectedRow.studentId && (
+                  {canGenerateReceipt && (
                     <button
                       type="button"
-                      onClick={() => printReceipt(lastReceipt)}
+                      onClick={() => {
+                        const receipt =
+                          lastReceipt && lastReceipt.studentId === selectedRow.studentId
+                            ? lastReceipt
+                            : createReceiptFromSelectedRow(selectedRow);
+                        printReceipt(receipt);
+                      }}
                       className="w-full px-3 py-2 rounded-lg border border-[#07713c]/40 text-[#07713c] text-sm hover:bg-[#07713c]/5"
                     >
-                      Print Latest Receipt ({lastReceipt.receiptNo})
+                      {lastReceipt && lastReceipt.studentId === selectedRow.studentId
+                        ? `Print Latest Receipt (${lastReceipt.receiptNo})`
+                        : "Generate Receipt"}
                     </button>
                   )}
                   <button
