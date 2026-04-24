@@ -119,8 +119,18 @@ function rosterCourseMatchesSearchQuery(student, qLower) {
 }
 
 function normalizeHistoryEvent(ev) {
-  const sessionType = ev.sessionType === "Half day" ? "Half day" : "Whole day";
-  if (sessionType === "Half day") {
+  const raw = String(ev?.sessionType ?? "").trim().toLowerCase();
+  const sessionType =
+    raw === "whole day"
+      ? "Whole day"
+      : raw === "am only"
+        ? "AM Only"
+        : raw === "pm only"
+          ? "PM Only"
+          : raw === "half day"
+            ? "AM Only"
+            : "Whole day";
+  if (sessionType !== "Whole day") {
     return {
       ...ev,
       sessionType,
@@ -139,8 +149,8 @@ function normalizeHistoryEvent(ev) {
 }
 
 /**
- * Half day: 2 slots (in/out). Whole day: AM in/out + PM in/out (4 slots).
- * Absent: all expected slots missing (half = 2×, whole = 4× base penalty).
+ * Single-session events (AM/PM): 2 slots (in/out). Whole day: AM in/out + PM in/out (4 slots).
+ * Absent: all expected slots missing (single = 2×, whole = 4× base penalty).
  */
 function getEventFinePhp(ev) {
   if (ev != null && typeof ev.finePhp === "number" && ev.finePhp > 0) {
@@ -148,11 +158,11 @@ function getEventFinePhp(ev) {
   }
   const n = normalizeHistoryEvent(ev);
   if (!n.attended) {
-    return n.sessionType === "Half day"
+    return n.sessionType !== "Whole day"
       ? PENALTY_MISSING_TIME_RECORD_PHP * 2
       : PENALTY_MISSING_TIME_RECORD_PHP * 4;
   }
-  if (n.sessionType === "Half day") {
+  if (n.sessionType !== "Whole day") {
     let fine = 0;
     if (!String(n.timeIn ?? "").trim()) fine += PENALTY_MISSING_TIME_RECORD_PHP;
     if (!String(n.timeOut ?? "").trim()) fine += PENALTY_MISSING_TIME_RECORD_PHP;
@@ -186,6 +196,19 @@ function getHalfDayAmPm(ev) {
     return null;
   };
   return pick(ev.timeIn ?? ev.checkIn) ?? pick(ev.timeOut);
+}
+
+function getHistorySessionLabel(ev, normalizedEvent) {
+  if (normalizedEvent.sessionType === "AM Only") return "AM Session";
+  if (normalizedEvent.sessionType === "PM Only") return "PM Session";
+  if (normalizedEvent.sessionType !== "Half day") return normalizedEvent.sessionType;
+  const scheduleRaw = String(ev?.schedule ?? ev?.session ?? ev?.period ?? "").trim();
+  if (/\bam\b/i.test(scheduleRaw)) return "AM Session";
+  if (/\bpm\b/i.test(scheduleRaw)) return "PM Session";
+  const halfDayPeriod = getHalfDayAmPm(ev);
+  if (halfDayPeriod === "AM") return "AM Session";
+  if (halfDayPeriod === "PM") return "PM Session";
+  return normalizedEvent.sessionType;
 }
 
 /**
@@ -754,6 +777,7 @@ export default function StudentAttendanceDashboard() {
                     const row = normalizeHistoryEvent(ev);
                     const fine = getEventFinePhp(ev);
                     const isHalf = row.sessionType === "Half day";
+                    const sessionLabel = getHistorySessionLabel(ev, row);
                     const halfDayPeriod = isHalf ? getHalfDayAmPm(ev) : null;
                     const emptyTimeCell = (
                       <span className="text-[#07713c]/60">—</span>
@@ -763,7 +787,7 @@ export default function StudentAttendanceDashboard() {
                       <tr key={`${ev.name}-${ev.date}-${rowIndex}`} className="border-t border-[#07713c]/20">
                         <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center font-medium text-[#07713c]">{ev.name}</td>
                         <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center whitespace-nowrap text-[#07713c]">{formatEventDateForDisplay(ev.date)}</td>
-                        <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center whitespace-nowrap text-[#07713c]">{row.sessionType}</td>
+                        <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center whitespace-nowrap text-[#07713c]">{sessionLabel}</td>
                         <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center">
                           <span
                             className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
@@ -1211,6 +1235,7 @@ export default function StudentAttendanceDashboard() {
                         const row = normalizeHistoryEvent(ev);
                         const fine = getEventFinePhp(ev);
                         const isHalf = row.sessionType === "Half day";
+                        const sessionLabel = getHistorySessionLabel(ev, row);
                         const halfDayPeriod = isHalf ? getHalfDayAmPm(ev) : null;
                         const emptyTimeCell = (
                           <span className="text-[#07713c]/60">—</span>
@@ -1220,7 +1245,7 @@ export default function StudentAttendanceDashboard() {
                           <tr key={`${ev.name}-${ev.date}-${rowIndex}`} className="border-t border-[#07713c]/20">
                             <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center font-medium text-[#07713c]">{ev.name}</td>
                             <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center whitespace-nowrap text-[#07713c]">{formatEventDateForDisplay(ev.date)}</td>
-                            <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center whitespace-nowrap text-[#07713c]">{row.sessionType}</td>
+                            <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center whitespace-nowrap text-[#07713c]">{sessionLabel}</td>
                             <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center">
                               <span
                                 className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
