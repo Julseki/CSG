@@ -66,9 +66,21 @@ function IconAnalytics(props) {
   );
 }
 
+function IconPayment(props) {
+  return (
+    <svg {...common} {...props}>
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      <path d="M3 10h18" />
+      <circle cx="8" cy="14" r="1.2" fill="currentColor" stroke="none" />
+      <path d="M16 14h3" />
+    </svg>
+  );
+}
+
 const MAP = {
   dashboard: IconDashboard,
   attendance: IconAnalytics,
+  payment: IconPayment,
   events: IconEvents,
   students: IconDepartment,
   attendance_students: IconStudents,

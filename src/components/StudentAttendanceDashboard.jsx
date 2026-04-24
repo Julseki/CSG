@@ -182,12 +182,18 @@ function TimeSlot({ value }) {
 }
 
 function getHistorySessionKey(ev) {
-  return ev.sessionType === "Half day" ? "Half day" : "Whole day";
+  const normalized = normalizeHistoryEvent(ev);
+  if (normalized.sessionType === "AM Only") return "AM Session";
+  if (normalized.sessionType === "PM Only") return "PM Session";
+  return "Whole day";
 }
 
 /** Half day only: infer AM vs PM from time-in or time-out (mock uses e.g. "8:00 AM"). */
 function getHalfDayAmPm(ev) {
-  if (getHistorySessionKey(ev) !== "Half day") return null;
+  const normalized = normalizeHistoryEvent(ev);
+  if (normalized.sessionType === "Whole day") return null;
+  if (normalized.sessionType === "AM Only") return "AM";
+  if (normalized.sessionType === "PM Only") return "PM";
   const pick = (raw) => {
     const t = String(raw ?? "").trim();
     if (!t) return null;
@@ -474,7 +480,7 @@ export default function StudentAttendanceDashboard() {
       {/* All students summary */}
       <section className="rounded-xl border border-[#07713c]/30 bg-white p-4 shadow-sm">
         <div className="mb-3">
-          <h3 className="mb-3 text-sm font-semibold text-[#07713c]">All students</h3>
+          <h3 className="mb-3 text-lg font-bold text-[#07713c]">All students</h3>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
             <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-end sm:gap-3">
               <div className="relative min-w-0 w-full max-w-md sm:flex-1">
@@ -484,7 +490,7 @@ export default function StudentAttendanceDashboard() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search name, ID, or course"
-                  className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-9 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/70 focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30 [&::-webkit-search-cancel-button]:hidden"
+                  className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
                   aria-label="Search students by name, ID, or course"
                 />
                 {search.trim() !== "" && (
@@ -637,7 +643,7 @@ export default function StudentAttendanceDashboard() {
           {!isStudentDetailModalOpen && (
           <section className="rounded-xl border border-[#07713c]/30 bg-white shadow-sm overflow-hidden">
             <div className="border-b border-[#07713c]/30 px-5 py-3">
-              <h3 className="text-sm font-semibold text-[#07713c]">Event history</h3>
+              <h3 className="text-lg font-bold text-[#07713c]">Event history</h3>
               <div className="mt-3 flex flex-wrap items-end gap-x-4 gap-y-2">
                 <div className="relative h-9 w-full min-w-[min(100%,16rem)] flex-[1_1_16rem] max-w-xl">
                   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]/60">🔍</span>
@@ -672,20 +678,8 @@ export default function StudentAttendanceDashboard() {
                   >
                     <option value="all">All</option>
                     <option value="Whole day">Whole day</option>
-                    <option value="Half day">Half day</option>
-                  </select>
-                </label>
-                <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
-                  <span className="whitespace-nowrap">Period</span>
-                  <select
-                    value={historyPeriodFilter}
-                    onChange={(e) => setHistoryPeriodFilter(e.target.value)}
-                    className="h-9 w-[8.5rem] rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
-                    title="Half day: filter by morning (AM) or afternoon (PM). Whole day events stay listed for both."
-                  >
-                    <option value="all">AM &amp; PM</option>
-                    <option value="AM">AM</option>
-                    <option value="PM">PM</option>
+                    <option value="AM Session">AM Session</option>
+                    <option value="PM Session">PM Session</option>
                   </select>
                 </label>
                 <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c] whitespace-nowrap">
@@ -776,11 +770,11 @@ export default function StudentAttendanceDashboard() {
                   paginatedEventHistory.map((ev, i) => {
                     const row = normalizeHistoryEvent(ev);
                     const fine = getEventFinePhp(ev);
-                    const isHalf = row.sessionType === "Half day";
+                    const isHalf = row.sessionType !== "Whole day";
                     const sessionLabel = getHistorySessionLabel(ev, row);
                     const halfDayPeriod = isHalf ? getHalfDayAmPm(ev) : null;
                     const emptyTimeCell = (
-                      <span className="text-[#07713c]/60">—</span>
+                      <span className="text-red-700">—</span>
                     );
                     const rowIndex = (historyPageSafe - 1) * historyPageSize + i;
                     return (
@@ -861,7 +855,7 @@ export default function StudentAttendanceDashboard() {
                           {fine > 0 ? (
                             <span className="font-semibold text-red-700">₱{fine.toLocaleString("en-PH")}</span>
                           ) : (
-                            <span className="text-[#07713c]/60">—</span>
+                            <span className="text-red-700">—</span>
                           )}
                         </td>
                       </tr>
@@ -1095,7 +1089,7 @@ export default function StudentAttendanceDashboard() {
 
               <section className="rounded-xl border border-[#07713c]/30 bg-white shadow-sm overflow-hidden">
                 <div className="border-b border-[#07713c]/30 px-5 py-3">
-                  <h3 className="text-sm font-semibold text-[#07713c]">Event history</h3>
+                  <h3 className="text-lg font-bold text-[#07713c]">Event history</h3>
                   <div className="mt-3 flex flex-wrap items-end gap-x-4 gap-y-2">
                     <div className="relative h-9 w-full min-w-[min(100%,16rem)] flex-[1_1_16rem] max-w-xl">
                       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]/60">🔍</span>
@@ -1130,20 +1124,8 @@ export default function StudentAttendanceDashboard() {
                       >
                         <option value="all">All</option>
                         <option value="Whole day">Whole day</option>
-                        <option value="Half day">Half day</option>
-                      </select>
-                    </label>
-                    <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
-                      <span className="whitespace-nowrap">Period</span>
-                      <select
-                        value={historyPeriodFilter}
-                        onChange={(e) => setHistoryPeriodFilter(e.target.value)}
-                        className="h-9 w-[8.5rem] rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
-                        title="Half day: filter by morning (AM) or afternoon (PM). Whole day events stay listed for both."
-                      >
-                        <option value="all">AM &amp; PM</option>
-                        <option value="AM">AM</option>
-                        <option value="PM">PM</option>
+                        <option value="AM Session">AM Session</option>
+                        <option value="PM Session">PM Session</option>
                       </select>
                     </label>
                     <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c] whitespace-nowrap">
@@ -1234,11 +1216,11 @@ export default function StudentAttendanceDashboard() {
                       paginatedEventHistory.map((ev, i) => {
                         const row = normalizeHistoryEvent(ev);
                         const fine = getEventFinePhp(ev);
-                        const isHalf = row.sessionType === "Half day";
+                        const isHalf = row.sessionType !== "Whole day";
                         const sessionLabel = getHistorySessionLabel(ev, row);
                         const halfDayPeriod = isHalf ? getHalfDayAmPm(ev) : null;
                         const emptyTimeCell = (
-                          <span className="text-[#07713c]/60">—</span>
+                          <span className="text-red-700">—</span>
                         );
                         const rowIndex = (historyPageSafe - 1) * historyPageSize + i;
                         return (
@@ -1319,7 +1301,7 @@ export default function StudentAttendanceDashboard() {
                               {fine > 0 ? (
                                 <span className="font-semibold text-red-700">₱{fine.toLocaleString("en-PH")}</span>
                               ) : (
-                                <span className="text-[#07713c]/60">—</span>
+                                <span className="text-red-700">—</span>
                               )}
                             </td>
                           </tr>

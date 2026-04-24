@@ -3,20 +3,6 @@ import SidebarNavIcon from "./SidebarNavIcon";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { canOpenCreateUser, getDashboardRoleLabel, isCsgPresident } from "../utils/roles";
 
-const DEPARTMENT_STUDENTS_KEY = "csg_department_students";
-
-function loadDepartmentStudents() {
-  try {
-    const raw = localStorage.getItem(DEPARTMENT_STUDENTS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((s) => s && typeof s.id === "string");
-  } catch {
-    return [];
-  }
-}
-
 const ALL_MAJORS = "All Majors";
 
 const COURSE_MAJOR_OPTIONS = {
@@ -57,13 +43,13 @@ function getBadgeClass(status) {
   return "bg-red-100 text-red-800";
 }
 
-export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpen }) {
+export default function Department({ onNavigate, onOpenCreateUser, isCreateUserOpen }) {
   const { role, isGovernor, governorScope } = useGovernorScope();
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("All Departments");
   const [major, setMajor] = useState(ALL_MAJORS);
   const [year, setYear] = useState("All Years");
-  const [students, setStudents] = useState(loadDepartmentStudents);
+  const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -92,14 +78,6 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
       setDepartment("All Departments");
     }
   }, [isGovernor, governorScope, role]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(DEPARTMENT_STUDENTS_KEY, JSON.stringify(students));
-    } catch {
-      // ignore quota / private mode
-    }
-  }, [students]);
 
   useEffect(() => {
     if (selectedStudent && !students.some((s) => s.id === selectedStudent.id)) {
@@ -190,6 +168,7 @@ export default function Students({ onNavigate, onOpenCreateUser, isCreateUserOpe
             { id: "dashboard", label: "Dashboard" },
             { id: "attendance", label: "Attendance" },
             { id: "attendance_students", label: "Students" },
+            { id: "payment", label: "Payments" },
             { id: "events", label: "Events" },
             { id: "students", label: "Department" },
           ].map((item) => (

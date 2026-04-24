@@ -411,6 +411,7 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
     { id: "dashboard", label: "Dashboard" },
     { id: "attendance", label: "Attendance" },
     { id: "attendance_students", label: "Students" },
+    { id: "payment", label: "Payments" },
     { id: "events", label: "Events" },
     { id: "students", label: "Department" },
   ];
@@ -699,17 +700,27 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
             <div className="relative flex-1 min-w-[200px]">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]/45">🔍</span>
               <input
-                type="text"
+                type="search"
                 placeholder="Search Event"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-4 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
+                className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
               />
+              {search.trim() !== "" && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-[#07713c]/85 hover:bg-gray-100 hover:text-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
+                  aria-label="Clear events search"
+                >
+                  ×
+                </button>
+              )}
             </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-lg border border-[#07713c]/40 bg-white px-4 py-2 text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
+              className="rounded-lg border border-[#07713c]/40 bg-white px-4 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
             >
               <option value="All Status">All Status</option>
               <option value="Ongoing">Ongoing</option>
@@ -719,7 +730,7 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
             <select
               value={sessionKindFilter}
               onChange={(e) => setSessionKindFilter(e.target.value)}
-              className="rounded-lg border border-[#07713c]/40 bg-white px-4 py-2 text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
+              className="rounded-lg border border-[#07713c]/40 bg-white px-4 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
               aria-label="Filter by session"
             >
               <option value="all">All sessions</option>

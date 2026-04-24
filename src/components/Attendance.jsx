@@ -541,6 +541,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
     { id: "dashboard", label: "Dashboard" },
     { id: "attendance", label: "Attendance" },
     { id: "attendance_students", label: "Students" },
+    { id: "payment", label: "Payments" },
     { id: "events", label: "Events" },
     { id: "students", label: "Department" },
   ];
@@ -759,17 +760,30 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                 ← Back to event details
               </button>
               <h3 className="text-2xl font-semibold text-[#07713c]">{detailEvent.name}</h3>
-              <p className="text-sm text-[#07713c]">Students list</p>
+              <p className="text-lg font-bold text-[#07713c]">Students list</p>
               <p className="mt-1 text-sm font-medium text-red-600">Total fines: {formatPhp(studentListTotalFine)}</p>
               <div className="mt-3 flex flex-wrap items-end gap-3 rounded-lg border border-[#07713c]/30 bg-[#07713c]/[0.06] p-3">
-                <div className="min-w-[220px] flex-1">
+                <div className="relative min-w-[220px] flex-1">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]">
+                    🔍
+                  </span>
                   <input
                     type="search"
                     value={studentListSearch}
                     onChange={(e) => setStudentListSearch(e.target.value)}
                     placeholder="Search name, ID, course, or major"
-                    className="w-full rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                    className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
                   />
+                  {studentListSearch.trim() !== "" && (
+                    <button
+                      type="button"
+                      onClick={() => setStudentListSearch("")}
+                      className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-[#07713c]/85 hover:bg-gray-100 hover:text-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
+                      aria-label="Clear students list search"
+                    >
+                      ×
+                    </button>
+                  )}
                 </div>
                 <label className="text-xs text-[#07713c]">
                   Course
@@ -1159,14 +1173,14 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                   ].map((c) => (
                     <div key={c.label} className="rounded-lg border border-[#07713c]/20 bg-[#07713c]/[0.07] p-3">
                       <p
-                        className={`text-sm font-medium uppercase tracking-wide ${c.accent ? "text-red-600" : "text-[#07713c]"}`}
-                      >
-                        {c.label}
-                      </p>
-                      <p
-                        className={`mt-1 text-lg font-bold tabular-nums ${c.accent ? "text-red-600" : "text-[#07713c]"}`}
+                        className={`text-2xl font-bold tabular-nums ${c.accent ? "text-red-600" : "text-[#07713c]"}`}
                       >
                         {c.value}
+                      </p>
+                      <p
+                        className={`text-sm font-medium ${c.accent ? "text-red-600" : "text-[#07713c]"}`}
+                      >
+                        {c.label}
                       </p>
                     </div>
                   ))}

@@ -7,7 +7,8 @@ import Dashboard from "./components/Dashboard";
 import Attendance from "./components/Attendance";
 import StudentAttendancePage from "./components/StudentAttendancePage";
 import Events from "./components/Events";
-import Students from "./components/Students";
+import Department from "./components/Department";
+import Payments from "./components/Payments";
 import CreateUserModal from "./components/CreateUserModal";
 import StudentTimeInOut from "./components/StudentTimeInOut";
 import { AUTH_SESSION_QUERY_KEY, useAuthSession, useLogout } from "./hooks/auth";
@@ -101,6 +102,7 @@ function App() {
     const pageRoutes = {
       dashboard: "/dashboard",
       attendance: "/attendance",
+      payment: "/payments",
       events: "/events",
       students: "/department",
     };
@@ -231,9 +233,20 @@ function App() {
                 }
               />
               <Route
+                path="/payments"
+                element={
+                  <Payments
+                    onLogout={handleLogout}
+                    onNavigate={handleNavigate}
+                    onOpenCreateUser={openCreateUser}
+                    isCreateUserOpen={isCreateUserOpen}
+                  />
+                }
+              />
+              <Route
                 path="/department"
                 element={
-                  <Students
+                  <Department
                     onLogout={handleLogout}
                     onNavigate={handleNavigate}
                     onOpenCreateUser={openCreateUser}
