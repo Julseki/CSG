@@ -6,112 +6,13 @@ import { useGovernorScope } from "../hooks/useGovernorScope";
 import { canOpenCreateUser, getDashboardRoleLabel } from "../utils/roles";
 import { formatDateTimeShort, formatEventDateForDisplay } from "../hooks/useGetEvents";
 import PaginationBar from "./PaginationBar";
+import { useGetPayments } from "../hooks/useGetPayments";
+import { useRecordPayment } from "../hooks/useRecordPayment";
+import { useUpdateFineAmount } from "../hooks/useUpdateFineAmount";
+import { useSetStudentBalance } from "../hooks/useSetStudentBalance";
 
 void ChartJS;
 
-function addDaysYmd(baseYmd, daysToAdd) {
-  const d = new Date(`${baseYmd}T00:00:00`);
-  d.setDate(d.getDate() + daysToAdd);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function buildMockEvents(seed, count, baseYmd) {
-  const names = [
-    "Foundation Day Assembly",
-    "Leadership Forum",
-    "Department Meeting",
-    "Campus Clean-up",
-    "NSTP Assembly",
-    "General Orientation",
-    "Student Congress",
-    "Unity Walk",
-    "College Program Briefing",
-    "Skills Workshop",
-  ];
-
-  return Array.from({ length: count }, (_, i) => {
-    const idx = i + 1;
-    const sessionKind = idx % 7 === 0 ? "am" : idx % 5 === 0 ? "pm" : "whole";
-    const lateAm = (idx + seed) % 4 === 0;
-    const absentPm = (idx + seed) % 6 === 0;
-    const fine = sessionKind === "pm" ? (absentPm ? 50 : 0) : lateAm ? 25 : 0;
-    const amIn = sessionKind === "pm" ? null : lateAm ? "8:18 AM" : "8:03 AM";
-    const amOut = sessionKind === "pm" ? null : "11:45 AM";
-    const pmIn = sessionKind === "am" ? null : absentPm ? "No record" : "1:06 PM";
-    const pmOut = sessionKind === "am" ? null : absentPm ? "No record" : "4:58 PM";
-    return {
-      id: `E-${seed}${String(idx).padStart(2, "0")}`,
-      name: `${names[i % names.length]} ${idx}`,
-      date: addDaysYmd(baseYmd, i),
-      sessionKind,
-      amIn,
-      amOut,
-      pmIn,
-      pmOut,
-      fine,
-    };
-  });
-}
-
-const MOCK_STUDENT_PAYMENTS = [
-  {
-    studentId: "2023-0012",
-    studentName: "Marasigan, Alex",
-    course: "BSIT",
-    year: "2nd Year",
-    paidAmount: 200,
-    waivedAmount: 0,
-    events: buildMockEvents(11, 30, "2026-04-01"),
-  },
-  {
-    studentId: "2022-0191",
-    studentName: "Aguilar, Diane",
-    course: "BSED",
-    year: "3rd Year",
-    paidAmount: 240,
-    waivedAmount: 0,
-    events: buildMockEvents(22, 30, "2026-04-02"),
-  },
-  {
-    studentId: "2021-0334",
-    studentName: "Uy, Kenneth",
-    course: "BSBA",
-    year: "4th Year",
-    paidAmount: 0,
-    waivedAmount: 100,
-    events: buildMockEvents(33, 30, "2026-04-03"),
-  },
-  {
-    studentId: "2024-0023",
-    studentName: "Bautista, Kara",
-    course: "BSHM",
-    year: "1st Year",
-    paidAmount: 0,
-    waivedAmount: 160,
-    events: buildMockEvents(44, 30, "2026-04-04"),
-  },
-  ...Array.from({ length: 30 }, (_, i) => {
-    const idx = i + 1;
-    const seed = 100 + idx;
-    const courses = ["BSIT", "BSED", "BSBA", "BSHM", "BSCrim", "BEED"];
-    const years = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
-    const totalFine = buildMockEvents(seed, 30, "2026-04-05").reduce((sum, ev) => sum + ev.fine, 0);
-    const paidAmount = idx % 5 === 0 ? 0 : Math.min(totalFine, (idx % 7) * 75);
-    const waivedAmount = idx % 6 === 0 ? Math.min(totalFine - paidAmount, 100) : 0;
-    return {
-      studentId: `2026-${String(1000 + idx)}`,
-      studentName: `Mock Student ${idx}`,
-      course: courses[idx % courses.length],
-      year: years[idx % years.length],
-      paidAmount,
-      waivedAmount,
-      events: buildMockEvents(seed, 30, "2026-04-05"),
-    };
-  }),
-];
 
 function formatPhp(n) {
   const v = Math.max(0, Number(n) || 0);
@@ -128,6 +29,22 @@ function badgeClass(status) {
 function hasRecordedTime(value) {
   const v = String(value ?? "").trim().toLowerCase();
   return v !== "" && v !== "no record";
+}
+
+function getEventAttendanceStatus(event) {
+  const kind = String(event?.sessionKind ?? "whole").toLowerCase();
+  if (kind === "am") {
+    return hasRecordedTime(event?.amIn) || hasRecordedTime(event?.amOut) ? "Attended" : "Absent";
+  }
+  if (kind === "pm") {
+    return hasRecordedTime(event?.pmIn) || hasRecordedTime(event?.pmOut) ? "Attended" : "Absent";
+  }
+  const attended =
+    hasRecordedTime(event?.amIn) ||
+    hasRecordedTime(event?.amOut) ||
+    hasRecordedTime(event?.pmIn) ||
+    hasRecordedTime(event?.pmOut);
+  return attended ? "Attended" : "Absent";
 }
 
 function getPaymentAttendanceTier(row) {
@@ -192,7 +109,8 @@ function makeReceiptNumber() {
   const h = String(now.getHours()).padStart(2, "0");
   const min = String(now.getMinutes()).padStart(2, "0");
   const s = String(now.getSeconds()).padStart(2, "0");
-  return `RCP-${y}${m}${d}-${h}${min}${s}`;
+  const ms = String(now.getMilliseconds()).padStart(3, "0");
+  return `RCP-${y}${m}${d}-${h}${min}${s}${ms}`;
 }
 
 function buildReceiptHtml(receipt, logoUrl) {
@@ -253,18 +171,16 @@ function buildReceiptHtml(receipt, logoUrl) {
 export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpen }) {
   const { role, isGovernor, governorScope } = useGovernorScope();
   const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
+  const { data: paymentRowsFromApi = [], isLoading: isPaymentsLoading, isError: isPaymentsError } = useGetPayments();
+  const recordPaymentMutation = useRecordPayment();
+  const updateFineAmountMutation = useUpdateFineAmount();
+  const setStudentBalanceMutation = useSetStudentBalance();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [studentsPage, setStudentsPage] = useState(1);
   const [studentsPageSize, setStudentsPageSize] = useState(10);
-  const [paymentRowsState, setPaymentRowsState] = useState(() =>
-    MOCK_STUDENT_PAYMENTS.map((row) => ({
-      ...row,
-      events: row.events.map((event) => ({ ...event })),
-    })),
-  );
-  const [selectedStudentId, setSelectedStudentId] = useState(MOCK_STUDENT_PAYMENTS[0]?.studentId ?? "");
+  const [selectedStudentId, setSelectedStudentId] = useState("");
   const [modalStudentId, setModalStudentId] = useState("");
   const [selectedEventRowId, setSelectedEventRowId] = useState("");
   const [modalSessionFilter, setModalSessionFilter] = useState("all");
@@ -324,9 +240,15 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
     };
   }, []);
 
+  useEffect(() => {
+    if (!selectedStudentId && paymentRowsFromApi.length > 0) {
+      setSelectedStudentId(paymentRowsFromApi[0].studentId);
+    }
+  }, [paymentRowsFromApi, selectedStudentId]);
+
   const studentRows = useMemo(() => {
-    return paymentRowsState.map((student) => {
-      const totalFine = student.events.reduce((sum, event) => sum + (Number(event.fine) || 0), 0);
+    return paymentRowsFromApi.map((student) => {
+      const totalFine = Math.max(0, Number(student.totalFine) || 0);
       const paidAmount = Math.max(0, Number(student.paidAmount) || 0);
       const waivedAmount = Math.max(0, Number(student.waivedAmount) || 0);
       const remaining = Math.max(0, totalFine - paidAmount - waivedAmount);
@@ -342,7 +264,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
       }
       return { ...student, totalFine, paidAmount, waivedAmount, remaining, status };
     });
-  }, [paymentRowsState]);
+  }, [paymentRowsFromApi]);
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -409,7 +331,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
   );
   const showAmColumns = modalSessionFilter !== "pm";
   const showPmColumns = modalSessionFilter !== "am";
-  const modalTableColCount = 3 + (showAmColumns ? 2 : 0) + (showPmColumns ? 2 : 0) + 1;
+  const modalTableColCount = 4 + (showAmColumns ? 2 : 0) + (showPmColumns ? 2 : 0) + 1;
   const eventNameHeaderWidthClass = showAmColumns && showPmColumns ? "w-[34%]" : "w-[44%]";
 
   const totals = useMemo(
@@ -424,6 +346,10 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
         },
         { total: 0, paid: 0, unpaid: 0, waived: 0 },
       ),
+    [filteredRows],
+  );
+  const studentsWithBalance = useMemo(
+    () => filteredRows.filter((row) => row.remaining > 0).length,
     [filteredRows],
   );
 
@@ -490,70 +416,83 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
     setShowPaymentModal(true);
   };
 
-  const handleSubmitPayment = () => {
+  const handleSubmitPayment = async () => {
     if (!selectedRow) return;
-    const amount = parseMoneyInput(paymentAmountInput);
     const maxPayable = Math.max(0, selectedRow.totalFine - selectedRow.waivedAmount);
     const maxTotalFine = Math.max(0, selectedRow.totalFine);
-    if (!Number.isFinite(amount) || amount < 0 || (!isPaymentEditMode && amount <= 0)) {
-      setPaymentError(isPaymentEditMode ? "Enter a valid amount (zero or greater)." : "Enter a valid amount greater than zero.");
-      return;
-    }
-    if (amount > (isPaymentEditMode ? maxPayable : selectedRow.remaining)) {
-      setPaymentError(
-        isPaymentEditMode
-          ? "Amount cannot be greater than total payable balance."
-          : "Amount cannot be greater than remaining balance.",
-      );
-      return;
-    }
-    const roundedAmount = Math.round(amount * 100) / 100;
     const previousBalance = selectedRow.remaining;
-    let newBalance = Math.max(0, previousBalance - roundedAmount);
-    let nextPaidAmount = (Number(selectedRow.paidAmount) || 0) + roundedAmount;
+    let roundedAmount = 0;
+    let newBalance = previousBalance;
+
     if (isPaymentEditMode) {
       const parsedBalance = parseMoneyInput(remainingBalanceInput);
       if (!Number.isFinite(parsedBalance) || parsedBalance < 0 || parsedBalance > maxTotalFine) {
         setPaymentError("Balance must be between 0 and Total Fine.");
         return;
       }
-      if (roundedAmount > parsedBalance) {
-        setPaymentError("Amount to pay cannot be greater than balance.");
+      try {
+        const response = await setStudentBalanceMutation.mutateAsync({
+          studentId: selectedRow.studentId,
+          targetBalance: Math.round(parsedBalance * 100) / 100,
+        });
+        setLastReceipt(null);
+        setIsPaymentEditMode(false);
+        setRemainingBalanceInput("");
+        setShowPaymentModal(false);
+        setPaymentError("");
+        if (response?.newBalance != null) {
+          newBalance = Number(response.newBalance);
+        }
+      } catch (error) {
+        setPaymentError(error?.response?.data?.message || "Unable to update balance right now.");
+      }
+      return;
+    } else {
+      const amount = parseMoneyInput(paymentAmountInput);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        setPaymentError("Enter a valid amount greater than zero.");
         return;
       }
-      newBalance = Math.round((parsedBalance - roundedAmount) * 100) / 100;
-      nextPaidAmount = Math.max(0, maxPayable - newBalance);
+      if (amount > selectedRow.remaining) {
+        setPaymentError("Amount cannot be greater than remaining balance.");
+        return;
+      }
+      roundedAmount = Math.round(amount * 100) / 100;
+      newBalance = Math.max(0, previousBalance - roundedAmount);
     }
 
-    setPaymentRowsState((prev) =>
-      prev.map((row) =>
-        row.studentId === selectedRow.studentId
-          ? {
-              ...row,
-              paidAmount: isPaymentEditMode ? nextPaidAmount : (Number(row.paidAmount) || 0) + roundedAmount,
-            }
-          : row,
-      ),
-    );
+    if (roundedAmount > maxPayable) {
+      setPaymentError("Amount cannot be greater than total payable balance.");
+      return;
+    }
 
-    if (!isPaymentEditMode) {
+    try {
+      const response = await recordPaymentMutation.mutateAsync({
+        studentId: selectedRow.studentId,
+        amountPaid: roundedAmount,
+        paymentMethod: "Cash",
+        remarks: "",
+      });
       setLastReceipt({
-        receiptNo: makeReceiptNumber(),
+        receiptNo: response?.receiptNo || makeReceiptNumber(),
         createdAt: new Date().toISOString(),
         encodedBy: roleLabel || "CSG/Governor",
         studentId: selectedRow.studentId,
         studentName: selectedRow.studentName,
         course: selectedRow.course,
         year: selectedRow.year,
-        previousBalance,
-        amountPaid: roundedAmount,
-        newBalance,
+        previousBalance: response?.previousBalance ?? previousBalance,
+        amountPaid: response?.amountPaid ?? roundedAmount,
+        newBalance: response?.newBalance ?? newBalance,
         note: "",
       });
+      setIsPaymentEditMode(false);
+      setRemainingBalanceInput("");
+      setShowPaymentModal(false);
+      setPaymentError("");
+    } catch (error) {
+      setPaymentError(error?.response?.data?.message || "Unable to save payment right now.");
     }
-    setIsPaymentEditMode(false);
-    setRemainingBalanceInput("");
-    setShowPaymentModal(false);
   };
 
   const printReceipt = (receipt) => {
@@ -588,14 +527,19 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
 
   const openEditFineModal = (event) => {
     if (!modalStudent) return;
-    setEditingFine({ studentId: modalStudent.studentId, eventId: event.id, eventName: event.name });
+    setEditingFine({
+      studentId: modalStudent.studentId,
+      eventId: event.id,
+      fineId: event.fineId ?? null,
+      eventName: event.name,
+    });
     setEditFineAmountInput(String(Number(event.fine) || 0));
     setEditFineError("");
   };
 
   const canGenerateReceipt = selectedRow && (selectedRow.status === "Partial" || selectedRow.status === "Paid");
 
-  const handleSaveFineEdit = () => {
+  const handleSaveFineEdit = async () => {
     if (!editingFine) return;
     const amount = parseMoneyInput(editFineAmountInput);
     if (!Number.isFinite(amount) || amount < 0) {
@@ -603,18 +547,17 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
       return;
     }
     const rounded = Math.round(amount * 100) / 100;
-    setPaymentRowsState((prev) =>
-      prev.map((row) => {
-        if (row.studentId !== editingFine.studentId) return row;
-        return {
-          ...row,
-          events: row.events.map((event) =>
-            event.id === editingFine.eventId ? { ...event, fine: rounded } : event,
-          ),
-        };
-      }),
-    );
-    setEditingFine(null);
+    if (!editingFine.fineId) {
+      setEditFineError("Fine cannot be edited because fine id is missing.");
+      return;
+    }
+    try {
+      await updateFineAmountMutation.mutateAsync({ fineId: editingFine.fineId, amount: rounded });
+      setEditingFine(null);
+      setEditFineError("");
+    } catch (error) {
+      setEditFineError(error?.response?.data?.message || "Unable to update fine amount.");
+    }
   };
 
   return (
@@ -693,8 +636,8 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
               <p className="text-sm font-medium text-[#07713c]">Outstanding</p>
             </div>
             <div className="bg-white rounded-lg border border-[#07713c]/30 p-4 shadow-sm">
-              <p className="text-2xl font-bold text-[#07713c]">{formatPhp(totals.waived)}</p>
-              <p className="text-sm font-medium text-[#07713c]">Waived</p>
+              <p className="text-2xl font-bold text-[#07713c]">{studentsWithBalance}</p>
+              <p className="text-sm font-medium text-[#07713c]">Students with Balance</p>
             </div>
           </div>
 
@@ -769,7 +712,15 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                     </tr>
                   </thead>
                   <tbody>
-                    {paginatedStudents.length === 0 ? (
+                    {isPaymentsLoading ? (
+                      <tr>
+                        <td colSpan={7} className="py-8 px-4 text-center text-[#07713c]/85 text-sm">Loading payment records...</td>
+                      </tr>
+                    ) : isPaymentsError ? (
+                      <tr>
+                        <td colSpan={7} className="py-8 px-4 text-center text-red-700 text-sm">Unable to load payment records right now.</td>
+                      </tr>
+                    ) : paginatedStudents.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="py-8 px-4 text-center text-[#07713c]/85 text-sm">No payment records found for this filter.</td>
                       </tr>
@@ -796,7 +747,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                           </td>
                           <td className="py-3 px-3 text-[#07713c]">{row.course}</td>
                           <td className="py-3 px-3 text-[#07713c]">{row.year}</td>
-                          <td className="py-3 px-3 text-center text-[#07713c]">{row.events.length}</td>
+                          <td className="py-3 px-3 text-center text-[#07713c]">{row.totalEvents ?? row.events.length}</td>
                           <td className="py-3 px-3 text-center font-medium tabular-nums text-red-700">{formatPhp(row.totalFine)}</td>
                           <td className="py-3 px-3 text-center font-medium tabular-nums text-red-700">{formatPhp(row.remaining)}</td>
                           <td className="py-3 px-3 text-center">
@@ -837,14 +788,11 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                 <div className="space-y-2.5 text-sm">
                   <div className="flex items-center justify-between border-b border-[#07713c]/15 py-1.5"><span className="text-[#07713c]/85">Student ID</span><span className="font-medium text-[#07713c]">{selectedRow.studentId}</span></div>
                   <div className="flex items-center justify-between border-b border-[#07713c]/15 py-1.5"><span className="text-[#07713c]/85">Student</span><span className="font-medium text-[#07713c] text-right">{selectedRow.studentName}</span></div>
-                  <div className="flex items-center justify-between border-b border-[#07713c]/15 py-1.5"><span className="text-[#07713c]/85">Total events with fines</span><span className="font-medium text-[#07713c]">{selectedRow.events.length}</span></div>
+                  <div className="flex items-center justify-between border-b border-[#07713c]/15 py-1.5"><span className="text-[#07713c]/85">Total included events</span><span className="font-medium text-[#07713c]">{selectedRow.totalEvents ?? selectedRow.events.length}</span></div>
                   <div className="flex items-center justify-between border-b border-[#07713c]/15 py-1.5"><span className="text-[#07713c]/85">Total fine</span><span className="font-semibold text-red-700 tabular-nums">{formatPhp(selectedRow.totalFine)}</span></div>
                   <div className="flex items-center justify-between border-b border-[#07713c]/15 py-1.5"><span className="text-[#07713c]/85">Paid amount</span><span className="font-medium text-red-700 tabular-nums">{formatPhp(selectedRow.paidAmount)}</span></div>
                   <div className="flex items-center justify-between border-b border-[#07713c]/15 py-1.5"><span className="text-[#07713c]/85">Remaining balance</span><span className={`font-semibold tabular-nums ${selectedRow.remaining <= 0 ? "text-[#07713c]" : "text-red-700"}`}>{formatPhp(selectedRow.remaining)}</span></div>
                   <div className="flex items-center justify-between border-b border-[#07713c]/15 py-1.5"><span className="text-[#07713c]/85">Status</span><span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeClass(selectedRow.status)}`}>{selectedRow.status}</span></div>
-                  <p className="text-xs text-[#07713c]/75">
-                    Attendance activity: {selectedAttendanceTier.rate}% ({selectedAttendanceTier.label})
-                  </p>
                   <div className="pt-2 grid grid-cols-2 gap-2">
                     <button type="button" onClick={openRecordPaymentModal} className="px-3 py-2 rounded-lg bg-[#07713C] text-white text-sm hover:bg-[#055a2e]">Record Payment</button>
                     <button type="button" onClick={() => setModalStudentId(selectedRow.studentId)} className="px-3 py-2 rounded-lg border border-[#07713c]/40 text-[#07713c] text-sm hover:bg-gray-50">View Attendance</button>
@@ -912,7 +860,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
 
       {modalStudent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-7xl rounded-2xl bg-white shadow-2xl overflow-hidden">
+          <div className="w-full max-w-[92rem] rounded-2xl bg-white shadow-2xl overflow-hidden">
             <div className="bg-[#07713C] px-5 py-3 flex items-center justify-between">
               <h3 className="text-white text-xl font-semibold">{modalStudent.studentName} · {modalStudent.studentId}</h3>
               <button
@@ -951,8 +899,9 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                     <thead className="border-b border-[#07713c]/30 bg-gray-50 text-center text-xs font-medium text-[#07713c]">
                     <tr>
                       <th className={`border-r border-[#07713c]/30 px-4 py-2 align-bottom whitespace-nowrap text-left ${eventNameHeaderWidthClass}`}>Event name</th>
-                      <th className="border-r border-[#07713c]/30 px-4 py-2 align-bottom whitespace-nowrap">Date</th>
+                      <th className="border-r border-[#07713c]/30 pl-4 pr-6 py-2 align-bottom whitespace-nowrap">Date</th>
                       <th className="border-r border-[#07713c]/30 px-4 py-2 align-bottom whitespace-nowrap">Session</th>
+                      <th className="border-r border-[#07713c]/30 px-3 py-2 align-bottom text-center whitespace-nowrap">Status</th>
                       {showAmColumns && (
                         <>
                           <th className="border-r border-[#07713c]/30 px-4 py-2 align-bottom whitespace-nowrap">AM In</th>
@@ -989,8 +938,19 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                               {event.name}
                             </span>
                           </td>
-                          <td className="border-r border-[#07713c]/30 px-4 py-2.5 text-center whitespace-nowrap text-[#07713c]">{formatEventDateForDisplay(event.date)}</td>
+                          <td className="border-r border-[#07713c]/30 pl-4 pr-6 py-2.5 text-center whitespace-nowrap text-[#07713c]">{formatEventDateForDisplay(event.date)}</td>
                           <td className="border-r border-[#07713c]/30 px-4 py-2.5 text-center whitespace-nowrap text-[#07713c]">{sessionLabel(event.sessionKind)}</td>
+                          <td className="border-r border-[#07713c]/30 px-3 py-2.5 text-center whitespace-nowrap">
+                            {getEventAttendanceStatus(event) === "Attended" ? (
+                              <span className="inline-flex rounded-full bg-[#07713c]/10 px-2.5 py-0.5 text-xs font-medium text-[#07713c]">
+                                Attended
+                              </span>
+                            ) : (
+                              <span className="inline-flex rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">
+                                Absent
+                              </span>
+                            )}
+                          </td>
                           {showAmColumns && (
                             <>
                               <td className="border-r border-[#07713c]/30 px-3 py-2.5 text-center whitespace-nowrap"><ModalPeriodSlot event={event} period="am" value={event.amIn} /></td>

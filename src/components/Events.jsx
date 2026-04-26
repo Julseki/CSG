@@ -720,7 +720,7 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-lg border border-[#07713c]/40 bg-white px-4 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+              className="rounded-lg border border-[#07713c]/40 bg-white px-4 py-2 text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
             >
               <option value="All Status">All Status</option>
               <option value="Ongoing">Ongoing</option>
@@ -730,7 +730,7 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
             <select
               value={sessionKindFilter}
               onChange={(e) => setSessionKindFilter(e.target.value)}
-              className="rounded-lg border border-[#07713c]/40 bg-white px-4 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+              className="rounded-lg border border-[#07713c]/40 bg-white px-4 py-2 text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
               aria-label="Filter by session"
             >
               <option value="all">All sessions</option>
