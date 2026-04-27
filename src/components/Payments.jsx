@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Chart as ChartJS } from "chart.js/auto";
 import { Line } from "react-chartjs-2";
 import SidebarNavIcon from "./SidebarNavIcon";
+import UserCircleIcon from "./UserCircleIcon";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { canOpenCreateUser, getDashboardRoleLabel } from "../utils/roles";
-import { formatDateTimeShort, formatEventDateForDisplay } from "../hooks/useGetEvents";
+import { formatDateTimeShort, formatEventDateForDisplay, formatSqlTimeForDisplay } from "../hooks/useGetEvents";
 import PaginationBar from "./PaginationBar";
 import { useGetPayments } from "../hooks/useGetPayments";
 import { useRecordPayment } from "../hooks/useRecordPayment";
@@ -78,7 +79,7 @@ function ModalTimeSlot({ value }) {
   if (!v || v.toLowerCase() === "no record") {
     return <span className="text-amber-700">No record</span>;
   }
-  return <span className="font-mono text-xs text-[#07713c]">{v}</span>;
+  return <span className="font-mono text-xs text-[#07713c]">{formatSqlTimeForDisplay(v) ?? v}</span>;
 }
 
 function ModalPeriodSlot({ event, period, value }) {
@@ -168,7 +169,7 @@ function buildReceiptHtml(receipt, logoUrl) {
 </html>`;
 }
 
-export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpen }) {
+export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpen, onLogout }) {
   const { role, isGovernor, governorScope } = useGovernorScope();
   const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
   const { data: paymentRowsFromApi = [], isLoading: isPaymentsLoading, isError: isPaymentsError } = useGetPayments();
@@ -194,6 +195,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
   const [editFineError, setEditFineError] = useState("");
   const [lastReceipt, setLastReceipt] = useState(null);
   const [isGraphModalOpen, setIsGraphModalOpen] = useState(false);
+  const [showLogout, setShowLogout] = useState(false);
   const [hoverCard, setHoverCard] = useState(null);
   const hideTimerRef = useRef(null);
   const showTimerRef = useRef(null);
@@ -603,7 +605,10 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
           <div className="pt-4">
             <p className="px-4 text-xs font-medium text-green-200 uppercase tracking-wider">Reports</p>
             <button type="button" className="w-full px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-white/15">
-              Export payments
+              Export
+            </button>
+            <button type="button" className="w-full px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-white/15">
+              Import
             </button>
             <button type="button" className="w-full px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-white/15">
               <span className="flex items-center gap-2">
@@ -616,9 +621,37 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-[#07713c]/30 px-6 py-4">
-          <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#07713c] leading-tight">Payments</h1>
-          <p className="text-sm text-[#07713c]/80">Manual fines and penalty collection (mock data)</p>
+        <header className="bg-white border-b border-[#07713c]/30 px-6 py-4 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#07713c] leading-tight">Payments</h1>
+          </div>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowLogout((prev) => !prev)}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-[#07713c] hover:bg-[#07713c]/10"
+              aria-label="Account menu"
+              aria-expanded={showLogout}
+              aria-haspopup="true"
+              title="Profile"
+            >
+              <UserCircleIcon />
+            </button>
+            {showLogout && (
+              <div className="absolute right-0 top-full mt-1 min-w-[100px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLogout(false);
+                    onLogout?.();
+                  }}
+                  className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         </header>
 
         <main className="flex-1 p-6 overflow-auto">
@@ -702,8 +735,8 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                 <table className="w-full min-w-[980px] table-fixed border-collapse text-sm">
                   <thead className="border-b border-[#07713c]/30 bg-[#07713c]">
                     <tr>
-                      <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Student</th>
-                      <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Course</th>
+                      <th className="w-[24%] px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Student</th>
+                      <th className="w-[16%] px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Course</th>
                       <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Year</th>
                       <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Total Events</th>
                       <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Total Fine</th>
@@ -734,18 +767,25 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                           }`}
                         >
                           <td
-                            className="py-3 px-3"
+                            className="py-3 px-3 overflow-hidden"
                             onMouseEnter={(e) => {
                               cancelHide();
                               scheduleShow(row.studentId, e.clientX + 10, e.clientY + 10);
                             }}
                             onMouseLeave={scheduleHide}
                           >
-                            <p className="font-medium text-[#07713c] hover:underline underline-offset-2 decoration-[#07713c]">
+                            <p
+                              className="truncate font-medium whitespace-nowrap text-[#07713c] hover:underline underline-offset-2 decoration-[#07713c]"
+                              title={row.studentName}
+                            >
                               {row.studentName}
                             </p>
                           </td>
-                          <td className="py-3 px-3 text-[#07713c]">{row.course}</td>
+                          <td className="py-3 px-3 overflow-hidden text-[#07713c]">
+                            <p className="truncate whitespace-nowrap" title={row.course}>
+                              {row.course}
+                            </p>
+                          </td>
                           <td className="py-3 px-3 text-[#07713c]">{row.year}</td>
                           <td className="py-3 px-3 text-center text-[#07713c]">{row.totalEvents ?? row.events.length}</td>
                           <td className="py-3 px-3 text-center font-medium tabular-nums text-red-700">{formatPhp(row.totalFine)}</td>

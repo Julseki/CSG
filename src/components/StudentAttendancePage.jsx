@@ -127,7 +127,6 @@ export default function StudentAttendancePage({ onLogout, onNavigate, onOpenCrea
         <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#07713c] leading-tight">Students</h1>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">Student event attendance dashboard</span>
             <div className="relative">
               <button
                 type="button"

@@ -119,13 +119,12 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
   const { data: session } = useAuthSession();
   const { role, isGovernor, governorScope } = useGovernorScope();
 
-  /** Second upcoming by date (index 1); falls back to the first if only one Upcoming row exists. */
-  const nextUpcomingEvent = useMemo(() => {
+  /** Upcoming events sorted by nearest date first. */
+  const upcomingEvents = useMemo(() => {
     const norm = (s) => String(s || "").toLowerCase();
-    const sorted = [...apiEvents]
+    return [...apiEvents]
       .filter((e) => norm(e.status) === "upcoming")
       .sort((a, b) => eventDateMs(a.date) - eventDateMs(b.date));
-    return sorted[3] ?? sorted[0] ?? null;
   }, [apiEvents]);
 
   const eventSummaryCards = useMemo(() => {
@@ -210,6 +209,7 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
 
   const [showLogout, setShowLogout] = useState(false);
   const [showEventDetailModal, setShowEventDetailModal] = useState(false);
+  const [selectedUpcomingEvent, setSelectedUpcomingEvent] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [showCreatePassword, setShowCreatePassword] = useState(false);
@@ -234,6 +234,13 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [showEventDetailModal]);
+
+  useEffect(() => {
+    if (!showEventDetailModal) return;
+    if (!selectedUpcomingEvent && upcomingEvents.length > 0) {
+      setSelectedUpcomingEvent(upcomingEvents[0]);
+    }
+  }, [showEventDetailModal, selectedUpcomingEvent, upcomingEvents]);
 
   const activeNav = "dashboard";
   const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
@@ -496,13 +503,21 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
         <main className="flex-1 p-6 overflow-auto bg-[#f6f8f9]">
           <section className="mb-6">
             <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[#36454F]/45">
-              Upcoming event
+              Upcoming events
             </p>
-            {nextUpcomingEvent ? (
-              <UpcomingEventStrip
-                ev={nextUpcomingEvent}
-                onOpen={() => setShowEventDetailModal(true)}
-              />
+            {upcomingEvents.length > 0 ? (
+              <div className="space-y-3">
+                {upcomingEvents.map((ev) => (
+                  <UpcomingEventStrip
+                    key={ev.id ?? `${ev.name}-${ev.date}`}
+                    ev={ev}
+                    onOpen={() => {
+                      setSelectedUpcomingEvent(ev);
+                      setShowEventDetailModal(true);
+                    }}
+                  />
+                ))}
+              </div>
             ) : (
               <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-5 py-8 text-center text-sm text-[#36454F]/65">
                 No upcoming event scheduled.
@@ -530,7 +545,7 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
         </main>
       </div>
 
-      {showEventDetailModal && nextUpcomingEvent && (
+      {showEventDetailModal && selectedUpcomingEvent && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 px-4 py-6"
           role="presentation"
@@ -556,7 +571,7 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
               </button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-8 sm:py-6">
-              <EventCard variant="modalHorizontal" event={nextUpcomingEvent} />
+              <EventCard variant="modalHorizontal" event={selectedUpcomingEvent} />
             </div>
           </div>
         </div>

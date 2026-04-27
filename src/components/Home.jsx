@@ -29,6 +29,7 @@ export default function Home() {
   const [now, setNow] = useState(() => new Date());
   const [useTestTime, setUseTestTime] = useState(false);
   const [testTime, setTestTime] = useState("");
+  const [testDate, setTestDate] = useState("");
   const { data: eventBundle, isPending: isCurrentEventLoading } = useGetCurrentEvent();
   const currentEvent = eventBundle?.current ?? null;
   const ongoingEvents = useMemo(() => {
@@ -189,10 +190,10 @@ export default function Home() {
     const payload = {
       studentId,
       attendanceKind,
-      ...(useTestTime && testTime
+      ...(useTestTime && (testTime || testDate)
         ? {
-            simulatedTapTime: testTime,
-            simulatedDate: new Date(now).toISOString().slice(0, 10),
+            ...(testTime ? { simulatedTapTime: testTime } : {}),
+            simulatedDate: testDate || new Date(now).toISOString().slice(0, 10),
           }
         : {}),
     };
@@ -285,6 +286,13 @@ export default function Home() {
                       Use test time
                     </label>
                     <input
+                      type="date"
+                      value={testDate}
+                      disabled={!useTestTime}
+                      onChange={(e) => setTestDate(e.target.value)}
+                      className="rounded-lg border border-[#07713c]/40 bg-white px-2.5 py-1.5 text-xs text-[#07713c] disabled:opacity-60"
+                    />
+                    <input
                       type="time"
                       value={testTime}
                       disabled={!useTestTime}
@@ -292,7 +300,9 @@ export default function Home() {
                       className="rounded-lg border border-[#07713c]/40 bg-white px-2.5 py-1.5 text-xs text-[#07713c] disabled:opacity-60"
                     />
                     <span className="text-[11px] text-[#07713c]/80">
-                      {useTestTime && testTime ? `Simulated: ${testTime}` : "Using real current time"}
+                      {useTestTime && (testDate || testTime)
+                        ? `Simulated: ${testDate || "today"} ${testTime || "(current time)"}`
+                        : "Using real current time/date"}
                     </span>
                   </div>
                 </div>

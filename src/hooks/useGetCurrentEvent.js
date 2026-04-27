@@ -92,7 +92,6 @@ async function fetchCurrentEventBundle() {
 
   const upcoming = mapped
     .filter((e) => norm(e.status) === "upcoming")
-    .filter((e) => current == null || e.id !== current.id)
     .sort((a, b) => eventDateMs(a.date) - eventDateMs(b.date));
 
   console.log("[useGetCurrentEvent] current:", { id: current?.id, name: current?.name, status: current?.status });
