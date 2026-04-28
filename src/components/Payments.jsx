@@ -576,7 +576,6 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
             { id: "attendance_students", label: "Students" },
             { id: "payment", label: "Payments" },
             { id: "events", label: "Events" },
-            { id: "students", label: "Department" },
           ].map((item) => (
             <button
               key={item.id}

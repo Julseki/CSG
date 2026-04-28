@@ -7,7 +7,6 @@ import Dashboard from "./components/Dashboard";
 import Attendance from "./components/Attendance";
 import StudentAttendancePage from "./components/StudentAttendancePage";
 import Events from "./components/Events";
-import Department from "./components/Department";
 import Payments from "./components/Payments";
 import CreateUserModal from "./components/CreateUserModal";
 import StudentTimeInOut from "./components/StudentTimeInOut";
@@ -104,7 +103,6 @@ function App() {
       attendance: "/attendance",
       payment: "/payments",
       events: "/events",
-      students: "/department",
     };
     navigate(pageRoutes[normalizedPage] || defaultRoute);
   };
@@ -236,17 +234,6 @@ function App() {
                 path="/payments"
                 element={
                   <Payments
-                    onLogout={handleLogout}
-                    onNavigate={handleNavigate}
-                    onOpenCreateUser={openCreateUser}
-                    isCreateUserOpen={isCreateUserOpen}
-                  />
-                }
-              />
-              <Route
-                path="/department"
-                element={
-                  <Department
                     onLogout={handleLogout}
                     onNavigate={handleNavigate}
                     onOpenCreateUser={openCreateUser}

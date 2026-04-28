@@ -413,7 +413,6 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
     { id: "attendance_students", label: "Students" },
     { id: "payment", label: "Payments" },
     { id: "events", label: "Events" },
-    { id: "students", label: "Department" },
   ];
 
   const reportItems = [
