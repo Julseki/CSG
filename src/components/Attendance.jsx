@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Chart as ChartJS } from "chart.js/auto";
-import { Bar, Line, Pie } from "react-chartjs-2";
+import { Pie } from "react-chartjs-2";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import PaginationBar from "./PaginationBar";
+import SearchMagnifierIcon from "./SearchMagnifierIcon";
 import SidebarNavIcon from "./SidebarNavIcon";
 import UserCircleIcon from "./UserCircleIcon";
 import { canOpenCreateUser, getDashboardRoleLabel } from "../utils/roles";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { useAttendancePageEvents } from "../hooks/useAttendancePageEvents";
-import { useAttendancePageEventDetail } from "../hooks/useAttendancePageEventDetail";
+import { fetchAttendancePageEventDetail, useAttendancePageEventDetail } from "../hooks/useAttendancePageEventDetail";
 import { formatEventDateForDisplay } from "../hooks/useGetEvents";
 import { formatDurationForEventsListWithSessionHint } from "../utils/eventDurationDisplay";
 
@@ -35,12 +36,6 @@ function ratePct(attended, total) {
   return Math.round((attended / total) * 1000) / 10;
 }
 
-/** Part as % of attendance + absence slots (same rounding as overall attendance rate). */
-function shareOfSlots(part, slots) {
-  if (!slots) return 0;
-  return Math.round((part / slots) * 1000) / 10;
-}
-
 function getMockCourse(studentId) {
   const courses = ["BSCS", "BSIT", "BSIS", "BSEMC", "ACT"];
   const num = Number(String(studentId || "").replace(/\D/g, "")) || 0;
@@ -57,6 +52,16 @@ function getMajor(student) {
   const m = student?.major;
   if (m == null || String(m).trim() === "") return null;
   return String(m).trim();
+}
+
+function getCollegeFromCourse(courseRaw) {
+  const course = String(courseRaw || "").toUpperCase();
+  if (course.startsWith("BEED") || course.startsWith("BSED")) return "College of Education, Arts and Sciences";
+  if (course.startsWith("BSIT")) return "College of Information Technology";
+  if (course.startsWith("BSCRIM")) return "College of Criminal Justice Education";
+  if (course.startsWith("BSHM")) return "College of Hospitality Management";
+  if (course.startsWith("BSBA")) return "College of Business Administration";
+  return "Unassigned";
 }
 
 function getCourseWithMajorCode(student) {
@@ -160,8 +165,6 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
   const [showLogout, setShowLogout] = useState(false);
   const [detailEventId, setDetailEventId] = useState(null);
 
@@ -174,26 +177,29 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
   const { data: detailFromApi } = useAttendancePageEventDetail(detailEventId, {
     enabled: Boolean(detailEventId),
   });
-
   const events = pageData?.events ?? [];
-  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [exportOpen, setExportOpen] = useState(false);
   const [eventListPage, setEventListPage] = useState(1);
   const [eventListPageSize, setEventListPageSize] = useState(DEFAULT_EVENT_LIST_PAGE_SIZE);
-  /** Filters which events appear in Statistics & analytics chart only */
-  const [analyticsSearch, setAnalyticsSearch] = useState("");
-  const [analyticsChartType, setAnalyticsChartType] = useState("line");
-  const [analyticsStatusFilter, setAnalyticsStatusFilter] = useState("all");
-  const [analyticsDateFrom, setAnalyticsDateFrom] = useState("");
-  const [analyticsDateTo, setAnalyticsDateTo] = useState("");
-  const [showTopSummary, setShowTopSummary] = useState(true);
   const [studentListSearch, setStudentListSearch] = useState("");
   const [studentListCourse, setStudentListCourse] = useState("all");
   const [studentListMajor, setStudentListMajor] = useState("all");
   const [studentListAttendance, setStudentListAttendance] = useState("all");
+  const [exportEventSearch, setExportEventSearch] = useState("");
+  const [exportEventCourse, setExportEventCourse] = useState("all");
+  const [exportEventMajor, setExportEventMajor] = useState("all");
+  const [exportEventAttendance, setExportEventAttendance] = useState("all");
+  const [exportAllEventId, setExportAllEventId] = useState("all");
+  const [exportAllEventStatus, setExportAllEventStatus] = useState("all");
+  const [exportAllCollege, setExportAllCollege] = useState("all");
+  const [exportAllCourse, setExportAllCourse] = useState("all");
   const [studentListPageSize, setStudentListPageSize] = useState(10);
   const [studentListPage, setStudentListPage] = useState(1);
   const isStudentListPath = Boolean(detailEventId) && location.pathname.endsWith("/students");
+  const exportEventDetailId = exportAllEventId === "all" ? null : exportAllEventId;
+  const { data: exportDetailFromApi } = useAttendancePageEventDetail(exportEventDetailId, {
+    enabled: Boolean(exportEventDetailId),
+  });
 
   useEffect(() => {
     setDetailEventId(eventId || null);
@@ -204,12 +210,9 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
       if (statusFilter !== "all" && ev.status !== statusFilter) return false;
       const q = search.trim().toLowerCase();
       if (q && !String(ev.name).toLowerCase().includes(q)) return false;
-      const d = String(ev.date).slice(0, 10);
-      if (dateFrom && d < dateFrom) return false;
-      if (dateTo && d > dateTo) return false;
       return true;
     });
-  }, [events, statusFilter, search, dateFrom, dateTo]);
+  }, [events, statusFilter, search]);
 
   const eventsTotal = filtered.length;
   const eventsTotalPages = Math.max(1, Math.ceil(eventsTotal / eventListPageSize) || 1);
@@ -222,187 +225,11 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
 
   useEffect(() => {
     setEventListPage(1);
-  }, [search, statusFilter, dateFrom, dateTo, eventListPageSize]);
+  }, [search, statusFilter, eventListPageSize]);
 
   useEffect(() => {
     setEventListPage((p) => Math.min(p, eventsTotalPages));
   }, [eventsTotalPages]);
-
-  const globalSummary = useMemo(() => {
-    const totalEvents = events.length;
-    const withData = events.filter((e) => e.status === "completed" || e.status === "ongoing");
-    const totalAttendances = withData.reduce((s, e) => s + (e.attended || 0), 0);
-    const totalAbsences = withData.reduce((s, e) => s + (e.absent || 0), 0);
-    const slots = totalAttendances + totalAbsences;
-    const overallRate = slots === 0 ? 0 : Math.round((totalAttendances / slots) * 1000) / 10;
-    const totalFines = events.reduce((s, e) => s + eventTotalFine(e), 0);
-    const rosterHeadline =
-      events.length > 0 ? Math.max(0, ...events.map((e) => Number(e.totalStudents) || 0)) : 0;
-    return {
-      totalEvents,
-      totalStudents: rosterHeadline,
-      totalAttendances,
-      totalAbsences,
-      slots,
-      overallRate,
-      totalFines,
-    };
-  }, [events]);
-
-  /** Events for the analytics chart: name + status + date + chart-only filters, oldest → newest */
-  const analyticsEventsSorted = useMemo(() => {
-    const q = analyticsSearch.trim().toLowerCase();
-    let list = [...events];
-    if (q) {
-      list = list.filter((e) => String(e.name).toLowerCase().includes(q));
-    }
-    if (analyticsStatusFilter !== "all") {
-      list = list.filter((e) => e.status === analyticsStatusFilter);
-    }
-    list = list.filter((e) => {
-      const d = String(e.date).slice(0, 10);
-      if (analyticsDateFrom && d < analyticsDateFrom) return false;
-      if (analyticsDateTo && d > analyticsDateTo) return false;
-      return true;
-    });
-    return list.sort((a, b) => String(a.date).localeCompare(String(b.date)));
-  }, [events, analyticsSearch, analyticsStatusFilter, analyticsDateFrom, analyticsDateTo]);
-
-  const analyticsLineBarData = useMemo(() => {
-    const list = analyticsEventsSorted;
-    const isBar = analyticsChartType === "bar";
-    return {
-      labels: list.map((e) => formatEventDateForDisplay(e.date)),
-      datasets: [
-        {
-          label: "Attendance rate %",
-          data: list.map((e) =>
-            e.status === "upcoming" || !e.totalStudents ? null : ratePct(e.attended, e.totalStudents),
-          ),
-          borderColor: "#07713c",
-          backgroundColor: isBar ? "#22c55e" : "rgba(7, 113, 60, 0.06)",
-          fill: !isBar,
-          tension: isBar ? 0 : 0.25,
-          spanGaps: true,
-          yAxisID: "y",
-          borderWidth: isBar ? 1 : 2,
-          pointRadius: isBar ? 0 : 3,
-        },
-        {
-          label: "Absences",
-          data: list.map((e) => Number(e.absent) || 0),
-          borderColor: "#dc2626",
-          backgroundColor: isBar ? "#f87171" : "rgba(220, 38, 38, 0.2)",
-          fill: !isBar,
-          tension: isBar ? 0 : 0.25,
-          yAxisID: "y1",
-          borderWidth: isBar ? 1 : 2,
-          pointRadius: isBar ? 0 : 3,
-        },
-        {
-          label: "Attended",
-          data: list.map((e) => Number(e.attended) || 0),
-          borderColor: "#2563eb",
-          backgroundColor: isBar ? "#60a5fa" : "rgba(37, 99, 235, 0.2)",
-          fill: !isBar,
-          tension: isBar ? 0 : 0.25,
-          yAxisID: "y1",
-          borderWidth: isBar ? 1 : 2,
-          pointRadius: isBar ? 0 : 3,
-        },
-      ],
-    };
-  }, [analyticsEventsSorted, analyticsChartType]);
-
-
-  const chartOptsLineBar = useMemo(
-    () => ({
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: {
-        duration: 850,
-        easing: "easeOutQuart",
-      },
-      interaction: { mode: "index", intersect: false },
-      plugins: {
-        legend: { position: "bottom" },
-        tooltip: {
-          callbacks: {
-            title: (items) => {
-              const i = items[0]?.dataIndex;
-              if (i == null || !analyticsEventsSorted[i]) return "";
-              const ev = analyticsEventsSorted[i];
-              const dateStr = formatEventDateForDisplay(ev.date);
-              const name = String(ev.name ?? "").trim() || "Untitled event";
-              return [dateStr, name];
-            },
-            label: (context) => {
-              const i = context.dataIndex;
-              const ev = analyticsEventsSorted[i];
-              const dsLabel = context.dataset.label || "";
-              const y = context.parsed?.y !== undefined ? context.parsed.y : context.parsed;
-              if (dsLabel === "Absences" && ev) {
-                const abs = Number(ev.absent) || 0;
-                const total = Number(ev.totalStudents) || 0;
-                const pct = total ? Math.round((abs / total) * 1000) / 10 : 0;
-                return `Absences: ${abs} (${pct}% of roster)`;
-              }
-              if (dsLabel === "Attendance rate %") {
-                return y == null || y === "" ? "Attendance rate: —" : `Attendance rate: ${y}%`;
-              }
-              if (dsLabel === "Attended") {
-                if (ev) {
-                  const att = Number(ev.attended) || 0;
-                  const total = Number(ev.totalStudents) || 0;
-                  const pct = total ? Math.round((att / total) * 1000) / 10 : 0;
-                  return `Attended: ${att} (${pct}% of roster)`;
-                }
-                return `Attended: ${y ?? 0}`;
-              }
-              return `${dsLabel}: ${y ?? ""}`;
-            },
-            labelColor: (context) => {
-              const c = context.dataset.borderColor || "#6b7280";
-              return {
-                borderColor: c,
-                backgroundColor: c,
-                borderWidth: 1,
-              };
-            },
-          },
-        },
-      },
-      scales: {
-        x: {
-          ticks: {
-            maxRotation: 45,
-            minRotation: 45,
-            font: { size: 9 },
-            autoSkip: true,
-            maxTicksLimit: 12,
-          },
-        },
-        y: {
-          type: "linear",
-          position: "left",
-          beginAtZero: true,
-          max: 100,
-          title: { display: true, text: "Attendance rate (%)" },
-          ticks: { callback: (v) => `${v}%` },
-          grid: { color: "rgba(0,0,0,0.06)" },
-        },
-        y1: {
-          type: "linear",
-          position: "right",
-          beginAtZero: true,
-          title: { display: true, text: "Students (attended / absent)" },
-          grid: { drawOnChartArea: false },
-        },
-      },
-    }),
-    [analyticsEventsSorted],
-  );
-
 
   const detailEvent = useMemo(() => {
     if (!detailEventId) return null;
@@ -487,6 +314,60 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
 
   const showStudentListMajorFilter = studentListMajorOptions.length > 0;
 
+  const exportEventCourses = useMemo(() => {
+    if (!detailEvent) return [];
+    return Array.from(new Set((detailEvent.students || []).map((s) => getCourse(s)))).sort();
+  }, [detailEvent]);
+
+  const exportEventMajorOptions = useMemo(() => {
+    if (!detailEvent) return [];
+    const selectedCourse = String(exportEventCourse || "").toUpperCase();
+    if (selectedCourse && selectedCourse !== "ALL" && ATTENDANCE_MAJOR_OPTIONS_BY_COURSE[selectedCourse]) {
+      return ATTENDANCE_MAJOR_OPTIONS_BY_COURSE[selectedCourse];
+    }
+    const set = new Set();
+    for (const s of detailEvent.students || []) {
+      const m = getMajor(s);
+      if (m) set.add(m);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [detailEvent, exportEventCourse]);
+
+  const exportFilteredEventStudents = useMemo(() => {
+    if (!detailEvent) return [];
+    const q = exportEventSearch.trim().toLowerCase();
+    return (detailEvent.students || []).filter((s) => {
+      const sid = String(s.id || "").toLowerCase();
+      const name = String(s.name || "").toLowerCase();
+      const course = getCourse(s);
+      const majorLabel = getMajor(s);
+      const majorQ = (majorLabel || "").toLowerCase();
+      const attendance = detailEvent.status === "upcoming" ? "no_record" : s.status === "attended" ? "attended" : "absent";
+
+      if (
+        q &&
+        !sid.includes(q) &&
+        !name.includes(q) &&
+        !course.toLowerCase().includes(q) &&
+        !majorQ.includes(q)
+      ) {
+        return false;
+      }
+      if (exportEventCourse !== "all" && course !== exportEventCourse) return false;
+      if (exportEventMajor !== "all") {
+        if (!majorLabel || majorLabel !== exportEventMajor) return false;
+      }
+      if (
+        detailEvent.status !== "upcoming" &&
+        exportEventAttendance !== "all" &&
+        attendance !== exportEventAttendance
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [detailEvent, exportEventSearch, exportEventCourse, exportEventMajor, exportEventAttendance]);
+
   const studentListTotal = filteredStudentList.length;
   const studentListTotalFine = useMemo(() => {
     if (!detailEvent) return 0;
@@ -521,28 +402,91 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
     setStudentListPage((p) => Math.min(p, studentListTotalPages));
   }, [studentListTotalPages]);
 
-  const calendarDays = useMemo(() => {
-    const y = calendarMonth.getFullYear();
-    const m = calendarMonth.getMonth();
-    const first = new Date(y, m, 1);
-    const startPad = first.getDay();
-    const daysInMonth = new Date(y, m + 1, 0).getDate();
-    const cells = [];
-    for (let i = 0; i < startPad; i++) cells.push({ key: `p${i}`, empty: true });
-    for (let d = 1; d <= daysInMonth; d++) {
-      const iso = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-      const dayEvents = events.filter((e) => String(e.date).startsWith(iso));
-      cells.push({ key: iso, day: d, iso, events: dayEvents });
+  useEffect(() => {
+    if (!exportOpen || !detailEvent) return;
+    setExportEventSearch(studentListSearch);
+    setExportEventCourse(studentListCourse);
+    setExportEventMajor(studentListMajor);
+    setExportEventAttendance(studentListAttendance);
+  }, [exportOpen, detailEvent, studentListSearch, studentListCourse, studentListMajor, studentListAttendance]);
+
+  useEffect(() => {
+    if (exportEventMajor === "all") return;
+    if (!exportEventMajorOptions.includes(exportEventMajor)) {
+      setExportEventMajor("all");
     }
-    return cells;
-  }, [calendarMonth, events]);
+  }, [exportEventMajor, exportEventMajorOptions]);
+
+  const exportAllCollegeOptions = useMemo(() => {
+    const set = new Set();
+    for (const ev of events) {
+      for (const s of ev.students || []) {
+        set.add(getCollegeFromCourse(getCourse(s)));
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [events]);
+
+  const exportAllCourseOptions = useMemo(() => {
+    const set = new Set();
+    for (const ev of events) {
+      for (const s of ev.students || []) {
+        const course = getCourseWithMajorCode(s);
+        if (exportAllCollege === "all" || getCollegeFromCourse(course) === exportAllCollege) {
+          set.add(course);
+        }
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [events, exportAllCollege]);
+
+  const exportCompletedEventOptions = useMemo(
+    () => events.filter((ev) => ev.status === "completed"),
+    [events],
+  );
+
+  const exportAllFilteredRows = useMemo(() => {
+    const rows = [];
+    for (const ev of events) {
+      if (exportAllEventId !== "all" && String(ev.id) !== String(exportAllEventId)) continue;
+      if (exportAllEventStatus !== "all" && ev.status !== exportAllEventStatus) continue;
+      const scopedStudents =
+        exportEventDetailId && String(ev.id) === String(exportEventDetailId)
+          ? exportDetailFromApi?.students || ev.students || []
+          : ev.students || [];
+      for (const s of scopedStudents) {
+        const course = getCourseWithMajorCode(s);
+        const college = getCollegeFromCourse(course);
+        if (exportAllCollege !== "all" && college !== exportAllCollege) continue;
+        if (exportAllCourse !== "all" && course !== exportAllCourse) continue;
+        const attendance = ev.status === "upcoming" ? "no_record" : s.status === "attended" ? "attended" : "absent";
+        rows.push({ ev, s, course, college, attendance });
+      }
+    }
+    return rows;
+  }, [events, exportAllEventId, exportAllEventStatus, exportAllCollege, exportAllCourse, exportEventDetailId, exportDetailFromApi]);
+
+  useEffect(() => {
+    if (exportAllCourse === "all") return;
+    if (!exportAllCourseOptions.includes(exportAllCourse)) {
+      setExportAllCourse("all");
+    }
+  }, [exportAllCourse, exportAllCourseOptions]);
+
+  useEffect(() => {
+    if (exportAllEventId === "all") return;
+    const stillExists = exportCompletedEventOptions.some((ev) => String(ev.id) === String(exportAllEventId));
+    if (!stillExists) {
+      setExportAllEventId("all");
+    }
+  }, [exportAllEventId, exportCompletedEventOptions]);
 
   const navItems = [
     { id: "dashboard", label: "Dashboard" },
     { id: "attendance", label: "Attendance" },
     { id: "attendance_students", label: "Students" },
     { id: "payment", label: "Payments" },
-    { id: "events", label: "Events" },
+    { id: "events", label: "Manage Event" },
   ];
 
   const reportItems = [
@@ -582,26 +526,72 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
     day: "numeric",
   });
 
-  const exportCsvAll = () => {
-    const header = ["Event", "Date", "Status", "Attended", "Absent", "Rate %", "Fines PHP"];
-    const rows = events.map((e) => [
-      `"${String(e.name).replace(/"/g, '""')}"`,
-      e.date,
-      e.status,
-      e.attended,
-      e.absent,
-      ratePct(e.attended, e.totalStudents),
-      eventTotalFine(e),
-    ]);
-    downloadTextFile(`attendance-report-all-${new Date().toISOString().slice(0, 10)}.csv`, [header.join(","), ...rows.map((r) => r.join(","))].join("\n"));
+  const exportCsvAll = async () => {
+    const selectedEvents = events.filter((ev) => {
+      if (exportAllEventId !== "all" && String(ev.id) !== String(exportAllEventId)) return false;
+      if (exportAllEventStatus !== "all" && ev.status !== exportAllEventStatus) return false;
+      return true;
+    });
+    const detailedEvents = await Promise.all(
+      selectedEvents.map(async (ev) => {
+        try {
+          const full = await fetchAttendancePageEventDetail(ev.id);
+          return full || ev;
+        } catch {
+          return ev;
+        }
+      }),
+    );
+    const header = [
+      "Event",
+      "Date",
+      "Event Status",
+      "Student ID",
+      "Student Name",
+      "College",
+      "Course",
+      "Major",
+      "Attendance",
+      "Fine PHP",
+    ];
+    const rows = [];
+    for (const ev of detailedEvents) {
+      for (const s of ev.students || []) {
+        const course = getCourseWithMajorCode(s);
+        const college = getCollegeFromCourse(course);
+        if (exportAllCollege !== "all" && college !== exportAllCollege) continue;
+        if (exportAllCourse !== "all" && course !== exportAllCourse) continue;
+        const attendance = ev.status === "upcoming" ? "no_record" : s.status === "attended" ? "attended" : "absent";
+        rows.push([
+          `"${String(ev.name || "").replace(/"/g, '""')}"`,
+          ev.date,
+          ev.status,
+          `"${String(s.id || "").replace(/"/g, '""')}"`,
+          `"${String(s.name || "").replace(/"/g, '""')}"`,
+          `"${String(college).replace(/"/g, '""')}"`,
+          `"${String(course).replace(/"/g, '""')}"`,
+          `"${String(getMajor(s) || "—").replace(/"/g, '""')}"`,
+          attendance === "no_record" ? "No record" : attendance,
+          Number(s.finePhp) || 0,
+        ]);
+      }
+    }
+    downloadTextFile(
+      `attendance-report-students-${new Date().toISOString().slice(0, 10)}.csv`,
+      [header.join(","), ...rows.map((r) => r.join(","))].join("\n"),
+    );
   };
 
-  const exportCsvEvent = (ev) => {
-    const header = ["Student", "Status", "Fine PHP"];
-    const body = (ev.students || []).map((s) => [
+  const exportCsvEvent = (ev, students = null) => {
+    const rows = Array.isArray(students) ? students : ev.students || [];
+    const header = ["Student ID", "Student", "Course", "Major", "Status", "Fine PHP"];
+    const body = rows.map((s) => [
+      `"${String(s.id || "").replace(/"/g, '""')}"`,
       `"${String(s.name).replace(/"/g, '""')}"`,
-      s.status,
-      s.finePhp,
+      `"${String(getCourse(s)).replace(/"/g, '""')}"`,
+      `"${String(getMajor(s) || "—").replace(/"/g, '""')}"`,
+      ev.status === "upcoming" ? "No record" : s.status,
+      Number(s.finePhp) || 0,
     ]);
     downloadTextFile(`attendance-${ev.id}-${ev.date}.csv`, [header.join(","), ...body.map((r) => r.join(","))].join("\n"));
   };
@@ -621,15 +611,9 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
     return "bg-[#07713c]/10 text-[#07713c]";
   };
 
-  const calDotClass = (st) => {
-    if (st === "completed") return "bg-emerald-500";
-    if (st === "ongoing") return "bg-amber-400";
-    return "bg-sky-500";
-  };
-
   return (
     <div className="flex min-h-screen bg-[#07713c]/[0.04] [&_button]:cursor-pointer">
-      <aside className="flex w-64 shrink-0 flex-col bg-[#07713c] text-white">
+      <aside className="sticky top-0 flex h-screen max-h-screen w-64 shrink-0 flex-col self-start overflow-y-auto bg-[#07713c] text-white">
         <div className="space-y-4 p-6">
           <img src="/logo.png" alt="NMCI" className="mx-auto h-16 w-16 rounded-full bg-white/10 object-contain" />
           <p className="text-center text-xs font-medium uppercase tracking-wider font-[Inter,sans-serif]">
@@ -763,9 +747,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
               <p className="mt-1 text-sm font-medium text-red-600">Total fines: {formatPhp(studentListTotalFine)}</p>
               <div className="mt-3 flex flex-wrap items-end gap-3 rounded-lg border border-[#07713c]/30 bg-[#07713c]/[0.06] p-3">
                 <div className="relative min-w-[220px] flex-1">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]">
-                    🔍
-                  </span>
+                  <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#07713c]" />
                   <input
                     type="search"
                     value={studentListSearch}
@@ -1062,24 +1044,14 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                     <button
                       type="button"
                       onClick={() => exportCsvEvent(detailEvent)}
-                      disabled={detailEvent.status === "ongoing" || detailEvent.status === "upcoming"}
-                      className={`rounded-lg border px-3 py-2 text-sm font-medium ${
-                        detailEvent.status === "ongoing" || detailEvent.status === "upcoming"
-                          ? "cursor-not-allowed border-[#07713c]/30 bg-[#07713c]/10 text-gray-400"
-                          : "border-[#07713c] bg-[#07713c]/10 text-[#07713c] hover:bg-[#07713c]/15"
-                      }`}
+                      className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/15"
                     >
                       Export Excel (CSV) — this event
                     </button>
                     <button
                       type="button"
                       onClick={() => mockPdfExport("event")}
-                      disabled={detailEvent.status === "ongoing" || detailEvent.status === "upcoming"}
-                      className={`rounded-lg border px-3 py-2 text-sm font-medium ${
-                        detailEvent.status === "ongoing" || detailEvent.status === "upcoming"
-                          ? "cursor-not-allowed border-[#07713c]/30 bg-[#07713c]/10 text-gray-400"
-                          : "border-[#07713c] bg-[#07713c]/10 text-[#07713c] hover:bg-[#07713c]/15"
-                      }`}
+                      className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/15"
                     >
                       Export PDF (mock)
                     </button>
@@ -1133,205 +1105,17 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
             </section>
           ) : (
           <>
-          {/* Summary cards + Statistics & analytics */}
-          <section className="overflow-hidden rounded-xl border border-[#07713c]/30 bg-white shadow-sm">
-            <div className="px-5 py-3">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-base font-medium text-[#07713c]">Statistics &amp; analytics</h2>
-                <button
-                  type="button"
-                  onClick={() => setShowTopSummary((v) => !v)}
-                  className="rounded-lg border border-[#07713c]/40 px-2.5 py-1 text-xs font-medium text-[#07713c] hover:bg-[#07713c]/10 focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
-                >
-                  {showTopSummary ? "Hide" : "Show"}
-                </button>
-              </div>
-            </div>
-            <div className="p-5">
-              {showTopSummary && (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                  {[
-                    { label: "Total events", value: globalSummary.totalEvents },
-                    { label: "Total students (roster)", value: globalSummary.totalStudents },
-                    {
-                      label: "Total attendances",
-                      value:
-                        globalSummary.slots > 0
-                          ? `${globalSummary.totalAttendances} (${shareOfSlots(globalSummary.totalAttendances, globalSummary.slots)}%)`
-                          : globalSummary.totalAttendances,
-                    },
-                    {
-                      label: "Total absences",
-                      value:
-                        globalSummary.slots > 0
-                          ? `${globalSummary.totalAbsences} (${shareOfSlots(globalSummary.totalAbsences, globalSummary.slots)}%)`
-                          : globalSummary.totalAbsences,
-                    },
-                    { label: "Overall attendance rate", value: `${globalSummary.overallRate}%` },
-                    { label: "Total fines collected", value: formatPhp(globalSummary.totalFines), accent: true },
-                  ].map((c) => (
-                    <div key={c.label} className="rounded-lg border border-[#07713c]/20 bg-[#07713c]/[0.07] p-3">
-                      <p
-                        className={`text-2xl font-bold tabular-nums ${c.accent ? "text-red-600" : "text-[#07713c]"}`}
-                      >
-                        {c.value}
-                      </p>
-                      <p
-                        className={`text-sm font-medium ${c.accent ? "text-red-600" : "text-[#07713c]"}`}
-                      >
-                        {c.label}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            {showTopSummary && (
-              <>
-                <div className="px-5 py-3">
-              <div className="flex flex-col gap-3">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-12">
-                  <div className="min-w-0 sm:col-span-2 lg:col-span-4">
-                    <label className="mb-1 block text-xs font-medium text-transparent select-none" htmlFor="att2-analytics-search">
-                      Search
-                    </label>
-                    <div className="flex gap-2">
-                      <div className="relative min-w-0 flex-1">
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]">
-                          🔍
-                        </span>
-                        <input
-                          id="att2-analytics-search"
-                          type="search"
-                          value={analyticsSearch}
-                          onChange={(e) => setAnalyticsSearch(e.target.value)}
-                          placeholder="Filter chart by event name…"
-                          className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-3 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
-                          aria-label="Search events for statistics chart"
-                        />
-                      </div>
-                      {analyticsSearch.trim() !== "" && (
-                        <button
-                          type="button"
-                          onClick={() => setAnalyticsSearch("")}
-                          className="shrink-0 rounded-lg border border-[#07713c]/40 px-3 py-2 text-sm text-[#07713c] hover:bg-[#07713c]/10 focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="lg:col-span-2">
-                    <label className="mb-1 block text-xs font-medium text-[#07713c]" htmlFor="att2-analytics-status">
-                      Status (chart)
-                    </label>
-                    <select
-                      id="att2-analytics-status"
-                      value={analyticsStatusFilter}
-                      onChange={(e) => setAnalyticsStatusFilter(e.target.value)}
-                      className="w-full rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
-                      aria-label="Filter chart by event status"
-                    >
-                      <option value="all">All</option>
-                      <option value="upcoming">Upcoming</option>
-                      <option value="ongoing">Ongoing</option>
-                      <option value="completed">Completed</option>
-                    </select>
-                  </div>
-                  <div className="lg:col-span-2">
-                    <label className="mb-1 block text-xs font-medium text-[#07713c]" htmlFor="att2-analytics-chart-type">
-                      Chart type
-                    </label>
-                    <select
-                      id="att2-analytics-chart-type"
-                      value={analyticsChartType}
-                      onChange={(e) => setAnalyticsChartType(e.target.value)}
-                      className="w-full rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
-                      aria-label="Chart type for statistics"
-                    >
-                      <option value="line">Line</option>
-                      <option value="bar">Bar</option>
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 sm:col-span-2 lg:col-span-3">
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-[#07713c]" htmlFor="att2-analytics-from">
-                        From
-                      </label>
-                      <input
-                        id="att2-analytics-from"
-                        type="date"
-                        value={analyticsDateFrom}
-                        onChange={(e) => setAnalyticsDateFrom(e.target.value)}
-                        className="w-full rounded-lg border border-[#07713c]/40 bg-white px-2 py-2 text-sm text-[#07713c] accent-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-[#07713c]" htmlFor="att2-analytics-to">
-                        To
-                      </label>
-                      <input
-                        id="att2-analytics-to"
-                        type="date"
-                        value={analyticsDateTo}
-                        onChange={(e) => setAnalyticsDateTo(e.target.value)}
-                        className="w-full rounded-lg border border-[#07713c]/40 bg-white px-2 py-2 text-sm text-[#07713c] accent-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-end justify-end sm:col-span-2 lg:col-span-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAnalyticsSearch("");
-                        setAnalyticsStatusFilter("all");
-                        setAnalyticsChartType("line");
-                        setAnalyticsDateFrom("");
-                        setAnalyticsDateTo("");
-                      }}
-                      className="rounded-lg border border-[#07713c]/40 px-3 py-2 text-sm text-[#07713c] hover:bg-[#07713c]/10 focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                </div>
-              </div>
-                </div>
-                <div className="p-5 pt-0">
-              <p className="mb-2 text-xs text-[#07713c]">
-                Showing {analyticsEventsSorted.length} of {events.length} events for this chart
-                {". Line and bar charts plot attendance rate %, absences, and attended counts by date; upcoming events have no rate yet (gap in green)."}
-              </p>
-              {analyticsEventsSorted.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-[#07713c]/30 bg-[#07713c]/5 py-10 text-center text-sm text-[#07713c]">
-                  No events match these chart filters. Adjust search, status, or dates.
-                </p>
-              ) : (
-                <div className="h-[min(420px,55vh)] min-h-[280px] w-full">
-                  {analyticsChartType === "line" && (
-                    <Line data={analyticsLineBarData} options={chartOptsLineBar} />
-                  )}
-                  {analyticsChartType === "bar" && <Bar data={analyticsLineBarData} options={chartOptsLineBar} />}
-                </div>
-              )}
-                </div>
-              </>
-            )}
-          </section>
-
-          {/* 2. Search + event list */}
+          {/* Search + event list */}
           <section className="overflow-hidden rounded-xl border border-[#07713c]/30 bg-white shadow-sm">
             <div className="border-b border-[#07713c]/20 px-4 py-3">
-              <h2 className="text-sm font-semibold text-[#07713c]">2. Event list</h2>
+              <h2 className="text-sm font-semibold text-[#07713c]">Event list</h2>
             </div>
             <div className="border-b border-[#07713c]/20 p-4">
               <div className="flex flex-wrap items-end gap-4">
-                <div className="min-w-[200px] flex-1">
+                <div className="w-96 max-w-full shrink-0 sm:w-[28rem]">
                   <label className="mb-1 block text-xs font-medium text-[#07713c]">Search event</label>
                   <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]">
-                      🔍
-                    </span>
+                    <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#07713c]" />
                     <input
                       type="text"
                       value={search}
@@ -1341,69 +1125,51 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-[#07713c]">Status</label>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
-                  >
-                    <option value="all">All</option>
-                    <option value="upcoming">Upcoming</option>
-                    <option value="ongoing">Ongoing</option>
-                    <option value="completed">Completed</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-[#07713c]">From</label>
-                  <input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                    className="rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-[#07713c] accent-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-[#07713c]">To</label>
-                  <input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                    className="rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-[#07713c] accent-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
-                  />
-                </div>
-                <label className="flex shrink-0 flex-col lg:ml-auto">
-                  <span className="mb-1 block text-xs font-medium text-[#07713c]">Rows per page</span>
-                  <select
-                    value={eventListPageSize}
-                    onChange={(e) => {
-                      setEventListPageSize(Number(e.target.value));
+                <div className="flex flex-wrap items-end gap-4">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-[#07713c]">Status</label>
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                    >
+                      <option value="all">All</option>
+                      <option value="upcoming">Upcoming</option>
+                      <option value="ongoing">Ongoing</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                  </div>
+                  <label className="flex shrink-0 flex-col">
+                    <span className="mb-1 block text-xs font-medium text-[#07713c]">Rows per page</span>
+                    <select
+                      value={eventListPageSize}
+                      onChange={(e) => {
+                        setEventListPageSize(Number(e.target.value));
+                        setEventListPage(1);
+                      }}
+                      className="rounded-lg border border-[#07713c]/40 bg-white px-2 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                      aria-label="Rows per page for event list"
+                    >
+                      {EVENT_LIST_ROWS_PER_PAGE_OPTIONS.map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter("all");
+                      setSearch("");
+                      setEventListPageSize(DEFAULT_EVENT_LIST_PAGE_SIZE);
                       setEventListPage(1);
                     }}
-                    className="rounded-lg border border-[#07713c]/40 bg-white px-2 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
-                    aria-label="Rows per page for event list"
+                    className="rounded-lg border border-[#07713c]/40 px-3 py-2 text-sm text-[#07713c] hover:bg-[#07713c]/10 focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                   >
-                    {EVENT_LIST_ROWS_PER_PAGE_OPTIONS.map((n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDateFrom("");
-                    setDateTo("");
-                    setStatusFilter("all");
-                    setSearch("");
-                    setEventListPageSize(DEFAULT_EVENT_LIST_PAGE_SIZE);
-                    setEventListPage(1);
-                  }}
-                  className="rounded-lg border border-[#07713c]/40 px-3 py-2 text-sm text-[#07713c] hover:bg-[#07713c]/10 focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
-                >
-                  Clear
-                </button>
+                    Clear
+                  </button>
+                </div>
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -1471,76 +1237,6 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
               emptyLabel="No events to show."
               itemLabel="events"
             />
-            <p className="border-t border-[#07713c]/20 px-4 py-2 text-xs text-red-600">
-              Fines: {formatPhp(MOCK_FINE_PER_ABSENCE_PHP)} per absence · Total fine = absences × fine (shown per event).
-            </p>
-          </section>
-
-          {/* 3. Calendar */}
-          <section className="rounded-xl border border-[#07713c]/30 bg-white p-5 shadow-sm">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-[#07713c]">3. Calendar view</h2>
-              <div className="flex items-center gap-3 text-xs text-[#07713c]">
-                <span className="inline-flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" /> Completed
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-amber-400" /> Ongoing
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-sky-500" /> Upcoming
-                </span>
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    className="rounded border border-[#07713c]/40 px-2 py-0.5 text-[#07713c] hover:bg-[#07713c]/10"
-                    onClick={() => setCalendarMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
-                  >
-                    ←
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded border border-[#07713c]/40 px-2 py-0.5 text-[#07713c] hover:bg-[#07713c]/10"
-                    onClick={() => setCalendarMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
-                  >
-                    →
-                  </button>
-                </div>
-              </div>
-            </div>
-            <p className="mb-2 text-center text-sm font-medium text-[#07713c]">
-              {calendarMonth.toLocaleString("en-US", { month: "long", year: "numeric" })}
-            </p>
-            <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase text-[#07713c]">
-              {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
-                <div key={d}>{d}</div>
-              ))}
-            </div>
-            <div className="mt-1 grid grid-cols-7 gap-1">
-              {calendarDays.map((cell) =>
-                cell.empty ? (
-                  <div key={cell.key} className="h-9" />
-                ) : (
-                  <div
-                    key={cell.key}
-                    className="flex min-h-9 flex-col items-center justify-start rounded border border-[#07713c]/20 bg-[#07713c]/[0.05] p-0.5 text-[11px]"
-                  >
-                    <span className="font-medium text-[#07713c]">{cell.day}</span>
-                    <div className="mt-0.5 flex flex-wrap justify-center gap-0.5">
-                      {cell.events.map((ev) => (
-                        <button
-                          key={ev.id}
-                          type="button"
-                          title={ev.name}
-                          onClick={() => openEventDetails(ev.id)}
-                          className={`h-1.5 w-1.5 rounded-full ${calDotClass(ev.status)}`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ),
-              )}
-            </div>
           </section>
           </>
           )}
@@ -1710,7 +1406,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
               </button>
               <button
                 type="button"
-                onClick={() => exportCsvEvent(detailEvent)}
+                onClick={() => exportCsvEvent(detailEvent, isStudentListPath ? filteredStudentList : detailEvent.students)}
                 className="rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm font-medium hover:bg-[#07713c]/10"
               >
                 Export Excel (CSV) — this event
@@ -1735,6 +1431,115 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
             <p className="mt-2 text-sm text-[#07713c]">
               Mock exports: CSV downloads work in-browser. PDF uses a placeholder alert until a library/backend is wired.
             </p>
+            <div className="mt-3 rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#07713c]">
+                All-events student export filters
+              </p>
+              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <select
+                  value={exportAllEventId}
+                  onChange={(e) => setExportAllEventId(e.target.value)}
+                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 sm:col-span-2"
+                >
+                  <option value="all">All events</option>
+                  {exportCompletedEventOptions.map((ev) => (
+                    <option key={ev.id} value={String(ev.id)}>
+                      {ev.name} - {formatEventDateForDisplay(ev.date)}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={exportAllEventStatus}
+                  onChange={(e) => setExportAllEventStatus(e.target.value)}
+                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                >
+                  <option value="all">All event statuses</option>
+                  <option value="completed">Completed</option>
+                  <option value="ongoing">Ongoing</option>
+                  <option value="upcoming">Upcoming</option>
+                </select>
+                <select
+                  value={exportAllCollege}
+                  onChange={(e) => setExportAllCollege(e.target.value)}
+                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                >
+                  <option value="all">All colleges</option>
+                  {exportAllCollegeOptions.map((college) => (
+                    <option key={college} value={college}>
+                      {college}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={exportAllCourse}
+                  onChange={(e) => setExportAllCourse(e.target.value)}
+                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                >
+                  <option value="all">All courses</option>
+                  {exportAllCourseOptions.map((course) => (
+                    <option key={course} value={course}>
+                      {course}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="mt-2 text-xs text-[#07713c]/80">
+                {exportAllFilteredRows.length} student record(s) match these filters.
+              </p>
+            </div>
+            {detailEvent ? (
+              <div className="mt-3 rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#07713c]">
+                  Current event filters - {detailEvent.name}
+                </p>
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <input
+                    type="search"
+                    value={exportEventSearch}
+                    onChange={(e) => setExportEventSearch(e.target.value)}
+                    placeholder="Search name, ID, course, major"
+                    className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 sm:col-span-2"
+                  />
+                  <select
+                    value={exportEventCourse}
+                    onChange={(e) => setExportEventCourse(e.target.value)}
+                    className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                  >
+                    <option value="all">All courses</option>
+                    {exportEventCourses.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={exportEventMajor}
+                    onChange={(e) => setExportEventMajor(e.target.value)}
+                    className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                  >
+                    <option value="all">All majors</option>
+                    {exportEventMajorOptions.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={exportEventAttendance}
+                    onChange={(e) => setExportEventAttendance(e.target.value)}
+                    className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                  >
+                    <option value="all">All statuses</option>
+                    <option value="attended">Attended</option>
+                    <option value="absent">Absent</option>
+                    {detailEvent.status === "upcoming" ? <option value="no_record">No record</option> : null}
+                  </select>
+                </div>
+                <p className="mt-2 text-xs text-[#07713c]/80">
+                  {exportFilteredEventStudents.length} student(s) match these filters.
+                </p>
+              </div>
+            ) : null}
             <div className="mt-4 space-y-2">
               <button
                 type="button"
@@ -1744,17 +1549,27 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                 }}
                 className="w-full rounded-lg bg-[#07713c] px-4 py-2.5 text-sm font-medium text-white hover:brightness-95"
               >
-                Download attendance report (Excel / CSV) — all events
+                Download attendance report (Excel / CSV) — all events (students)
               </button>
               <button
                 type="button"
+                disabled={!detailEvent}
                 onClick={() => {
+                  if (detailEvent) {
+                    exportCsvEvent(detailEvent, exportFilteredEventStudents);
+                    setExportOpen(false);
+                    return;
+                  }
                   mockPdfExport("all");
                   setExportOpen(false);
                 }}
-                className="w-full rounded-lg border border-[#07713c]/40 px-4 py-2.5 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/10"
+                className={`w-full rounded-lg border px-4 py-2.5 text-sm font-medium ${
+                  detailEvent
+                    ? "border-[#07713c]/40 text-[#07713c] hover:bg-[#07713c]/10"
+                    : "border-[#07713c]/20 text-[#07713c]/50"
+                }`}
               >
-                Export PDF — all events (mock)
+                Export CSV — current event (filtered students)
               </button>
             </div>
             <button

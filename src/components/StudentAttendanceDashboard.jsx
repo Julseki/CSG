@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Chart as ChartJS } from "chart.js/auto";
 import { Pie } from "react-chartjs-2";
 import PaginationBar from "./PaginationBar";
+import SearchMagnifierIcon from "./SearchMagnifierIcon";
 import { useStudentDashboardDetail, useStudentDashboardList } from "../hooks/useStudentDashboard";
 import { formatEventDateForDisplay } from "../hooks/useGetEvents";
 
@@ -24,6 +25,8 @@ export const ROSTER_COURSE_CATALOG = [
   {
     id: "1",
     code: "BEED",
+    college: "College of Education, Arts and Sciences",
+    collegeCode: "CEAS",
     label: "BEED",
     full: "Bachelor of Elementary Education",
     filterValue: "BEED",
@@ -31,6 +34,8 @@ export const ROSTER_COURSE_CATALOG = [
   {
     id: "2",
     code: "BSED",
+    college: "College of Education, Arts and Sciences",
+    collegeCode: "CEAS",
     label: "BSED — Eng",
     major: "English",
     full: "Bachelor of Secondary Education Major in English",
@@ -39,6 +44,8 @@ export const ROSTER_COURSE_CATALOG = [
   {
     id: "3",
     code: "BSED",
+    college: "College of Education, Arts and Sciences",
+    collegeCode: "CEAS",
     label: "BSED — Math",
     major: "Math",
     full: "Bachelor of Secondary Education Major in Math",
@@ -47,6 +54,8 @@ export const ROSTER_COURSE_CATALOG = [
   {
     id: "4",
     code: "BSED",
+    college: "College of Education, Arts and Sciences",
+    collegeCode: "CEAS",
     label: "BSED — Fil",
     major: "Filipino",
     full: "Bachelor of Secondary Education Major in Filipino",
@@ -55,6 +64,8 @@ export const ROSTER_COURSE_CATALOG = [
   {
     id: "5",
     code: "BSIT",
+    college: "College of Information Technology",
+    collegeCode: "CIT",
     label: "BSIT",
     full: "Bachelor of Science in Information Technology",
     filterValue: "BSIT",
@@ -62,6 +73,8 @@ export const ROSTER_COURSE_CATALOG = [
   {
     id: "6",
     code: "BSCRIM",
+    college: "College of Criminal Justice Education",
+    collegeCode: "CCJE",
     label: "BSCRIM",
     full: "Bachelor of Science in Criminology",
     filterValue: "BSCRIM",
@@ -69,6 +82,8 @@ export const ROSTER_COURSE_CATALOG = [
   {
     id: "7",
     code: "BSHM",
+    college: "College of Hospitality Management",
+    collegeCode: "CHM",
     label: "BSHM",
     full: "Bachelor of Science in Hospitality Management",
     filterValue: "BSHM",
@@ -76,6 +91,8 @@ export const ROSTER_COURSE_CATALOG = [
   {
     id: "8",
     code: "BSBA",
+    college: "College of Business Administration",
+    collegeCode: "CBA",
     label: "BSBA — MM",
     major: "Marketing Management",
     full: "BSBA Marketing Management",
@@ -84,6 +101,8 @@ export const ROSTER_COURSE_CATALOG = [
   {
     id: "9",
     code: "BSBA",
+    college: "College of Business Administration",
+    collegeCode: "CBA",
     label: "BSBA — HRDM",
     major: "Human Resource Development Management",
     full: "BSBA Human Resource Development Management",
@@ -92,6 +111,8 @@ export const ROSTER_COURSE_CATALOG = [
   {
     id: "10",
     code: "BSBA",
+    college: "College of Business Administration",
+    collegeCode: "CBA",
     label: "BSBA — FM",
     major: "Financial Management",
     full: "BSBA Financial Management",
@@ -106,6 +127,25 @@ function getRosterCourseRow(filterValue) {
 function getRosterCourseDisplayLabel(filterValue) {
   return getRosterCourseRow(filterValue)?.label ?? String(filterValue ?? "—");
 }
+
+function downloadTextFile(filename, text, mime = "text/csv;charset=utf-8") {
+  const blob = new Blob([text], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+const ROSTER_COLLEGE_FILTER_OPTIONS = [
+  { value: "all", label: "All colleges" },
+  { value: "College of Education, Arts and Sciences", label: "CEAS — College of Education, Arts and Sciences" },
+  { value: "College of Information Technology", label: "CIT — College of Information Technology" },
+  { value: "College of Criminal Justice Education", label: "CCJE — College of Criminal Justice Education" },
+  { value: "College of Hospitality Management", label: "CHM — College of Hospitality Management" },
+  { value: "College of Business Administration", label: "CBA — College of Business Administration" },
+];
 
 function rosterCourseMatchesSearchQuery(student, qLower) {
   if (!qLower) return true;
@@ -232,14 +272,7 @@ function matchesHistoryPeriodFilter(ev, periodFilter) {
 
 const ROSTER_PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
 
-const ROSTER_STATUS_FILTER_OPTIONS = [
-  { value: "all", label: "All statuses" },
-  { value: "active", label: "Active" },
-  { value: "moderate", label: "Moderate" },
-  { value: "inactive", label: "Inactive" },
-];
-
-export default function StudentAttendanceDashboard() {
+export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
   const { data: rosterList = [], isPending: rosterLoading, isError: rosterError } = useStudentDashboardList();
   const [selectedId, setSelectedId] = useState("");
   const { data: detailData } = useStudentDashboardDetail(selectedId);
@@ -247,7 +280,7 @@ export default function StudentAttendanceDashboard() {
 
   const [search, setSearch] = useState("");
   const [rosterCourseFilter, setRosterCourseFilter] = useState("all");
-  const [rosterStatusFilter, setRosterStatusFilter] = useState("all");
+  const [rosterCollegeFilter, setRosterCollegeFilter] = useState("all");
   const [rosterPage, setRosterPage] = useState(1);
   const [rosterPageSize, setRosterPageSize] = useState(10);
   const [historyPage, setHistoryPage] = useState(1);
@@ -257,6 +290,11 @@ export default function StudentAttendanceDashboard() {
   const [historySessionFilter, setHistorySessionFilter] = useState("all");
   const [historyPeriodFilter, setHistoryPeriodFilter] = useState("all");
   const [isStudentDetailModalOpen, setIsStudentDetailModalOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportSearch, setExportSearch] = useState("");
+  const [exportCollegeFilter, setExportCollegeFilter] = useState("all");
+  const [exportCourseFilter, setExportCourseFilter] = useState("all");
+  const [exportStatusFilter, setExportStatusFilter] = useState("all");
 
   const openStudentDetailModal = (studentId) => {
     setSelectedId(studentId);
@@ -297,12 +335,23 @@ export default function StudentAttendanceDashboard() {
     const q = search.toLowerCase().trim();
     return rosterList.filter((s) => {
       if (rosterCourseFilter !== "all" && s.course !== rosterCourseFilter) return false;
-      if (rosterStatusFilter !== "all" && getActivityTier(s.attendanceRate).key !== rosterStatusFilter) {
-        return false;
+      if (rosterCollegeFilter !== "all") {
+        const college = getRosterCourseRow(s.course)?.college ?? "";
+        if (college !== rosterCollegeFilter) return false;
       }
       return rosterCourseMatchesSearchQuery(s, q);
     });
-  }, [rosterList, search, rosterCourseFilter, rosterStatusFilter]);
+  }, [rosterList, search, rosterCourseFilter, rosterCollegeFilter]);
+
+  const availableCourseOptions = useMemo(() => {
+    if (rosterCollegeFilter === "all") return ROSTER_COURSE_CATALOG;
+    return ROSTER_COURSE_CATALOG.filter((course) => course.college === rosterCollegeFilter);
+  }, [rosterCollegeFilter]);
+
+  const exportCourseOptions = useMemo(() => {
+    if (exportCollegeFilter === "all") return ROSTER_COURSE_CATALOG;
+    return ROSTER_COURSE_CATALOG.filter((course) => course.college === exportCollegeFilter);
+  }, [exportCollegeFilter]);
 
   const rosterTotal = filteredRoster.length;
   const rosterTotalPages = Math.max(1, Math.ceil(rosterTotal / rosterPageSize) || 1);
@@ -315,7 +364,37 @@ export default function StudentAttendanceDashboard() {
 
   useEffect(() => {
     setRosterPage(1);
-  }, [search, rosterCourseFilter, rosterStatusFilter]);
+  }, [search, rosterCourseFilter, rosterCollegeFilter]);
+
+  useEffect(() => {
+    if (rosterCourseFilter === "all") return;
+    const isCourseAllowed = availableCourseOptions.some((course) => course.filterValue === rosterCourseFilter);
+    if (!isCourseAllowed) {
+      setRosterCourseFilter("all");
+    }
+  }, [availableCourseOptions, rosterCourseFilter]);
+
+  useEffect(() => {
+    if (!exportOpen) return;
+    setExportSearch(search);
+    setExportCollegeFilter(rosterCollegeFilter);
+    setExportCourseFilter(rosterCourseFilter);
+    setExportStatusFilter("all");
+  }, [exportOpen, search, rosterCollegeFilter, rosterCourseFilter]);
+
+  useEffect(() => {
+    if (!onRegisterExportOpen) return undefined;
+    onRegisterExportOpen(() => () => setExportOpen(true));
+    return () => onRegisterExportOpen(null);
+  }, [onRegisterExportOpen]);
+
+  useEffect(() => {
+    if (exportCourseFilter === "all") return;
+    const isCourseAllowed = exportCourseOptions.some((course) => course.filterValue === exportCourseFilter);
+    if (!isCourseAllowed) {
+      setExportCourseFilter("all");
+    }
+  }, [exportCourseFilter, exportCourseOptions]);
 
   useEffect(() => {
     const ids = new Set(filteredRoster.map((s) => s.id));
@@ -330,6 +409,39 @@ export default function StudentAttendanceDashboard() {
 
   const tier = student ? getActivityTier(student.attendanceRate) : getActivityTier(0);
   const showLowMsg = student && student.attendanceRate < 70;
+
+  const exportFilteredRoster = useMemo(() => {
+    const q = exportSearch.toLowerCase().trim();
+    return rosterList.filter((s) => {
+      if (exportCollegeFilter !== "all") {
+        const college = getRosterCourseRow(s.course)?.college ?? "";
+        if (college !== exportCollegeFilter) return false;
+      }
+      if (exportCourseFilter !== "all" && s.course !== exportCourseFilter) return false;
+      if (exportStatusFilter !== "all" && getActivityTier(s.attendanceRate).key !== exportStatusFilter) return false;
+      return rosterCourseMatchesSearchQuery(s, q);
+    });
+  }, [rosterList, exportSearch, exportCollegeFilter, exportCourseFilter, exportStatusFilter]);
+
+  const exportRosterCsv = () => {
+    const header = ["Student ID", "Student Name", "College", "Course", "Attendance Rate", "Status"];
+    const body = exportFilteredRoster.map((s) => {
+      const status = getActivityTier(s.attendanceRate);
+      const courseRow = getRosterCourseRow(s.course);
+      return [
+        `"${s.id}"`,
+        `"${String(s.name ?? "").replace(/"/g, '""')}"`,
+        `"${String(courseRow?.college ?? "—").replace(/"/g, '""')}"`,
+        `"${String(getRosterCourseDisplayLabel(s.course)).replace(/"/g, '""')}"`,
+        `"${s.attendanceRate}%"`,
+        `"${status.label}"`,
+      ];
+    });
+    downloadTextFile(
+      `students-roster-${new Date().toISOString().slice(0, 10)}.csv`,
+      [header.join(","), ...body.map((r) => r.join(","))].join("\n"),
+    );
+  };
 
   const sortedEventHistory = useMemo(() => {
     const hist = student?.eventHistory ?? [];
@@ -480,11 +592,12 @@ export default function StudentAttendanceDashboard() {
       {/* All students summary */}
       <section className="rounded-xl border border-[#07713c]/30 bg-white p-4 shadow-sm">
         <div className="mb-3">
-          <h3 className="mb-3 text-lg font-bold text-[#07713c]">All students</h3>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
-            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-end sm:gap-3">
-              <div className="relative min-w-0 w-full max-w-md sm:flex-1">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]/60">🔍</span>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="text-lg font-bold text-[#07713c]">All students</h3>
+          </div>
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-3">
+              <div className="relative min-w-0 w-full max-w-md sm:min-w-[240px] sm:flex-1">
+                <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#07713c]" />
                 <input
                   type="search"
                   value={search}
@@ -505,6 +618,21 @@ export default function StudentAttendanceDashboard() {
                 )}
               </div>
               <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
+                Colleges
+                <select
+                  value={rosterCollegeFilter}
+                  onChange={(e) => setRosterCollegeFilter(e.target.value)}
+                  className="h-9 min-w-[12rem] rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
+                  aria-label="Filter by college"
+                >
+                  {ROSTER_COLLEGE_FILTER_OPTIONS.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
                 Course
                 <select
                   value={rosterCourseFilter}
@@ -513,7 +641,7 @@ export default function StudentAttendanceDashboard() {
                   aria-label="Filter by course"
                 >
                   <option value="all">All courses</option>
-                  {ROSTER_COURSE_CATALOG.map((c) => (
+                  {availableCourseOptions.map((c) => (
                     <option key={c.id} value={c.filterValue}>
                       {c.label}
                     </option>
@@ -521,38 +649,23 @@ export default function StudentAttendanceDashboard() {
                 </select>
               </label>
               <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
-                Status
+                Rows per page
                 <select
-                  value={rosterStatusFilter}
-                  onChange={(e) => setRosterStatusFilter(e.target.value)}
-                  className="h-9 min-w-[9.5rem] rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
-                  aria-label="Filter by activity status"
+                  value={rosterPageSize}
+                  onChange={(e) => {
+                    setRosterPageSize(Number(e.target.value));
+                    setRosterPage(1);
+                  }}
+                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2 py-1.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
+                  aria-label="Rows per page for student roster"
                 >
-                  {ROSTER_STATUS_FILTER_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
+                  {ROSTER_PAGE_SIZE_OPTIONS.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
                     </option>
                   ))}
                 </select>
               </label>
-            </div>
-            <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c] lg:ml-auto lg:items-end">
-              Rows per page
-              <select
-                value={rosterPageSize}
-                onChange={(e) => {
-                  setRosterPageSize(Number(e.target.value));
-                  setRosterPage(1);
-                }}
-                className="rounded-lg border border-[#07713c]/40 bg-white px-2 py-1.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
-              >
-                {ROSTER_PAGE_SIZE_OPTIONS.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </label>
           </div>
         </div>
         <div className="overflow-x-auto rounded-lg border border-[#07713c]/20">
@@ -645,15 +758,15 @@ export default function StudentAttendanceDashboard() {
             <div className="border-b border-[#07713c]/30 px-5 py-3">
               <h3 className="text-lg font-bold text-[#07713c]">Event history</h3>
               <div className="mt-3 flex flex-wrap items-end gap-x-4 gap-y-2">
-                <div className="relative h-9 w-full min-w-[min(100%,16rem)] flex-[1_1_16rem] max-w-xl">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]/60">🔍</span>
+                <div className="relative min-w-0 w-full max-w-md sm:min-w-[240px] sm:flex-1">
+                  <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#07713c]" />
                   <input
                     type="search"
                     value={historyEventSearch}
                     onChange={(e) => setHistoryEventSearch(e.target.value)}
                     placeholder="Search by event name or date"
-                    className="h-9 w-full rounded-lg border border-[#07713c]/40 bg-white py-0 pl-9 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/70 focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30 [&::-webkit-search-cancel-button]:hidden"
-                    aria-label="Filter events"
+                    className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
+                    aria-label="Search events by name or date"
                   />
                   {historyEventSearch.trim() !== "" && (
                     <button
@@ -1091,15 +1204,15 @@ export default function StudentAttendanceDashboard() {
                 <div className="border-b border-[#07713c]/30 px-5 py-3">
                   <h3 className="text-lg font-bold text-[#07713c]">Event history</h3>
                   <div className="mt-3 flex flex-wrap items-end gap-x-4 gap-y-2">
-                    <div className="relative h-9 w-full min-w-[min(100%,16rem)] flex-[1_1_16rem] max-w-xl">
-                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]/60">🔍</span>
+                    <div className="relative min-w-0 w-full max-w-md sm:min-w-[240px] sm:flex-1">
+                      <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#07713c]" />
                       <input
                         type="search"
                         value={historyEventSearch}
                         onChange={(e) => setHistoryEventSearch(e.target.value)}
                         placeholder="Search by event name or date"
-                        className="h-9 w-full rounded-lg border border-[#07713c]/40 bg-white py-0 pl-9 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/70 focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30 [&::-webkit-search-cancel-button]:hidden"
-                        aria-label="Filter events"
+                        className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
+                        aria-label="Search events by name or date"
                       />
                       {historyEventSearch.trim() !== "" && (
                         <button
@@ -1394,6 +1507,115 @@ export default function StudentAttendanceDashboard() {
                 </dl>
               </section>
             </div>
+          </div>
+        </div>
+      )}
+      {exportOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+            <h3 className="text-lg font-semibold text-[#07713c]">Export / reports</h3>
+            <p className="mt-2 text-sm text-[#07713c]">Apply filters below for student export.</p>
+            <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-xs text-[#07713c] sm:col-span-2">
+                Search
+                <div className="relative">
+                  <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#07713c]" />
+                  <input
+                    type="search"
+                    value={exportSearch}
+                    onChange={(e) => setExportSearch(e.target.value)}
+                    placeholder="Search name, ID, or course"
+                    className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
+                  />
+                  {exportSearch.trim() !== "" && (
+                    <button
+                      type="button"
+                      onClick={() => setExportSearch("")}
+                      className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-[#07713c]/85 hover:bg-gray-100 hover:text-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
+                      aria-label="Clear export student search"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-[#07713c]">
+                College
+                <select
+                  value={exportCollegeFilter}
+                  onChange={(e) => setExportCollegeFilter(e.target.value)}
+                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                >
+                  {ROSTER_COLLEGE_FILTER_OPTIONS.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-[#07713c]">
+                Course
+                <select
+                  value={exportCourseFilter}
+                  onChange={(e) => setExportCourseFilter(e.target.value)}
+                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                >
+                  <option value="all">All courses</option>
+                  {exportCourseOptions.map((c) => (
+                    <option key={c.id} value={c.filterValue}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-[#07713c]">
+                Activity status
+                <select
+                  value={exportStatusFilter}
+                  onChange={(e) => setExportStatusFilter(e.target.value)}
+                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                >
+                  <option value="all">All statuses</option>
+                  <option value="active">Active</option>
+                  <option value="moderate">Moderate</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </label>
+            </div>
+            <p className="mt-3 text-xs text-[#07713c]/85">
+              {exportFilteredRoster.length} student record(s) will be exported.
+            </p>
+            <div className="mt-4 space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  exportRosterCsv();
+                  setExportOpen(false);
+                }}
+                className="w-full rounded-lg bg-[#07713c] px-4 py-2.5 text-sm font-medium text-white hover:brightness-95"
+              >
+                Export CSV - filtered students
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setExportSearch(search);
+                  setExportCollegeFilter(rosterCollegeFilter);
+                  setExportCourseFilter(rosterCourseFilter);
+                  setExportStatusFilter("all");
+                }}
+                className="w-full rounded-lg border border-[#07713c]/30 px-4 py-2 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/8"
+              >
+                Reset export filters
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setExportOpen(false)}
+              className="mt-4 w-full rounded-lg border border-[#07713c]/30 py-2 text-sm text-[#07713c] hover:bg-[#07713c]/10"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

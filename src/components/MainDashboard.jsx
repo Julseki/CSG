@@ -315,7 +315,7 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
     { id: "attendance", label: "Attendance" },
     { id: "attendance_students", label: "Students" },
     { id: "payment", label: "Payments" },
-    { id: "events", label: "Events" },
+    { id: "events", label: "Manage Event" },
   ];
 
   const reportItems = [
@@ -408,7 +408,7 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
   return (
     <div className="flex min-h-screen bg-gray-50 [&_button]:cursor-pointer">
       {/* Sidebar */}
-      <aside className="w-64 shrink-0 bg-[#07713C] text-white flex flex-col">
+      <aside className="sticky top-0 h-screen max-h-screen w-64 shrink-0 self-start overflow-y-auto bg-[#07713C] text-white flex flex-col">
         <div className="p-6 space-y-4">
           <img src="/logo.png" alt="NMCI" className="w-16 h-16 rounded-full bg-white/10 object-contain mx-auto" />
           <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif]">Northern Mindanao Colleges, Inc.</p>

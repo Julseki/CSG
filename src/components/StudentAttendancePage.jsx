@@ -12,6 +12,7 @@ export default function StudentAttendancePage({ onLogout, onNavigate, onOpenCrea
   const [showLogout, setShowLogout] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportMode, setReportMode] = useState("export");
+  const [openStudentsExport, setOpenStudentsExport] = useState(null);
 
   const { role, isGovernor, governorScope } = useGovernorScope();
   const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
@@ -31,7 +32,7 @@ export default function StudentAttendancePage({ onLogout, onNavigate, onOpenCrea
     { id: "attendance", label: "Attendance" },
     { id: "attendance_students", label: "Students" },
     { id: "payment", label: "Payments" },
-    { id: "events", label: "Events" },
+    { id: "events", label: "Manage Event" },
   ];
 
   const reportItems = [
@@ -59,7 +60,7 @@ export default function StudentAttendancePage({ onLogout, onNavigate, onOpenCrea
 
   return (
     <div className="flex min-h-screen bg-gray-50 [&_button]:cursor-pointer">
-      <aside className="w-64 shrink-0 bg-[#07713C] text-white flex flex-col">
+      <aside className="sticky top-0 h-screen max-h-screen w-64 shrink-0 self-start overflow-y-auto bg-[#07713C] text-white flex flex-col">
         <div className="p-6 space-y-4">
           <img src="/logo.png" alt="NMCI" className="w-16 h-16 rounded-full bg-white/10 object-contain mx-auto" />
           <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif]">
@@ -126,6 +127,13 @@ export default function StudentAttendancePage({ onLogout, onNavigate, onOpenCrea
         <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#07713c] leading-tight">Students</h1>
           <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => openStudentsExport?.()}
+              className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/15"
+            >
+              Export / Reports
+            </button>
             <div className="relative">
               <button
                 type="button"
@@ -156,7 +164,7 @@ export default function StudentAttendancePage({ onLogout, onNavigate, onOpenCrea
         </header>
 
         <main className="flex-1 p-6 overflow-auto">
-          <StudentAttendanceDashboard />
+          <StudentAttendanceDashboard onRegisterExportOpen={setOpenStudentsExport} />
         </main>
       </div>
 

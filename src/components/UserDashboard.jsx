@@ -168,7 +168,7 @@ export default function UserDashboard({ onLogout, onNavigate }) {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <aside className="w-64 shrink-0 bg-[#07713C] text-white flex flex-col">
+      <aside className="sticky top-0 h-screen max-h-screen w-64 shrink-0 self-start overflow-y-auto bg-[#07713C] text-white flex flex-col">
         <div className="p-6 space-y-4">
           <img
             src="/logo.png"
@@ -211,7 +211,7 @@ export default function UserDashboard({ onLogout, onNavigate }) {
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-white/15"
           >
             <SidebarNavIcon navId="events" />
-            Events
+            Manage Event
           </button>
 
           <button

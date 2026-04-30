@@ -7,6 +7,7 @@ import { useGovernorScope } from "../hooks/useGovernorScope";
 import { canOpenCreateUser, getDashboardRoleLabel } from "../utils/roles";
 import { formatDateTimeShort, formatEventDateForDisplay, formatSqlTimeForDisplay } from "../hooks/useGetEvents";
 import PaginationBar from "./PaginationBar";
+import SearchMagnifierIcon from "./SearchMagnifierIcon";
 import { useGetPayments } from "../hooks/useGetPayments";
 import { useRecordPayment } from "../hooks/useRecordPayment";
 import { useUpdateFineAmount } from "../hooks/useUpdateFineAmount";
@@ -102,6 +103,16 @@ function parseMoneyInput(raw) {
   return Number(cleaned);
 }
 
+function inferCollegeFromCourse(courseRaw) {
+  const course = String(courseRaw ?? "").toUpperCase();
+  if (course.startsWith("BEED") || course.startsWith("BSED")) return "College of Education, Arts and Sciences";
+  if (course.startsWith("BSIT")) return "College of Information Technology";
+  if (course.startsWith("BSCRIM")) return "College of Criminal Justice Education";
+  if (course.startsWith("BSHM")) return "College of Hospitality Management";
+  if (course.startsWith("BSBA")) return "College of Business Administration";
+  return "Unassigned";
+}
+
 function makeReceiptNumber() {
   const now = new Date();
   const y = now.getFullYear();
@@ -112,6 +123,16 @@ function makeReceiptNumber() {
   const s = String(now.getSeconds()).padStart(2, "0");
   const ms = String(now.getMilliseconds()).padStart(3, "0");
   return `RCP-${y}${m}${d}-${h}${min}${s}${ms}`;
+}
+
+function downloadTextFile(filename, text, mime = "text/csv;charset=utf-8") {
+  const blob = new Blob([text], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function buildReceiptHtml(receipt, logoUrl) {
@@ -195,6 +216,13 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
   const [editFineError, setEditFineError] = useState("");
   const [lastReceipt, setLastReceipt] = useState(null);
   const [isGraphModalOpen, setIsGraphModalOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportSearch, setExportSearch] = useState("");
+  const [exportStatusFilter, setExportStatusFilter] = useState("All");
+  const [exportCollegeFilter, setExportCollegeFilter] = useState("all");
+  const [exportCourseFilter, setExportCourseFilter] = useState("all");
+  const [exportYearFilter, setExportYearFilter] = useState("all");
+  const [exportBalanceFilter, setExportBalanceFilter] = useState("all");
   const [showLogout, setShowLogout] = useState(false);
   const [hoverCard, setHoverCard] = useState(null);
   const hideTimerRef = useRef(null);
@@ -268,19 +296,82 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
     });
   }, [paymentRowsFromApi]);
 
-  const filteredRows = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return studentRows.filter((row) => {
-      const matchesStatus = statusFilter === "All" || row.status === statusFilter;
+  const applyStudentFilters = (rows, filters) => {
+    const q = String(filters.search ?? "").trim().toLowerCase();
+    return rows.filter((row) => {
+      const matchesStatus = filters.status === "All" || row.status === filters.status;
+      const rowCollege = row.college || inferCollegeFromCourse(row.course);
+      const matchesCollege = filters.college === "all" || rowCollege === filters.college;
+      const matchesCourse = filters.course === "all" || row.course === filters.course;
+      const matchesYear = filters.year === "all" || String(row.year ?? "") === String(filters.year);
+      const matchesBalance =
+        filters.balance === "all" ||
+        (filters.balance === "with_balance" && row.remaining > 0) ||
+        (filters.balance === "zero_balance" && row.remaining <= 0);
       const matchesSearch =
         !q ||
         row.studentName.toLowerCase().includes(q) ||
         row.studentId.toLowerCase().includes(q) ||
         row.course.toLowerCase().includes(q) ||
         row.events.some((event) => event.name.toLowerCase().includes(q));
-      return matchesStatus && matchesSearch;
+      return matchesStatus && matchesCollege && matchesCourse && matchesYear && matchesBalance && matchesSearch;
+    });
+  };
+
+  const exportCollegeOptions = useMemo(
+    () =>
+      Array.from(new Set(studentRows.map((row) => row.college || inferCollegeFromCourse(row.course)).filter(Boolean))).sort((a, b) =>
+        a.localeCompare(b),
+      ),
+    [studentRows],
+  );
+
+  const exportCourseOptions = useMemo(
+    () => Array.from(new Set(studentRows.map((row) => row.course).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    [studentRows],
+  );
+
+  const exportYearOptions = useMemo(
+    () =>
+      Array.from(new Set(studentRows.map((row) => String(row.year ?? "")).filter(Boolean))).sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true }),
+      ),
+    [studentRows],
+  );
+
+  const filteredRows = useMemo(() => {
+    return applyStudentFilters(studentRows, {
+      search,
+      status: statusFilter,
+      college: "all",
+      course: "all",
+      year: "all",
+      balance: "all",
     });
   }, [search, statusFilter, studentRows]);
+
+  const exportFilteredRows = useMemo(
+    () =>
+      applyStudentFilters(studentRows, {
+        search: exportSearch,
+        status: exportStatusFilter,
+        college: exportCollegeFilter,
+        course: exportCourseFilter,
+        year: exportYearFilter,
+        balance: exportBalanceFilter,
+      }),
+    [studentRows, exportSearch, exportStatusFilter, exportCollegeFilter, exportCourseFilter, exportYearFilter, exportBalanceFilter],
+  );
+
+  useEffect(() => {
+    if (!exportOpen) return;
+    setExportSearch(search);
+    setExportStatusFilter(statusFilter);
+    setExportCollegeFilter("all");
+    setExportCourseFilter("all");
+    setExportYearFilter("all");
+    setExportBalanceFilter("all");
+  }, [exportOpen, search, statusFilter]);
 
   const studentsTotal = filteredRows.length;
   const studentsTotalPages = Math.max(1, Math.ceil(studentsTotal / studentsPageSize) || 1);
@@ -409,8 +500,12 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
     [selectedRow],
   );
 
-  const openRecordPaymentModal = () => {
-    if (!selectedRow) return;
+  const openRecordPaymentModal = (rowOverride = null) => {
+    const targetRow = rowOverride ?? selectedRow;
+    if (!targetRow) return;
+    if (rowOverride?.studentId) {
+      setSelectedStudentId(rowOverride.studentId);
+    }
     setIsPaymentEditMode(false);
     setPaymentAmountInput("");
     setRemainingBalanceInput("");
@@ -541,6 +636,29 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
 
   const canGenerateReceipt = selectedRow && (selectedRow.status === "Partial" || selectedRow.status === "Paid");
 
+  const exportPaymentsCsv = () => {
+    const header = ["Student ID", "Student Name", "Course", "Year", "Total Events", "Total Fine", "Paid Amount", "Remaining", "Status"];
+    const body = exportFilteredRows.map((row) => [
+      `"${row.studentId}"`,
+      `"${String(row.studentName || "").replace(/"/g, '""')}"`,
+      `"${String(row.course || "").replace(/"/g, '""')}"`,
+      `"${String(row.year ?? "")}"`,
+      String(row.totalEvents ?? row.events?.length ?? 0),
+      String(Number(row.totalFine) || 0),
+      String(Number(row.paidAmount) || 0),
+      String(Number(row.remaining) || 0),
+      `"${row.status}"`,
+    ]);
+    downloadTextFile(
+      `payments-${new Date().toISOString().slice(0, 10)}.csv`,
+      [header.join(","), ...body.map((r) => r.join(","))].join("\n"),
+    );
+  };
+
+  const mockPdfExport = () => {
+    window.alert("Mock: PDF report would be generated for current payment filters.");
+  };
+
   const handleSaveFineEdit = async () => {
     if (!editingFine) return;
     const amount = parseMoneyInput(editFineAmountInput);
@@ -564,7 +682,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
 
   return (
     <div className="flex min-h-screen bg-gray-50 [&_button]:cursor-pointer">
-      <aside className="w-64 shrink-0 bg-[#07713C] text-white flex flex-col">
+      <aside className="sticky top-0 h-screen max-h-screen w-64 shrink-0 self-start overflow-y-auto bg-[#07713C] text-white flex flex-col">
         <div className="p-6 space-y-4">
           <img src="/logo.png" alt="NMCI" className="w-16 h-16 rounded-full bg-white/10 object-contain mx-auto" />
           <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif]">Northern Mindanao Colleges, Inc.</p>
@@ -575,7 +693,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
             { id: "attendance", label: "Attendance" },
             { id: "attendance_students", label: "Students" },
             { id: "payment", label: "Payments" },
-            { id: "events", label: "Events" },
+            { id: "events", label: "Manage Event" },
           ].map((item) => (
             <button
               key={item.id}
@@ -624,32 +742,41 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
           <div>
             <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#07713c] leading-tight">Payments</h1>
           </div>
-          <div className="relative">
+          <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setShowLogout((prev) => !prev)}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-[#07713c] hover:bg-[#07713c]/10"
-              aria-label="Account menu"
-              aria-expanded={showLogout}
-              aria-haspopup="true"
-              title="Profile"
+              onClick={() => setExportOpen(true)}
+              className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/15"
             >
-              <UserCircleIcon />
+              Export / Reports
             </button>
-            {showLogout && (
-              <div className="absolute right-0 top-full mt-1 min-w-[100px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowLogout(false);
-                    onLogout?.();
-                  }}
-                  className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                >
-                  Logout
-                </button>
-              </div>
-            )}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowLogout((prev) => !prev)}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-[#07713c] hover:bg-[#07713c]/10"
+                aria-label="Account menu"
+                aria-expanded={showLogout}
+                aria-haspopup="true"
+                title="Profile"
+              >
+                <UserCircleIcon />
+              </button>
+              {showLogout && (
+                <div className="absolute right-0 top-full mt-1 min-w-[100px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLogout(false);
+                      onLogout?.();
+                    }}
+                    className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -680,9 +807,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
               </div>
               <div className="p-4 border-b border-[#07713c]/30 flex flex-wrap gap-3 items-end">
                 <div className="relative min-w-[240px] flex-1">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]">
-                    🔍
-                  </span>
+                  <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#07713c]" />
                   <input
                     type="search"
                     value={search}
@@ -760,7 +885,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                       paginatedStudents.map((row) => (
                         <tr
                           key={row.studentId}
-                          onClick={() => setSelectedStudentId(row.studentId)}
+                          onClick={() => openRecordPaymentModal(row)}
                           className={`cursor-pointer border-b border-[#07713c]/15 ${
                             selectedRow?.studentId === row.studentId ? "bg-[#07713c]/10" : "hover:bg-[#07713c]/[0.04]"
                           }`}
@@ -832,8 +957,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                   <div className="flex items-center justify-between border-b border-[#07713c]/15 py-1.5"><span className="text-[#07713c]/85">Paid amount</span><span className="font-medium text-red-700 tabular-nums">{formatPhp(selectedRow.paidAmount)}</span></div>
                   <div className="flex items-center justify-between border-b border-[#07713c]/15 py-1.5"><span className="text-[#07713c]/85">Remaining balance</span><span className={`font-semibold tabular-nums ${selectedRow.remaining <= 0 ? "text-[#07713c]" : "text-red-700"}`}>{formatPhp(selectedRow.remaining)}</span></div>
                   <div className="flex items-center justify-between border-b border-[#07713c]/15 py-1.5"><span className="text-[#07713c]/85">Status</span><span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeClass(selectedRow.status)}`}>{selectedRow.status}</span></div>
-                  <div className="pt-2 grid grid-cols-2 gap-2">
-                    <button type="button" onClick={openRecordPaymentModal} className="px-3 py-2 rounded-lg bg-[#07713C] text-white text-sm hover:bg-[#055a2e]">Record Payment</button>
+                  <div className="pt-2">
                     <button type="button" onClick={() => setModalStudentId(selectedRow.studentId)} className="px-3 py-2 rounded-lg border border-[#07713c]/40 text-[#07713c] text-sm hover:bg-gray-50">View Attendance</button>
                   </div>
                   {canGenerateReceipt && (
@@ -1217,6 +1341,146 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {exportOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+            <h3 className="text-lg font-semibold text-[#07713c]">Export / reports</h3>
+            <p className="mt-2 text-sm text-[#07713c]">
+              Apply filters below for export.
+            </p>
+            <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-xs text-[#07713c] sm:col-span-2">
+                Search
+                <input
+                  type="search"
+                  value={exportSearch}
+                  onChange={(e) => setExportSearch(e.target.value)}
+                  placeholder="Search student, ID, course, event"
+                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-[#07713c]">
+                Status
+                <select
+                  value={exportStatusFilter}
+                  onChange={(e) => setExportStatusFilter(e.target.value)}
+                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                >
+                  <option>All</option>
+                  <option>Unpaid</option>
+                  <option>Partial</option>
+                  <option>Paid</option>
+                  <option>Waived</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-[#07713c]">
+                College
+                <select
+                  value={exportCollegeFilter}
+                  onChange={(e) => setExportCollegeFilter(e.target.value)}
+                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                >
+                  <option value="all">All colleges</option>
+                  {exportCollegeOptions.map((college) => (
+                    <option key={college} value={college}>
+                      {college}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-[#07713c]">
+                Course
+                <select
+                  value={exportCourseFilter}
+                  onChange={(e) => setExportCourseFilter(e.target.value)}
+                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                >
+                  <option value="all">All courses</option>
+                  {exportCourseOptions.map((course) => (
+                    <option key={course} value={course}>
+                      {course}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-[#07713c]">
+                Year
+                <select
+                  value={exportYearFilter}
+                  onChange={(e) => setExportYearFilter(e.target.value)}
+                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                >
+                  <option value="all">All years</option>
+                  {exportYearOptions.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-[#07713c]">
+                Balance
+                <select
+                  value={exportBalanceFilter}
+                  onChange={(e) => setExportBalanceFilter(e.target.value)}
+                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                >
+                  <option value="all">All balances</option>
+                  <option value="with_balance">With balance</option>
+                  <option value="zero_balance">Zero balance</option>
+                </select>
+              </label>
+            </div>
+            <p className="mt-3 text-xs text-[#07713c]/85">
+              {exportFilteredRows.length} student record(s) will be exported.
+            </p>
+            <div className="mt-4 space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  exportPaymentsCsv();
+                  setExportOpen(false);
+                }}
+                className="w-full rounded-lg bg-[#07713c] px-4 py-2.5 text-sm font-medium text-white hover:brightness-95"
+              >
+                Export CSV — filtered payments
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  mockPdfExport();
+                  setExportOpen(false);
+                }}
+                className="w-full rounded-lg border border-[#07713c]/40 px-4 py-2.5 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/10"
+              >
+                Export PDF (mock)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setExportSearch(search);
+                  setExportStatusFilter(statusFilter);
+                  setExportCollegeFilter("all");
+                  setExportCourseFilter("all");
+                  setExportYearFilter("all");
+                  setExportBalanceFilter("all");
+                }}
+                className="w-full rounded-lg border border-[#07713c]/30 px-4 py-2 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/8"
+              >
+                Reset export filters
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setExportOpen(false)}
+              className="mt-4 w-full rounded-lg border border-[#07713c]/30 py-2 text-sm text-[#07713c] hover:bg-[#07713c]/10"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

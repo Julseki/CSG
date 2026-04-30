@@ -462,7 +462,7 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
           </div>
         </div>
       )}
-      <aside className="w-64 shrink-0 bg-[#07713C] text-white flex flex-col h-full font-[Inter,sans-serif]">
+      <aside className="sticky top-0 h-full max-h-full min-h-0 w-64 shrink-0 self-start overflow-y-auto bg-[#07713C] text-white flex flex-col font-[Inter,sans-serif]">
         <div className="p-6 space-y-4 shrink-0">
           <img
             src="/logo.png"

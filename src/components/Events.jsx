@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import AddEvent from "./AddEvent";
 import PaginationBar from "./PaginationBar";
+import SearchMagnifierIcon from "./SearchMagnifierIcon";
 import SidebarNavIcon from "./SidebarNavIcon";
 import UserCircleIcon from "./UserCircleIcon";
 import { useGetAllEvents } from "../hooks/useGetAllEvents";
@@ -412,7 +413,7 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
     { id: "attendance", label: "Attendance" },
     { id: "attendance_students", label: "Students" },
     { id: "payment", label: "Payments" },
-    { id: "events", label: "Events" },
+    { id: "events", label: "Manage Event" },
   ];
 
   const reportItems = [
@@ -598,7 +599,7 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
   return (
     <div className="flex min-h-screen bg-[#07713c]/[0.04] [&_button]:cursor-pointer">
       {/* Sidebar — same green as Attendance */}
-      <aside className="w-64 shrink-0 bg-[#07713c] text-white flex flex-col">
+      <aside className="sticky top-0 h-screen max-h-screen w-64 shrink-0 self-start overflow-y-auto bg-[#07713c] text-white flex flex-col">
         <div className="p-6 space-y-4">
           <img src="/logo.png" alt="NMCI" className="w-16 h-16 rounded-full bg-white/10 object-contain mx-auto" />
           <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif]">Northern Mindanao Colleges, Inc.</p>
@@ -697,7 +698,7 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
           {/* Search, Filter, View, Add */}
           <div className="flex flex-wrap gap-4 mb-4 items-center">
             <div className="relative flex-1 min-w-[200px]">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]/45">🔍</span>
+              <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#07713c]" />
               <input
                 type="search"
                 placeholder="Search Event"
