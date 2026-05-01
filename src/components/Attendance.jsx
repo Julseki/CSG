@@ -182,10 +182,12 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
   const [eventListPage, setEventListPage] = useState(1);
   const [eventListPageSize, setEventListPageSize] = useState(DEFAULT_EVENT_LIST_PAGE_SIZE);
   const [studentListSearch, setStudentListSearch] = useState("");
+  const [studentListCollege, setStudentListCollege] = useState("all");
   const [studentListCourse, setStudentListCourse] = useState("all");
   const [studentListMajor, setStudentListMajor] = useState("all");
   const [studentListAttendance, setStudentListAttendance] = useState("all");
   const [exportEventSearch, setExportEventSearch] = useState("");
+  const [exportEventCollege, setExportEventCollege] = useState("all");
   const [exportEventCourse, setExportEventCourse] = useState("all");
   const [exportEventMajor, setExportEventMajor] = useState("all");
   const [exportEventAttendance, setExportEventAttendance] = useState("all");
@@ -266,6 +268,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
       const sid = String(s.id || "").toLowerCase();
       const name = String(s.name || "").toLowerCase();
       const course = getCourse(s);
+      const college = getCollegeFromCourse(course);
       const majorLabel = getMajor(s);
       const majorQ = (majorLabel || "").toLowerCase();
       const attendance = detailEvent.status === "upcoming" ? "no_record" : s.status === "attended" ? "attended" : "absent";
@@ -274,10 +277,12 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
         !sid.includes(q) &&
         !name.includes(q) &&
         !course.toLowerCase().includes(q) &&
-        !majorQ.includes(q)
+        !majorQ.includes(q) &&
+        !college.toLowerCase().includes(q)
       ) {
         return false;
       }
+      if (studentListCollege !== "all" && college !== studentListCollege) return false;
       if (studentListCourse !== "all" && course !== studentListCourse) return false;
       if (studentListMajor !== "all") {
         if (!majorLabel || majorLabel !== studentListMajor) return false;
@@ -291,12 +296,23 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
       }
       return true;
     });
-  }, [detailEvent, studentListSearch, studentListCourse, studentListMajor, studentListAttendance]);
+  }, [detailEvent, studentListSearch, studentListCollege, studentListCourse, studentListMajor, studentListAttendance]);
+
+  const studentListCollegeOptions = useMemo(() => {
+    if (!detailEvent) return [];
+    const set = new Set();
+    for (const s of detailEvent.students || []) {
+      set.add(getCollegeFromCourse(getCourse(s)));
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [detailEvent]);
 
   const studentListCourses = useMemo(() => {
     if (!detailEvent) return [];
-    return Array.from(new Set((detailEvent.students || []).map((s) => getCourse(s)))).sort();
-  }, [detailEvent]);
+    const courses = Array.from(new Set((detailEvent.students || []).map((s) => getCourse(s)))).sort();
+    if (studentListCollege === "all") return courses;
+    return courses.filter((c) => getCollegeFromCourse(c) === studentListCollege);
+  }, [detailEvent, studentListCollege]);
 
   const studentListMajorOptions = useMemo(() => {
     if (!detailEvent) return [];
@@ -305,19 +321,25 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
       return ATTENDANCE_MAJOR_OPTIONS_BY_COURSE[selectedCourse];
     }
     const set = new Set();
-    for (const s of detailEvent.students || []) {
+    const studentsScoped =
+      studentListCollege === "all"
+        ? detailEvent.students || []
+        : (detailEvent.students || []).filter((s) => getCollegeFromCourse(getCourse(s)) === studentListCollege);
+    for (const s of studentsScoped) {
       const m = getMajor(s);
       if (m) set.add(m);
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [detailEvent, studentListCourse]);
+  }, [detailEvent, studentListCourse, studentListCollege]);
 
   const showStudentListMajorFilter = studentListMajorOptions.length > 0;
 
   const exportEventCourses = useMemo(() => {
     if (!detailEvent) return [];
-    return Array.from(new Set((detailEvent.students || []).map((s) => getCourse(s)))).sort();
-  }, [detailEvent]);
+    const courses = Array.from(new Set((detailEvent.students || []).map((s) => getCourse(s)))).sort();
+    if (exportEventCollege === "all") return courses;
+    return courses.filter((c) => getCollegeFromCourse(c) === exportEventCollege);
+  }, [detailEvent, exportEventCollege]);
 
   const exportEventMajorOptions = useMemo(() => {
     if (!detailEvent) return [];
@@ -326,12 +348,16 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
       return ATTENDANCE_MAJOR_OPTIONS_BY_COURSE[selectedCourse];
     }
     const set = new Set();
-    for (const s of detailEvent.students || []) {
+    const studentsScoped =
+      exportEventCollege === "all"
+        ? detailEvent.students || []
+        : (detailEvent.students || []).filter((s) => getCollegeFromCourse(getCourse(s)) === exportEventCollege);
+    for (const s of studentsScoped) {
       const m = getMajor(s);
       if (m) set.add(m);
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [detailEvent, exportEventCourse]);
+  }, [detailEvent, exportEventCourse, exportEventCollege]);
 
   const exportFilteredEventStudents = useMemo(() => {
     if (!detailEvent) return [];
@@ -340,6 +366,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
       const sid = String(s.id || "").toLowerCase();
       const name = String(s.name || "").toLowerCase();
       const course = getCourse(s);
+      const college = getCollegeFromCourse(course);
       const majorLabel = getMajor(s);
       const majorQ = (majorLabel || "").toLowerCase();
       const attendance = detailEvent.status === "upcoming" ? "no_record" : s.status === "attended" ? "attended" : "absent";
@@ -349,10 +376,12 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
         !sid.includes(q) &&
         !name.includes(q) &&
         !course.toLowerCase().includes(q) &&
-        !majorQ.includes(q)
+        !majorQ.includes(q) &&
+        !college.toLowerCase().includes(q)
       ) {
         return false;
       }
+      if (exportEventCollege !== "all" && college !== exportEventCollege) return false;
       if (exportEventCourse !== "all" && course !== exportEventCourse) return false;
       if (exportEventMajor !== "all") {
         if (!majorLabel || majorLabel !== exportEventMajor) return false;
@@ -366,7 +395,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
       }
       return true;
     });
-  }, [detailEvent, exportEventSearch, exportEventCourse, exportEventMajor, exportEventAttendance]);
+  }, [detailEvent, exportEventSearch, exportEventCollege, exportEventCourse, exportEventMajor, exportEventAttendance]);
 
   const studentListTotal = filteredStudentList.length;
   const studentListTotalFine = useMemo(() => {
@@ -384,6 +413,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
   }, [filteredStudentList, studentListPageSafe, studentListPageSize]);
 
   useEffect(() => {
+    setStudentListCollege("all");
     setStudentListMajor("all");
   }, [detailEventId]);
 
@@ -395,8 +425,23 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
   }, [studentListMajor, studentListMajorOptions]);
 
   useEffect(() => {
+    if (studentListCourse === "all") return;
+    if (!studentListCourses.includes(studentListCourse)) {
+      setStudentListCourse("all");
+    }
+  }, [studentListCourse, studentListCourses]);
+
+  useEffect(() => {
     setStudentListPage(1);
-  }, [studentListSearch, studentListCourse, studentListMajor, studentListAttendance, studentListPageSize, detailEventId]);
+  }, [
+    studentListSearch,
+    studentListCollege,
+    studentListCourse,
+    studentListMajor,
+    studentListAttendance,
+    studentListPageSize,
+    detailEventId,
+  ]);
 
   useEffect(() => {
     setStudentListPage((p) => Math.min(p, studentListTotalPages));
@@ -405,10 +450,11 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
   useEffect(() => {
     if (!exportOpen || !detailEvent) return;
     setExportEventSearch(studentListSearch);
+    setExportEventCollege(studentListCollege);
     setExportEventCourse(studentListCourse);
     setExportEventMajor(studentListMajor);
     setExportEventAttendance(studentListAttendance);
-  }, [exportOpen, detailEvent, studentListSearch, studentListCourse, studentListMajor, studentListAttendance]);
+  }, [exportOpen, detailEvent, studentListSearch, studentListCollege, studentListCourse, studentListMajor, studentListAttendance]);
 
   useEffect(() => {
     if (exportEventMajor === "all") return;
@@ -416,6 +462,13 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
       setExportEventMajor("all");
     }
   }, [exportEventMajor, exportEventMajorOptions]);
+
+  useEffect(() => {
+    if (exportEventCourse === "all") return;
+    if (!exportEventCourses.includes(exportEventCourse)) {
+      setExportEventCourse("all");
+    }
+  }, [exportEventCourse, exportEventCourses]);
 
   const exportAllCollegeOptions = useMemo(() => {
     const set = new Set();
@@ -752,7 +805,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                     type="search"
                     value={studentListSearch}
                     onChange={(e) => setStudentListSearch(e.target.value)}
-                    placeholder="Search name, ID, course, or major"
+                    placeholder="Search name, ID, course, major, or college"
                     className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
                   />
                   {studentListSearch.trim() !== "" && (
@@ -766,6 +819,21 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                     </button>
                   )}
                 </div>
+                <label className="min-w-[200px] max-w-[min(100%,320px)] shrink-0 text-xs text-[#07713c]">
+                  College
+                  <select
+                    value={studentListCollege}
+                    onChange={(e) => setStudentListCollege(e.target.value)}
+                    className="mt-1 block w-full rounded-lg border border-[#07713c]/40 bg-white px-2 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                  >
+                    <option value="all">All colleges</option>
+                    {studentListCollegeOptions.map((col) => (
+                      <option key={col} value={col}>
+                        {col}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <label className="text-xs text-[#07713c]">
                   Course
                   <select
@@ -877,7 +945,9 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                         const isAttended = s.status === "attended";
                         return (
                           <tr key={s.id}>
-                            <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center font-mono text-xs text-[#07713c]">{String(s.id).toUpperCase()}</td>
+                            <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center font-medium text-[#07713c]">
+                              {String(s.id).toUpperCase()}
+                            </td>
                             <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center font-medium text-[#07713c]">{s.name}</td>
                             <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center text-[#07713c]">
                               <span className="font-medium">{getCourseWithMajorCode(s)}</span>
@@ -1497,9 +1567,21 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                     type="search"
                     value={exportEventSearch}
                     onChange={(e) => setExportEventSearch(e.target.value)}
-                    placeholder="Search name, ID, course, major"
+                    placeholder="Search name, ID, course, major, or college"
                     className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 sm:col-span-2"
                   />
+                  <select
+                    value={exportEventCollege}
+                    onChange={(e) => setExportEventCollege(e.target.value)}
+                    className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 sm:col-span-2"
+                  >
+                    <option value="all">All colleges</option>
+                    {studentListCollegeOptions.map((col) => (
+                      <option key={col} value={col}>
+                        {col}
+                      </option>
+                    ))}
+                  </select>
                   <select
                     value={exportEventCourse}
                     onChange={(e) => setExportEventCourse(e.target.value)}

@@ -483,9 +483,18 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
     historySessionFilter !== "all" ||
     historyPeriodFilter !== "all";
 
-  /** Period AM or PM (not "all"): hide the other period’s columns for any session filter. */
+  /**
+   * Two time columns (one period) when:
+   * - Session filter is AM Session or PM Session (hide the other period’s columns), or
+   * - Period filter is AM/PM (row filter; same column layout).
+   */
   const narrowTimeColumns =
-    historyPeriodFilter === "AM" || historyPeriodFilter === "PM";
+    historySessionFilter === "AM Session" ||
+    historySessionFilter === "PM Session" ||
+    historyPeriodFilter === "AM" ||
+    historyPeriodFilter === "PM";
+  const historyShowPmTimePair =
+    historySessionFilter === "PM Session" || historyPeriodFilter === "PM";
   const historyTimeColumnCount = narrowTimeColumns ? 2 : 4;
   const historyTableColCount = 4 + historyTimeColumnCount + 1;
 
@@ -834,7 +843,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                     </th>
                     {narrowTimeColumns ? (
                       <th className="border-l border-[#07713c]/30 px-4 py-2 text-center" colSpan={2}>
-                        {historyPeriodFilter === "PM" ? "PM" : "AM"}
+                        {historyShowPmTimePair ? "PM" : "AM"}
                       </th>
                     ) : (
                       <>
@@ -886,9 +895,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                     const isHalf = row.sessionType !== "Whole day";
                     const sessionLabel = getHistorySessionLabel(ev, row);
                     const halfDayPeriod = isHalf ? getHalfDayAmPm(ev) : null;
-                    const emptyTimeCell = (
-                      <span className="text-red-700">—</span>
-                    );
+                    const emptyTimeCell = <span className="font-medium text-[#07713c]">—</span>;
                     const rowIndex = (historyPageSafe - 1) * historyPageSize + i;
                     return (
                       <tr key={`${ev.name}-${ev.date}-${rowIndex}`} className="border-t border-[#07713c]/20">
@@ -905,7 +912,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                           </span>
                         </td>
                         {narrowTimeColumns ? (
-                          historyPeriodFilter === "PM" ? (
+                          historyShowPmTimePair ? (
                             <>
                               <td className="border-l border-[#07713c]/30 px-3 py-2.5 text-center">
                                 <TimeSlot value={isHalf ? row.timeIn : row.pmTimeIn} />
@@ -1280,7 +1287,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                         </th>
                         {narrowTimeColumns ? (
                           <th className="border-l border-[#07713c]/30 px-4 py-2 text-center" colSpan={2}>
-                            {historyPeriodFilter === "PM" ? "PM" : "AM"}
+                            {historyShowPmTimePair ? "PM" : "AM"}
                           </th>
                         ) : (
                           <>
@@ -1332,9 +1339,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                         const isHalf = row.sessionType !== "Whole day";
                         const sessionLabel = getHistorySessionLabel(ev, row);
                         const halfDayPeriod = isHalf ? getHalfDayAmPm(ev) : null;
-                        const emptyTimeCell = (
-                          <span className="text-red-700">—</span>
-                        );
+                        const emptyTimeCell = <span className="font-medium text-[#07713c]">—</span>;
                         const rowIndex = (historyPageSafe - 1) * historyPageSize + i;
                         return (
                           <tr key={`${ev.name}-${ev.date}-${rowIndex}`} className="border-t border-[#07713c]/20">
@@ -1351,7 +1356,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                               </span>
                             </td>
                             {narrowTimeColumns ? (
-                              historyPeriodFilter === "PM" ? (
+                              historyShowPmTimePair ? (
                                 <>
                                   <td className="border-l border-[#07713c]/30 px-3 py-2.5 text-center">
                                     <TimeSlot value={isHalf ? row.timeIn : row.pmTimeIn} />
