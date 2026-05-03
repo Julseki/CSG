@@ -75,10 +75,18 @@ export default function Home() {
     if (!Number.isFinite(hh) || !Number.isFinite(mm) || hh < 0 || hh > 23 || mm < 0 || mm > 59) {
       return now;
     }
+    const trimmedDate = String(testDate ?? "").trim();
+    const ymd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmedDate);
+    if (ymd) {
+      const y = Number(ymd[1]);
+      const mo = Number(ymd[2]);
+      const day = Number(ymd[3]);
+      return new Date(y, mo - 1, day, hh, mm, 0, 0);
+    }
     const d = new Date(now);
     d.setHours(hh, mm, 0, 0);
     return d;
-  }, [useTestTime, testTime, now]);
+  }, [useTestTime, testTime, testDate, now]);
   const attendancePhase = useMemo(() => {
     if (!selectedOngoingEvent) return null;
 
@@ -88,7 +96,26 @@ export default function Home() {
     const pmOut = sqlTimeToMinutes(selectedOngoingEvent.pm_time_out);
     const nowMinutes = displayNow.getHours() * 60 + displayNow.getMinutes();
 
-    const usePmSlot = pmIn != null && nowMinutes >= pmIn;
+    const duration = String(selectedOngoingEvent.duration ?? "").trim();
+    /** Same rules as server `determineSlot` so "Time Out" + submit record `am_time_out` for AM-only. */
+    let usePmSlot;
+    if (duration === "AM Only") {
+      usePmSlot = false;
+    } else if (duration === "PM Only") {
+      usePmSlot = true;
+    } else if (duration === "Half Day") {
+      const hasAm =
+        selectedOngoingEvent.am_time_in != null &&
+        String(selectedOngoingEvent.am_time_in).trim() !== "";
+      const hasPm =
+        selectedOngoingEvent.pm_time_in != null &&
+        String(selectedOngoingEvent.pm_time_in).trim() !== "";
+      if (hasAm && !hasPm) usePmSlot = false;
+      else if (!hasAm && hasPm) usePmSlot = true;
+      else usePmSlot = pmIn != null && nowMinutes >= pmIn;
+    } else {
+      usePmSlot = pmIn != null && nowMinutes >= pmIn;
+    }
     const slot = usePmSlot ? "PM" : "AM";
     const slotIn = usePmSlot ? pmIn : amIn;
     const slotOut = usePmSlot ? pmOut : amOut;
@@ -302,6 +329,7 @@ export default function Home() {
                       {useTestTime && (testDate || testTime)
                         ? `Simulated: ${testDate || "today"} ${testTime || "(current time)"}`
                         : "Using real current time/date"}
+                      {useTestTime ? " · 00:00 = midnight (before AM window)." : ""}
                     </span>
                   </div>
                 </div>

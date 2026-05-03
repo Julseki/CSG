@@ -50,32 +50,6 @@ function getEventAttendanceStatus(event) {
   return attended ? "Attended" : "Absent";
 }
 
-function getPaymentAttendanceTier(row) {
-  if (!row || !Array.isArray(row.events) || row.events.length === 0) {
-    return { key: "inactive", label: "Inactive", emoji: "🔴", range: "<70%", rate: 0 };
-  }
-  const attendedCount = row.events.reduce((count, event) => {
-    const kind = String(event?.sessionKind ?? "whole").toLowerCase();
-    // Attendance-based status: treat an event as attended when any expected slot was recorded.
-    if (kind === "am") {
-      return count + (hasRecordedTime(event?.amIn) || hasRecordedTime(event?.amOut) ? 1 : 0);
-    }
-    if (kind === "pm") {
-      return count + (hasRecordedTime(event?.pmIn) || hasRecordedTime(event?.pmOut) ? 1 : 0);
-    }
-    const attendedWholeDay =
-      hasRecordedTime(event?.amIn) ||
-      hasRecordedTime(event?.amOut) ||
-      hasRecordedTime(event?.pmIn) ||
-      hasRecordedTime(event?.pmOut);
-    return count + (attendedWholeDay ? 1 : 0);
-  }, 0);
-  const rate = Math.round((attendedCount / row.events.length) * 100);
-  if (rate >= 90) return { key: "active", label: "Active", emoji: "🟢", range: "90–100%", rate };
-  if (rate >= 70) return { key: "moderate", label: "Moderate", emoji: "🟡", range: "70–89%", rate };
-  return { key: "inactive", label: "Inactive", emoji: "🔴", range: "<70%", rate };
-}
-
 function ModalTimeSlot({ value }) {
   const v = String(value ?? "").trim();
   if (!v || v.toLowerCase() === "no record") {
@@ -505,11 +479,6 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
     [],
   );
 
-  const selectedAttendanceTier = useMemo(
-    () => getPaymentAttendanceTier(selectedRow),
-    [selectedRow],
-  );
-
   const openRecordPaymentModal = (rowOverride = null) => {
     const targetRow = rowOverride ?? selectedRow;
     if (!targetRow) return;
@@ -643,8 +612,6 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
     setEditFineAmountInput(String(Number(event.fine) || 0));
     setEditFineError("");
   };
-
-  const canGenerateReceipt = selectedRow && (selectedRow.status === "Partial" || selectedRow.status === "Paid");
 
   const exportPaymentsCsv = () => {
     const header = ["Student ID", "Student Name", "Course", "Year", "Total Events", "Total Fine", "Paid Amount", "Remaining", "Status"];
@@ -810,8 +777,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
             </div>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-[1.8fr_1fr] gap-6">
-            <section className="bg-white rounded-lg border border-[#07713c]/30 shadow-sm overflow-hidden">
+          <section className="bg-white rounded-lg border border-[#07713c]/30 shadow-sm overflow-hidden">
               <div className="px-4 pt-4">
                 <h2 className="text-lg font-bold text-[#07713c]">Students</h2>
               </div>
@@ -866,30 +832,31 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[980px] table-fixed border-collapse text-sm">
+                <table className="w-full min-w-[1080px] table-fixed border-collapse text-sm">
                   <thead className="border-b border-[#07713c]/30 bg-[#07713c]">
                     <tr>
-                      <th className="w-[24%] px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Student</th>
-                      <th className="w-[16%] px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Course</th>
+                      <th className="w-[22%] px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Student</th>
+                      <th className="w-[15%] px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Course</th>
                       <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Year</th>
                       <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Total Events</th>
                       <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Total Fine</th>
                       <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Remaining</th>
                       <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Status</th>
+                      <th className="min-w-[104px] px-2 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Attendance</th>
                     </tr>
                   </thead>
                   <tbody>
                     {isPaymentsLoading ? (
                       <tr>
-                        <td colSpan={7} className="py-8 px-4 text-center text-[#07713c]/85 text-sm">Loading payment records...</td>
+                        <td colSpan={8} className="py-8 px-4 text-center text-[#07713c]/85 text-sm">Loading payment records...</td>
                       </tr>
                     ) : isPaymentsError ? (
                       <tr>
-                        <td colSpan={7} className="py-8 px-4 text-center text-red-700 text-sm">Unable to load payment records right now.</td>
+                        <td colSpan={8} className="py-8 px-4 text-center text-red-700 text-sm">Unable to load payment records right now.</td>
                       </tr>
                     ) : paginatedStudents.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-8 px-4 text-center text-[#07713c]/85 text-sm">No payment records found for this filter.</td>
+                        <td colSpan={8} className="py-8 px-4 text-center text-[#07713c]/85 text-sm">No payment records found for this filter.</td>
                       </tr>
                     ) : (
                       paginatedStudents.map((row) => (
@@ -948,6 +915,19 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                           <td className="py-3 px-3 text-center">
                             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeClass(row.status)}`}>{row.status}</span>
                           </td>
+                          <td className="py-3 px-2 text-center">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedStudentId(row.studentId);
+                                setModalStudentId(row.studentId);
+                              }}
+                              className="rounded-lg border border-[#07713c]/40 bg-white px-2.5 py-0.5 text-xs font-medium text-[#07713c] hover:bg-[#07713c]/[0.04] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]"
+                            >
+                              Select
+                            </button>
+                          </td>
                         </tr>
                       ))
                     )}
@@ -962,76 +942,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                 itemLabel="students"
                 className="border-t-0"
               />
-            </section>
-
-            <aside className="bg-white rounded-lg border border-[#07713c]/30 shadow-sm p-4">
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <h2 className="text-lg font-bold text-[#07713c]">Selected Student Payment</h2>
-                {selectedRow ? (
-                  <div className="px-2.5 py-1.5 text-right">
-                    <div className="mt-0.5 inline-flex items-baseline gap-1.5 text-xs font-semibold text-[#07713c]">
-                      <span aria-hidden="true">{selectedAttendanceTier.emoji}</span>
-                      <span>{selectedAttendanceTier.label}</span>
-                      <span className="tabular-nums text-[#07713c]/80">{selectedAttendanceTier.rate}%</span>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-              {!selectedRow ? (
-                <p className="text-sm text-[#07713c]/85">Select a row to view payment details.</p>
-              ) : (
-                <div className="space-y-2.5 text-sm">
-                  <div className="flex items-center justify-between border-b border-[#07713c]/15 py-1.5"><span className="text-[#07713c]/85">Student ID</span><span className="font-medium text-[#07713c]">{selectedRow.studentId}</span></div>
-                  <div className="flex items-center justify-between border-b border-[#07713c]/15 py-1.5"><span className="text-[#07713c]/85">Student</span><span className="font-medium text-[#07713c] text-right">{selectedRow.studentName}</span></div>
-                  <div className="flex items-center justify-between border-b border-[#07713c]/15 py-1.5"><span className="text-[#07713c]/85">Total included events</span><span className="font-medium text-[#07713c]">{selectedRow.totalEvents ?? selectedRow.events.length}</span></div>
-                  <div className="flex items-center justify-between border-b border-[#07713c]/15 py-1.5"><span className="text-[#07713c]/85">Total fine</span><span className="font-semibold text-red-700 tabular-nums">{formatPhp(selectedRow.totalFine)}</span></div>
-                  <div className="flex items-center justify-between border-b border-[#07713c]/15 py-1.5"><span className="text-[#07713c]/85">Paid amount</span><span className="font-medium text-red-700 tabular-nums">{formatPhp(selectedRow.paidAmount)}</span></div>
-                  <div className="flex items-center justify-between border-b border-[#07713c]/15 py-1.5"><span className="text-[#07713c]/85">Remaining balance</span><span className={`font-semibold tabular-nums ${selectedRow.remaining <= 0 ? "text-[#07713c]" : "text-red-700"}`}>{formatPhp(selectedRow.remaining)}</span></div>
-                  <div className="flex items-center justify-between border-b border-[#07713c]/15 py-1.5"><span className="text-[#07713c]/85">Status</span><span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeClass(selectedRow.status)}`}>{selectedRow.status}</span></div>
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setModalStudentId(selectedRow.studentId)}
-                      className="w-full rounded-lg bg-[#07713c] px-4 py-2.5 text-sm font-medium text-white hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-[#07713c]/40"
-                    >
-                      View Attendance
-                    </button>
-                  </div>
-                  {canGenerateReceipt && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const receipt =
-                          lastReceipt && lastReceipt.studentId === selectedRow.studentId
-                            ? lastReceipt
-                            : createReceiptFromSelectedRow(selectedRow);
-                        printReceipt(receipt);
-                      }}
-                      className="w-full px-3 py-2 rounded-lg border border-[#07713c]/40 text-[#07713c] text-sm hover:bg-[#07713c]/5"
-                    >
-                      {lastReceipt && lastReceipt.studentId === selectedRow.studentId
-                        ? `Print Latest Receipt (${lastReceipt.receiptNo})`
-                        : "Generate Receipt"}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setIsGraphModalOpen(true)}
-                    className="mt-3 w-full rounded-lg border border-[#07713c]/30 p-3 text-left hover:bg-[#07713c]/[0.03]"
-                  >
-                    <p className="mb-2 text-sm font-semibold text-[#07713c]">Fine Trend</p>
-                    <div className="h-44">
-                      {selectedStudentLineData ? (
-                        <Line data={selectedStudentLineData} options={selectedStudentLineOptions} />
-                      ) : (
-                        <p className="text-xs text-[#07713c]/75">No chart data available.</p>
-                      )}
-                    </div>
-                  </button>
-                </div>
-              )}
-            </aside>
-          </div>
+          </section>
         </main>
       </div>
 
@@ -1061,7 +972,10 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
             </button>
             <button
               type="button"
-              onClick={() => setSelectedStudentId(hoverStudent.studentId)}
+              onClick={() => {
+                openRecordPaymentModal(hoverStudent);
+                setHoverCard(null);
+              }}
               className="w-full rounded-lg border border-[#07713c]/40 px-3 py-2 text-xs font-medium text-[#07713c] hover:bg-[#07713c]/10"
             >
               Select
@@ -1071,7 +985,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
       )}
 
       {modalStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+        <div className="fixed inset-0 z-[61] flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-[92rem] rounded-2xl bg-white shadow-2xl overflow-hidden">
             <div className="bg-[#07713C] px-5 py-3 flex items-center justify-between">
               <h3 className="text-white text-xl font-semibold">{modalStudent.studentName} · {modalStudent.studentId}</h3>
@@ -1198,10 +1112,10 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
       )}
 
       {showPaymentModal && selectedRow && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl overflow-hidden">
-            <div className="bg-[#07713C] px-5 py-3 flex items-center justify-between">
-              <h3 className="text-white text-xl font-semibold">Record Payment</h3>
+            <div className="flex items-center justify-between gap-3 bg-[#07713C] px-5 py-3">
+              <h3 className="min-w-0 text-xl font-semibold text-white">Payment</h3>
               <button
                 type="button"
                 onClick={() => {
@@ -1209,7 +1123,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                   setIsPaymentEditMode(false);
                   setRemainingBalanceInput("");
                 }}
-                className="w-7 h-7 rounded-full bg-yellow-300 flex items-center justify-center text-[#07713c] hover:bg-yellow-400"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-yellow-300 text-[#07713c] hover:bg-yellow-400"
                 aria-label="Close"
                 title="Close"
               >
@@ -1365,7 +1279,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
       )}
 
       {isGraphModalOpen && selectedRow && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+        <div className="fixed inset-0 z-[54] flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-4xl rounded-2xl bg-white shadow-2xl overflow-hidden">
             <div className="bg-[#07713C] px-5 py-3 flex items-center justify-between">
               <h3 className="text-white text-xl font-semibold">
