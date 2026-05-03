@@ -4,6 +4,12 @@ import { useGovernorScope } from "../hooks/useGovernorScope";
 import { isCsgPresident } from "../utils/roles";
 import { AM_SESSION_TIME_OPTIONS, PM_SESSION_TIME_OPTIONS } from "../utils/eventTimeOptions";
 
+/** Must match `CEAS_GOVERNOR_ALL_PROGRAMS_SENTINEL` in event-tracking-api `event.controller.ts`. */
+const CEAS_GOVERNOR_ALL_PROGRAMS_SENTINEL = "__CEAS_GOVERNOR_ALL_PROGRAMS__";
+
+/** Must match `CBA_GOVERNOR_ALL_BSBA_SENTINEL` in event-tracking-api `event.controller.ts`. */
+const CBA_GOVERNOR_ALL_BSBA_SENTINEL = "__CBA_GOVERNOR_ALL_BSBA__";
+
 const STEPS = [
   { id: 1, label: "Basic Info" },
   { id: 2, label: "Audience" },
@@ -35,18 +41,47 @@ export default function AddEvent({ onBack, onNext }) {
   const addEvent = useAddevent();
   const shouldShowMajorSelection =
     role === "ceas_governor" || role === "cba_governor";
-  const majorOptions = role === "cba_governor"
-    ? ["Marketing Management", "Financial Management", "Human Resource Development Management", "All Majors"]
-    : role === "ceas_governor"
-      ? ["English", "Math", "Filipino", "BEED"]
-      : [];
+  const majorOptions =
+    role === "cba_governor"
+      ? [
+          "All Majors",
+          "Marketing Management",
+          "Financial Management",
+          "Human Resource Development Management",
+        ]
+      : role === "ceas_governor"
+        ? [
+            "All Majors",
+            "BEED",
+            "BSED",
+            "English",
+            "Filipino",
+            "Math",
+          ]
+        : [];
 
-      // Fix 2: derive course_code from selected major for CEAS
-  const getCourseCodeFromMajor = (major) => {
-    if (major === "BEED") return "BEED";
-    if (["English", "Math", "Filipino"].includes(major)) return "BSED";
+  const getCourseCodeFromMajor = (m) => {
+    if (m === "All Majors") return CEAS_GOVERNOR_ALL_PROGRAMS_SENTINEL;
+    if (m === "BEED") return "BEED";
+    if (m === "BSED") return "BSED";
+    if (["English", "Filipino", "Math"].includes(m)) return "BSED";
     return department;
   };
+
+  /** Long label only for CEAS dropdown row `BSED` */
+  function ceasMajorOptionLabel(option) {
+    if (option === "BSED") return "BSED — English, Filipino, Math only (no BEED)";
+    return option;
+  }
+
+  function cbaMajorOptionLabel(option) {
+    if (option === "All Majors") return "All majors — CBA (MM, FM, HRDM)";
+    if (option === "Marketing Management") return "Marketing Management (MM)";
+    if (option === "Financial Management") return "Financial Management (FM)";
+    if (option === "Human Resource Development Management")
+      return "Human Resource Development Management (HRDM)";
+    return option;
+  }
 
   useEffect(() => {
     if (isCsgPresident(role)) {
@@ -141,8 +176,23 @@ export default function AddEvent({ onBack, onNext }) {
         pm_grace_in: payload.pmGraceInMinutes ?? 0,
         pm_grace_out: payload.pmGraceOutMinutes ?? 0,
         yearLevel,
-        course_code: role === "ceas_governor" ? getCourseCodeFromMajor(major) : department, // ← single definition
-        major: role === "ceas_governor" && major === "BEED" ? "" : shouldShowMajorSelection ? major : "",                                       // ← single definition
+        course_code:
+          role === "ceas_governor"
+            ? getCourseCodeFromMajor(major)
+            : role === "cba_governor"
+              ? major === "All Majors"
+                ? CBA_GOVERNOR_ALL_BSBA_SENTINEL
+                : "BSBA"
+              : department,
+        major:
+          role === "ceas_governor" &&
+          (major === "BEED" || major === "All Majors" || major === "BSED")
+            ? ""
+            : shouldShowMajorSelection
+              ? major === "All Majors"
+                ? ""
+                : major
+              : "",
         isMandatory,
         audienceNotes: audienceNotes?.trim() || "",
         amTimeIn: amTimeIn || "",
@@ -568,7 +618,11 @@ export default function AddEvent({ onBack, onNext }) {
                 >
                   {majorOptions.map((majorOption) => (
                     <option key={majorOption} value={majorOption}>
-                      {majorOption}
+                      {role === "ceas_governor"
+                        ? ceasMajorOptionLabel(majorOption)
+                        : role === "cba_governor"
+                          ? cbaMajorOptionLabel(majorOption)
+                          : majorOption}
                     </option>
                   ))}
                 </select>
@@ -655,8 +709,29 @@ export default function AddEvent({ onBack, onNext }) {
       <div className="mt-3 border-t border-[#07713c]/15 pt-3 text-xs text-[#07713c]">
         <p className="font-semibold mb-1">Audience</p>
         <p>Year Level: {yearLevel}</p>
-        <p>Department: {department}</p>
-        {shouldShowMajorSelection && <p>Major: {major}</p>}
+        {role === "ceas_governor" && major === "All Majors" ? (
+          <p>Audience scope: CEAS</p>
+        ) : role === "cba_governor" && major === "All Majors" ? (
+          <p>Audience scope: CBA (all BSBA tracks: MM, FM, HRDM)</p>
+        ) : role === "ceas_governor" && major === "BSED" ? (
+          <>
+            <p>Department: {department}</p>
+            <p>Major: BSED — English, Filipino, Math only (BEED excluded)</p>
+          </>
+        ) : (
+          <>
+            <p>Department: {department}</p>
+            {shouldShowMajorSelection && (
+              <p>
+                {role === "cba_governor" ? (
+                  <>Target audience: {cbaMajorOptionLabel(major)}</>
+                ) : (
+                  <>Major: {major}</>
+                )}
+              </p>
+            )}
+          </>
+        )}
         <p>Mandatory: {isMandatory ? "Yes" : "No"}</p>
         {audienceNotes && <p>Notes: {audienceNotes}</p>}
       </div>

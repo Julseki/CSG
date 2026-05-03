@@ -306,10 +306,6 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
     return selected?.majors || [];
   }, [createUserForm.department]);
 
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  const dateStr = now.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-
   const navItems = [
     { id: "dashboard", label: "Dashboard" },
     { id: "attendance", label: "Attendance" },
@@ -463,10 +459,6 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
             ))}
           </div>
         </nav>
-        <div className="p-4 border-t border-white/15">
-          <p className="text-sm font-medium">{timeStr}</p>
-          <p className="text-xs text-green-200">{dateStr}</p>
-        </div>
       </aside>
 
       {/* Main content */}
@@ -569,7 +561,7 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
                 Close
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-8 sm:py-6">
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-8 sm:py-6 [scrollbar-width:thin] [scrollbar-color:rgba(7,113,60,0.28)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#07713c]/30 [&::-webkit-scrollbar-thumb]:hover:bg-[#07713c]/40 [&::-webkit-scrollbar-track]:bg-transparent">
               <EventCard variant="modalHorizontal" event={selectedUpcomingEvent} />
             </div>
           </div>

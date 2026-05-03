@@ -18,15 +18,6 @@ export default function StudentAttendancePage({ onLogout, onNavigate, onOpenCrea
   const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
   const isAdmin = !isGovernor;
 
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  const dateStr = now.toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
   const navItems = [
     { id: "dashboard", label: "Dashboard" },
     { id: "attendance", label: "Attendance" },
@@ -117,10 +108,6 @@ export default function StudentAttendancePage({ onLogout, onNavigate, onOpenCrea
             ))}
           </div>
         </nav>
-        <div className="p-4 border-t border-white/15">
-          <p className="text-sm font-medium">{timeStr}</p>
-          <p className="text-xs text-green-200">{dateStr}</p>
-        </div>
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">

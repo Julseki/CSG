@@ -12,6 +12,7 @@ import { useGetPayments } from "../hooks/useGetPayments";
 import { useRecordPayment } from "../hooks/useRecordPayment";
 import { useUpdateFineAmount } from "../hooks/useUpdateFineAmount";
 import { useSetStudentBalance } from "../hooks/useSetStudentBalance";
+import { formatCourseWithMajor } from "../utils/courseMajorDisplay";
 
 void ChartJS;
 
@@ -78,15 +79,20 @@ function getPaymentAttendanceTier(row) {
 function ModalTimeSlot({ value }) {
   const v = String(value ?? "").trim();
   if (!v || v.toLowerCase() === "no record") {
-    return <span className="text-amber-700">No record</span>;
+    return (
+      <span className="text-xs font-medium text-amber-800">
+        No record
+      </span>
+    );
   }
-  return <span className="font-mono text-xs text-[#07713c]">{formatSqlTimeForDisplay(v) ?? v}</span>;
+  const display = formatSqlTimeForDisplay(v) ?? v;
+  return <span className="text-xs text-[#07713c]">{display}</span>;
 }
 
 function ModalPeriodSlot({ event, period, value }) {
   const kind = String(event?.sessionKind ?? "whole").toLowerCase();
   const isNotApplicable = (kind === "am" && period === "pm") || (kind === "pm" && period === "am");
-  if (isNotApplicable) return <span className="text-[#07713c]/60">—</span>;
+  if (isNotApplicable) return <span className="font-medium text-[#07713c]">—</span>;
   return <ModalTimeSlot value={value} />;
 }
 
@@ -292,7 +298,8 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
       } else if (paidAmount > 0 && remaining <= 0 && totalFine > 0) {
         status = "Paid";
       }
-      return { ...student, totalFine, paidAmount, waivedAmount, remaining, status };
+      const courseDisplay = formatCourseWithMajor(student.course, student.major ?? null);
+      return { ...student, totalFine, paidAmount, waivedAmount, remaining, status, courseDisplay };
     });
   }, [paymentRowsFromApi]);
 
@@ -308,11 +315,14 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
         filters.balance === "all" ||
         (filters.balance === "with_balance" && row.remaining > 0) ||
         (filters.balance === "zero_balance" && row.remaining <= 0);
+      const majorQ = (row.major ?? "").toLowerCase();
       const matchesSearch =
         !q ||
         row.studentName.toLowerCase().includes(q) ||
         row.studentId.toLowerCase().includes(q) ||
         row.course.toLowerCase().includes(q) ||
+        majorQ.includes(q) ||
+        (row.courseDisplay ?? "").toLowerCase().includes(q) ||
         row.events.some((event) => event.name.toLowerCase().includes(q));
       return matchesStatus && matchesCollege && matchesCourse && matchesYear && matchesBalance && matchesSearch;
     });
@@ -576,7 +586,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
         encodedBy: roleLabel || "CSG/Governor",
         studentId: selectedRow.studentId,
         studentName: selectedRow.studentName,
-        course: selectedRow.course,
+        course: formatCourseWithMajor(selectedRow.course, selectedRow.major ?? null),
         year: selectedRow.year,
         previousBalance: response?.previousBalance ?? previousBalance,
         amountPaid: response?.amountPaid ?? roundedAmount,
@@ -613,7 +623,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
       encodedBy: roleLabel || "CSG/Governor",
       studentId: row.studentId,
       studentName: row.studentName,
-      course: row.course,
+      course: formatCourseWithMajor(row.course, row.major ?? null),
       year: row.year,
       previousBalance,
       amountPaid: Number(row.paidAmount) || 0,
@@ -641,7 +651,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
     const body = exportFilteredRows.map((row) => [
       `"${row.studentId}"`,
       `"${String(row.studentName || "").replace(/"/g, '""')}"`,
-      `"${String(row.course || "").replace(/"/g, '""')}"`,
+      `"${String(row.courseDisplay || row.course || "").replace(/"/g, '""')}"`,
       `"${String(row.year ?? "")}"`,
       String(row.totalEvents ?? row.events?.length ?? 0),
       String(Number(row.totalFine) || 0),
@@ -812,7 +822,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                     type="search"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search student, ID, course, event"
+                    placeholder="Search student, ID, course, major, event"
                     className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
                   />
                   {search.trim() !== "" && (
@@ -861,7 +871,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                     <tr>
                       <th className="w-[24%] px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Student</th>
                       <th className="w-[16%] px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Course</th>
-                      <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Year</th>
+                      <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Year</th>
                       <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Total Events</th>
                       <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Total Fine</th>
                       <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Remaining</th>
@@ -905,13 +915,34 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                               {row.studentName}
                             </p>
                           </td>
-                          <td className="py-3 px-3 overflow-hidden text-[#07713c]">
-                            <p className="truncate whitespace-nowrap" title={row.course}>
-                              {row.course}
+                          <td className="py-3 px-3 overflow-hidden">
+                            <p
+                              className="truncate font-medium whitespace-nowrap text-[#07713c] hover:underline underline-offset-2 decoration-[#07713c]"
+                              title={row.courseDisplay}
+                            >
+                              {row.courseDisplay}
                             </p>
                           </td>
-                          <td className="py-3 px-3 text-[#07713c]">{row.year}</td>
-                          <td className="py-3 px-3 text-center text-[#07713c]">{row.totalEvents ?? row.events.length}</td>
+                          <td className="py-3 px-3 overflow-hidden">
+                            <div className="flex justify-center">
+                              <p
+                                className="min-w-0 truncate font-medium whitespace-nowrap tabular-nums text-[#07713c] hover:underline underline-offset-2 decoration-[#07713c]"
+                                title={String(row.year ?? "")}
+                              >
+                                {row.year}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 overflow-hidden">
+                            <div className="flex justify-center">
+                              <p
+                                className="min-w-0 truncate font-medium whitespace-nowrap tabular-nums text-[#07713c] hover:underline underline-offset-2 decoration-[#07713c]"
+                                title={String(row.totalEvents ?? row.events?.length ?? "")}
+                              >
+                                {row.totalEvents ?? row.events.length}
+                              </p>
+                            </div>
+                          </td>
                           <td className="py-3 px-3 text-center font-medium tabular-nums text-red-700">{formatPhp(row.totalFine)}</td>
                           <td className="py-3 px-3 text-center font-medium tabular-nums text-red-700">{formatPhp(row.remaining)}</td>
                           <td className="py-3 px-3 text-center">
@@ -958,7 +989,13 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                   <div className="flex items-center justify-between border-b border-[#07713c]/15 py-1.5"><span className="text-[#07713c]/85">Remaining balance</span><span className={`font-semibold tabular-nums ${selectedRow.remaining <= 0 ? "text-[#07713c]" : "text-red-700"}`}>{formatPhp(selectedRow.remaining)}</span></div>
                   <div className="flex items-center justify-between border-b border-[#07713c]/15 py-1.5"><span className="text-[#07713c]/85">Status</span><span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeClass(selectedRow.status)}`}>{selectedRow.status}</span></div>
                   <div className="pt-2">
-                    <button type="button" onClick={() => setModalStudentId(selectedRow.studentId)} className="px-3 py-2 rounded-lg border border-[#07713c]/40 text-[#07713c] text-sm hover:bg-gray-50">View Attendance</button>
+                    <button
+                      type="button"
+                      onClick={() => setModalStudentId(selectedRow.studentId)}
+                      className="w-full rounded-lg bg-[#07713c] px-4 py-2.5 text-sm font-medium text-white hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-[#07713c]/40"
+                    >
+                      View Attendance
+                    </button>
                   </div>
                   {canGenerateReceipt && (
                     <button
@@ -1014,9 +1051,21 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
           <p className="font-semibold text-[#07713c]">{hoverStudent.studentName}</p>
           <p className="text-[#07713c]/80">Total fines: {formatPhp(hoverStudent.totalFine)}</p>
           <p className="text-[#07713c]/80">Remaining: {formatPhp(hoverStudent.remaining)}</p>
-          <div className="mt-2 flex gap-1.5">
-            <button type="button" onClick={() => setModalStudentId(hoverStudent.studentId)} className="rounded-md bg-[#07713C] px-2 py-1 text-[11px] font-medium text-white hover:bg-[#055a2e]">View Attendance</button>
-            <button type="button" onClick={() => setSelectedStudentId(hoverStudent.studentId)} className="rounded-md border border-[#07713c]/40 px-2 py-1 text-[11px] font-medium text-[#07713c] hover:bg-gray-50">Select</button>
+          <div className="mt-2 flex flex-col gap-1.5">
+            <button
+              type="button"
+              onClick={() => setModalStudentId(hoverStudent.studentId)}
+              className="w-full rounded-lg bg-[#07713c] px-3 py-2 text-xs font-medium text-white hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-[#07713c]/40"
+            >
+              View Attendance
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedStudentId(hoverStudent.studentId)}
+              className="w-full rounded-lg border border-[#07713c]/40 px-3 py-2 text-xs font-medium text-[#07713c] hover:bg-[#07713c]/10"
+            >
+              Select
+            </button>
           </div>
         </div>
       )}
@@ -1040,7 +1089,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                 ✕
               </button>
             </div>
-            <div className="p-4 max-h-[75vh] overflow-y-auto">
+            <div className="max-h-[75vh] overflow-y-auto p-4 [scrollbar-width:thin] [scrollbar-color:rgba(7,113,60,0.28)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#07713c]/30 [&::-webkit-scrollbar-thumb]:hover:bg-[#07713c]/40 [&::-webkit-scrollbar-track]:bg-transparent">
               <div className="mb-3 flex flex-wrap items-end gap-3">
                 <label className="flex flex-col gap-1 text-xs text-[#07713c]">
                   Session
@@ -1056,7 +1105,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                   </select>
                 </label>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto [scrollbar-width:thin] [scrollbar-color:rgba(7,113,60,0.28)_transparent] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#07713c]/30 [&::-webkit-scrollbar-thumb]:hover:bg-[#07713c]/40 [&::-webkit-scrollbar-track]:bg-transparent">
                 <div className="rounded-lg border border-[#07713c]/30 overflow-hidden">
                   <table className="w-full min-w-[980px] table-fixed text-sm">
                     <thead className="border-b border-[#07713c]/30 bg-gray-50 text-center text-xs font-medium text-[#07713c]">
@@ -1173,7 +1222,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                   <div className="mt-2 space-y-1.5 text-[#07713c]">
                     <p><span className="font-semibold">Name:</span> {selectedRow.studentName}</p>
                     <p><span className="font-semibold">Student ID:</span> {selectedRow.studentId}</p>
-                    <p><span className="font-semibold">Course:</span> {selectedRow.course}</p>
+                    <p><span className="font-semibold">Course:</span> {selectedRow.courseDisplay}</p>
                     <p><span className="font-semibold">Year:</span> {selectedRow.year}</p>
                   </div>
                 </div>
@@ -1359,7 +1408,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
                   type="search"
                   value={exportSearch}
                   onChange={(e) => setExportSearch(e.target.value)}
-                  placeholder="Search student, ID, course, event"
+                  placeholder="Search student, ID, course, major, event"
                   className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                 />
               </label>

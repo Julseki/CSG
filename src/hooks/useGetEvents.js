@@ -2,13 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import api from "../api/axiosInstance";
 import { useAuthSession } from "./auth";
 import { getRoleFromSession, seesInstitutionWideEventData } from "../utils/roles";
+import { normalizeEvAudiences } from "../utils/eventAudienceLabel";
 
 /** Prefix for React Query; scope suffix: all departments vs department governors only. */
 export const EVENTS_QUERY_KEY = ["events", "list"];
 
 /**
- * Query params for GET /get-events when the user should see every department’s events
- * (admin, csg_president). Backend may honor these; unknown params are usually ignored.
+ * Query params for GET /get-events only for admins (full cross-department list).
+ * Governors and CSG presidents are creator-scoped server-side regardless of params.
  */
 function buildWideEventsRequestConfig() {
   return {
@@ -173,7 +174,7 @@ export function mapServerEventToDisplay(raw) {
     raw.timeSlots ??
     (slots.length ? slots.join(", ") : "");
 
-  const audiences = Array.isArray(raw.audiences) ? raw.audiences : [];
+  const audiences = normalizeEvAudiences(raw.audiences);
 
   const fineRaw = raw.fine_amount ?? raw.fineAmount ?? raw.fine;
   let fine = null;

@@ -54,11 +54,11 @@ export function isAdminRole(role) {
 }
 
 /**
- * True when the role should load all departments’ events / attendance (same as server-wide admin view).
- * Department governors (it/cba/ceas/coc/chm_governor) are false here.
+ * True when the role should load all departments’ events (admins only on the API).
+ * CSG presidents see only events they created, like governors — not institution-wide listings.
  */
 export function seesInstitutionWideEventData(role) {
-  return isCsgPresident(role) || isAdminRole(role);
+  return isAdminRole(role);
 }
 
 export function isDepartmentGovernorRole(role) {
@@ -88,11 +88,10 @@ export function getGovernorScopeFromRole(role) {
     case "ceas_governor":
       return { label: "Governor CEAS", courses: ["BEED", "BSED"] };
     case "coc_governor":
-      return { label: "Governor COC", courses: ["BSCrim"] };
+      return { label: "Governor COC", courses: ["BSCRIM"] };
     case "chm_governor":
       return { label: "Governor CHM", courses: ["BSHM"] };
     default:
       return null;
   }
 }
-

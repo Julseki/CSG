@@ -20,10 +20,15 @@ function normalizeSessionKind(kindRaw) {
 
 function mapPaymentRow(raw) {
   const events = Array.isArray(raw?.events) ? raw.events : [];
+  const majorRaw = raw?.major;
+  const major =
+    majorRaw != null && String(majorRaw).trim() !== "" ? String(majorRaw).trim() : null;
+
   return {
     studentId: String(raw?.studentId ?? ""),
     studentName: String(raw?.studentName ?? "Unknown Student"),
     course: String(raw?.course ?? "—"),
+    major,
     year: String(raw?.year ?? "—"),
     totalEvents: Math.max(0, Number(raw?.totalEvents) || 0),
     totalFine: Math.max(0, Number(raw?.totalFine) || 0),

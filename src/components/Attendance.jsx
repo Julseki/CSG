@@ -12,6 +12,7 @@ import { useAttendancePageEvents } from "../hooks/useAttendancePageEvents";
 import { fetchAttendancePageEventDetail, useAttendancePageEventDetail } from "../hooks/useAttendancePageEventDetail";
 import { formatEventDateForDisplay } from "../hooks/useGetEvents";
 import { formatDurationForEventsListWithSessionHint } from "../utils/eventDurationDisplay";
+import { getAudienceScopeLabel } from "../utils/eventAudienceLabel";
 
 void ChartJS;
 
@@ -52,6 +53,14 @@ function getMajor(student) {
   const m = student?.major;
   if (m == null || String(m).trim() === "") return null;
   return String(m).trim();
+}
+
+/** Enrollment year level from API (`yearLevel`); null if missing */
+function getYearLevel(student) {
+  const y = student?.yearLevel ?? student?.year_level;
+  if (y == null || y === "") return null;
+  const n = Number(y);
+  return Number.isFinite(n) ? n : null;
 }
 
 function getCollegeFromCourse(courseRaw) {
@@ -145,6 +154,37 @@ function eventTotalFine(ev) {
   return (ev.absent || 0) * f;
 }
 
+/** Attendance page API may send `audiences` as JSON array or string — normalize for {@link getAudienceScopeLabel}. */
+function normalizeAttendanceAudiences(raw) {
+  if (raw == null) return [];
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "string") {
+    const s = raw.trim();
+    if (!s) return [];
+    try {
+      const p = JSON.parse(s);
+      return Array.isArray(p) ? p : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function attendanceEventListAudienceLabel(ev) {
+  if (!ev) return "—";
+  const instituteWide =
+    ev.isAllDepartments === true ||
+    ev.is_all_departments === true ||
+    Number(ev.is_all_departments) === 1;
+  return getAudienceScopeLabel({
+    ...ev,
+    audiences: normalizeAttendanceAudiences(ev.audiences),
+    isAllDepartments: instituteWide,
+    is_all_departments: instituteWide ? 1 : 0,
+  });
+}
+
 function downloadTextFile(filename, text, mime = "text/csv;charset=utf-8") {
   const blob = new Blob([text], { type: mime });
   const url = URL.createObjectURL(blob);
@@ -174,6 +214,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
     isError: isPageError,
     refetch: refetchAttendancePage,
   } = useAttendancePageEvents();
+
   const { data: detailFromApi } = useAttendancePageEventDetail(detailEventId, {
     enabled: Boolean(detailEventId),
   });
@@ -185,11 +226,13 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
   const [studentListCollege, setStudentListCollege] = useState("all");
   const [studentListCourse, setStudentListCourse] = useState("all");
   const [studentListMajor, setStudentListMajor] = useState("all");
+  const [studentListYearLevel, setStudentListYearLevel] = useState("all");
   const [studentListAttendance, setStudentListAttendance] = useState("all");
   const [exportEventSearch, setExportEventSearch] = useState("");
   const [exportEventCollege, setExportEventCollege] = useState("all");
   const [exportEventCourse, setExportEventCourse] = useState("all");
   const [exportEventMajor, setExportEventMajor] = useState("all");
+  const [exportEventYearLevel, setExportEventYearLevel] = useState("all");
   const [exportEventAttendance, setExportEventAttendance] = useState("all");
   const [exportAllEventId, setExportAllEventId] = useState("all");
   const [exportAllEventStatus, setExportAllEventStatus] = useState("all");
@@ -211,7 +254,11 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
     return events.filter((ev) => {
       if (statusFilter !== "all" && ev.status !== statusFilter) return false;
       const q = search.trim().toLowerCase();
-      if (q && !String(ev.name).toLowerCase().includes(q)) return false;
+      if (q) {
+        const nameOk = String(ev.name).toLowerCase().includes(q);
+        const audienceOk = attendanceEventListAudienceLabel(ev).toLowerCase().includes(q);
+        if (!nameOk && !audienceOk) return false;
+      }
       return true;
     });
   }, [events, statusFilter, search]);
@@ -245,7 +292,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
         hasPmSession: getEventSessionType(detailEvent) === "whole_day" || getEventSessionType(detailEvent) === "pm",
         type: "Mandatory",
         requiresRegistration: "No",
-        audience: "All departments",
+        audience: getAudienceScopeLabel(detailEvent),
         duration: formatDurationForEventsListWithSessionHint(detailEvent),
         scheduleAm:
           getEventSessionType(detailEvent) === "whole_day" || getEventSessionType(detailEvent) === "am"
@@ -272,13 +319,16 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
       const majorLabel = getMajor(s);
       const majorQ = (majorLabel || "").toLowerCase();
       const attendance = detailEvent.status === "upcoming" ? "no_record" : s.status === "attended" ? "attended" : "absent";
+      const yearLevel = getYearLevel(s);
+      const yearLevelQ = yearLevel != null ? String(yearLevel) : "";
       if (
         q &&
         !sid.includes(q) &&
         !name.includes(q) &&
         !course.toLowerCase().includes(q) &&
         !majorQ.includes(q) &&
-        !college.toLowerCase().includes(q)
+        !college.toLowerCase().includes(q) &&
+        !(yearLevelQ && yearLevelQ.includes(q))
       ) {
         return false;
       }
@@ -286,6 +336,10 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
       if (studentListCourse !== "all" && course !== studentListCourse) return false;
       if (studentListMajor !== "all") {
         if (!majorLabel || majorLabel !== studentListMajor) return false;
+      }
+      if (studentListYearLevel !== "all") {
+        const want = Number(studentListYearLevel);
+        if (!Number.isFinite(want) || yearLevel !== want) return false;
       }
       if (
         detailEvent.status !== "upcoming" &&
@@ -296,7 +350,25 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
       }
       return true;
     });
-  }, [detailEvent, studentListSearch, studentListCollege, studentListCourse, studentListMajor, studentListAttendance]);
+  }, [
+    detailEvent,
+    studentListSearch,
+    studentListCollege,
+    studentListCourse,
+    studentListMajor,
+    studentListYearLevel,
+    studentListAttendance,
+  ]);
+
+  const studentListYearLevelOptions = useMemo(() => {
+    if (!detailEvent) return [];
+    const set = new Set();
+    for (const s of detailEvent.students || []) {
+      const yl = getYearLevel(s);
+      if (yl != null) set.add(yl);
+    }
+    return Array.from(set).sort((a, b) => a - b);
+  }, [detailEvent]);
 
   const studentListCollegeOptions = useMemo(() => {
     if (!detailEvent) return [];
@@ -369,6 +441,8 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
       const college = getCollegeFromCourse(course);
       const majorLabel = getMajor(s);
       const majorQ = (majorLabel || "").toLowerCase();
+      const ylExport = getYearLevel(s);
+      const yearLevelQ = ylExport != null ? String(ylExport) : "";
       const attendance = detailEvent.status === "upcoming" ? "no_record" : s.status === "attended" ? "attended" : "absent";
 
       if (
@@ -377,7 +451,8 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
         !name.includes(q) &&
         !course.toLowerCase().includes(q) &&
         !majorQ.includes(q) &&
-        !college.toLowerCase().includes(q)
+        !college.toLowerCase().includes(q) &&
+        !(yearLevelQ && yearLevelQ.includes(q))
       ) {
         return false;
       }
@@ -385,6 +460,11 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
       if (exportEventCourse !== "all" && course !== exportEventCourse) return false;
       if (exportEventMajor !== "all") {
         if (!majorLabel || majorLabel !== exportEventMajor) return false;
+      }
+      if (exportEventYearLevel !== "all") {
+        const want = Number(exportEventYearLevel);
+        const yl = getYearLevel(s);
+        if (!Number.isFinite(want) || yl !== want) return false;
       }
       if (
         detailEvent.status !== "upcoming" &&
@@ -395,7 +475,15 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
       }
       return true;
     });
-  }, [detailEvent, exportEventSearch, exportEventCollege, exportEventCourse, exportEventMajor, exportEventAttendance]);
+  }, [
+    detailEvent,
+    exportEventSearch,
+    exportEventCollege,
+    exportEventCourse,
+    exportEventMajor,
+    exportEventYearLevel,
+    exportEventAttendance,
+  ]);
 
   const studentListTotal = filteredStudentList.length;
   const studentListTotalFine = useMemo(() => {
@@ -415,7 +503,15 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
   useEffect(() => {
     setStudentListCollege("all");
     setStudentListMajor("all");
+    setStudentListYearLevel("all");
   }, [detailEventId]);
+
+  useEffect(() => {
+    if (studentListYearLevel === "all") return;
+    if (!studentListYearLevelOptions.includes(Number(studentListYearLevel))) {
+      setStudentListYearLevel("all");
+    }
+  }, [studentListYearLevel, studentListYearLevelOptions]);
 
   useEffect(() => {
     if (studentListMajor === "all") return;
@@ -438,6 +534,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
     studentListCollege,
     studentListCourse,
     studentListMajor,
+    studentListYearLevel,
     studentListAttendance,
     studentListPageSize,
     detailEventId,
@@ -453,8 +550,25 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
     setExportEventCollege(studentListCollege);
     setExportEventCourse(studentListCourse);
     setExportEventMajor(studentListMajor);
+    setExportEventYearLevel(studentListYearLevel);
     setExportEventAttendance(studentListAttendance);
-  }, [exportOpen, detailEvent, studentListSearch, studentListCollege, studentListCourse, studentListMajor, studentListAttendance]);
+  }, [
+    exportOpen,
+    detailEvent,
+    studentListSearch,
+    studentListCollege,
+    studentListCourse,
+    studentListMajor,
+    studentListYearLevel,
+    studentListAttendance,
+  ]);
+
+  useEffect(() => {
+    if (exportEventYearLevel === "all") return;
+    if (!studentListYearLevelOptions.includes(Number(exportEventYearLevel))) {
+      setExportEventYearLevel("all");
+    }
+  }, [exportEventYearLevel, studentListYearLevelOptions]);
 
   useEffect(() => {
     if (exportEventMajor === "all") return;
@@ -570,15 +684,6 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
     navigate("/attendance");
   };
 
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  const dateStr = now.toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
   const exportCsvAll = async () => {
     const selectedEvents = events.filter((ev) => {
       if (exportAllEventId !== "all" && String(ev.id) !== String(exportAllEventId)) return false;
@@ -604,6 +709,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
       "College",
       "Course",
       "Major",
+      "Year Level",
       "Attendance",
       "Fine PHP",
     ];
@@ -615,6 +721,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
         if (exportAllCollege !== "all" && college !== exportAllCollege) continue;
         if (exportAllCourse !== "all" && course !== exportAllCourse) continue;
         const attendance = ev.status === "upcoming" ? "no_record" : s.status === "attended" ? "attended" : "absent";
+        const yl = getYearLevel(s);
         rows.push([
           `"${String(ev.name || "").replace(/"/g, '""')}"`,
           ev.date,
@@ -624,6 +731,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
           `"${String(college).replace(/"/g, '""')}"`,
           `"${String(course).replace(/"/g, '""')}"`,
           `"${String(getMajor(s) || "—").replace(/"/g, '""')}"`,
+          yl != null ? yl : "—",
           attendance === "no_record" ? "No record" : attendance,
           Number(s.finePhp) || 0,
         ]);
@@ -637,15 +745,19 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
 
   const exportCsvEvent = (ev, students = null) => {
     const rows = Array.isArray(students) ? students : ev.students || [];
-    const header = ["Student ID", "Student", "Course", "Major", "Status", "Fine PHP"];
-    const body = rows.map((s) => [
-      `"${String(s.id || "").replace(/"/g, '""')}"`,
-      `"${String(s.name).replace(/"/g, '""')}"`,
-      `"${String(getCourse(s)).replace(/"/g, '""')}"`,
-      `"${String(getMajor(s) || "—").replace(/"/g, '""')}"`,
-      ev.status === "upcoming" ? "No record" : s.status,
-      Number(s.finePhp) || 0,
-    ]);
+    const header = ["Student ID", "Student", "Course", "Major", "Year Level", "Status", "Fine PHP"];
+    const body = rows.map((s) => {
+      const yl = getYearLevel(s);
+      return [
+        `"${String(s.id || "").replace(/"/g, '""')}"`,
+        `"${String(s.name).replace(/"/g, '""')}"`,
+        `"${String(getCourse(s)).replace(/"/g, '""')}"`,
+        `"${String(getMajor(s) || "—").replace(/"/g, '""')}"`,
+        yl != null ? yl : "—",
+        ev.status === "upcoming" ? "No record" : s.status,
+        Number(s.finePhp) || 0,
+      ];
+    });
     downloadTextFile(`attendance-${ev.id}-${ev.date}.csv`, [header.join(","), ...body.map((r) => r.join(","))].join("\n"));
   };
 
@@ -719,10 +831,6 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
             ))}
           </div>
         </nav>
-        <div className="border-t border-white/15 p-4">
-          <p className="text-sm font-medium">{timeStr}</p>
-          <p className="text-xs text-green-200">{dateStr}</p>
-        </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -805,7 +913,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                     type="search"
                     value={studentListSearch}
                     onChange={(e) => setStudentListSearch(e.target.value)}
-                    placeholder="Search name, ID, course, major, or college"
+                    placeholder="Search name, ID, course, major, year level, or college"
                     className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
                   />
                   {studentListSearch.trim() !== "" && (
@@ -867,6 +975,21 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                   </label>
                 )}
                 <label className="text-xs text-[#07713c]">
+                  Year level
+                  <select
+                    value={studentListYearLevel}
+                    onChange={(e) => setStudentListYearLevel(e.target.value)}
+                    className="mt-1 block w-full rounded-lg border border-[#07713c]/40 bg-white px-2 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                  >
+                    <option value="all">All year levels</option>
+                    {studentListYearLevelOptions.map((yl) => (
+                      <option key={yl} value={String(yl)}>
+                        {yl}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-xs text-[#07713c]">
                   Status
                   <select
                     value={studentListAttendance}
@@ -894,12 +1017,13 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                 </label>
               </div>
               <div className="mt-3 overflow-x-auto rounded-lg border border-[#07713c]/30">
-                <table className="w-full min-w-[980px] border-collapse text-sm">
+                <table className="w-full min-w-[1040px] border-collapse text-sm">
                   <thead className="bg-[#07713c]/5 text-center text-xs font-semibold uppercase text-[#07713c]">
                     <tr>
                       <th rowSpan={2} className="border-b border-x border-[#07713c]/30 px-3 py-2 align-middle">Student ID</th>
                       <th rowSpan={2} className="border-b border-x border-[#07713c]/30 px-3 py-2 align-middle">Name</th>
                       <th rowSpan={2} className="border-b border-x border-[#07713c]/30 px-3 py-2 align-middle">Course</th>
+                      <th rowSpan={2} className="border-b border-x border-[#07713c]/30 px-3 py-2 align-middle">Year level</th>
                       <th rowSpan={2} className="border-b border-x border-[#07713c]/30 px-3 py-2 align-middle">Attendance</th>
                       {detailEventMeta.hasAmSession && detailEventMeta.hasPmSession ? (
                         <>
@@ -932,7 +1056,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                     {filteredStudentList.length === 0 ? (
                       <tr>
                         <td
-                        colSpan={5 + (detailEventMeta.hasAmSession ? 2 : 0) + (detailEventMeta.hasPmSession ? 2 : 0)}
+                        colSpan={6 + (detailEventMeta.hasAmSession ? 2 : 0) + (detailEventMeta.hasPmSession ? 2 : 0)}
                         className="border border-[#07713c]/30 px-3 py-6 text-center text-sm text-[#07713c]"
                       >
                           No students match the current filters.
@@ -943,6 +1067,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                         const rec = getStudentSessionRecord(s, detailEvent);
                         const isNoRecordAttendance = detailEvent.status === "upcoming";
                         const isAttended = s.status === "attended";
+                        const rowYearLevel = getYearLevel(s);
                         return (
                           <tr key={s.id}>
                             <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center font-medium text-[#07713c]">
@@ -951,6 +1076,9 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                             <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center font-medium text-[#07713c]">{s.name}</td>
                             <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center text-[#07713c]">
                               <span className="font-medium">{getCourseWithMajorCode(s)}</span>
+                            </td>
+                            <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center tabular-nums text-[#07713c]">
+                              {rowYearLevel != null ? rowYearLevel : "—"}
                             </td>
                             <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center">
                               <span
@@ -1190,7 +1318,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                       type="text"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Filter by name…"
+                      placeholder="Filter by name or audience…"
                       className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-4 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]"
                     />
                   </div>
@@ -1243,12 +1371,13 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
               </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[880px] text-sm">
+              <table className="w-full min-w-[1040px] text-sm">
                 <thead className="border-b border-[#07713c]/30 bg-[#07713c] text-left text-xs font-semibold uppercase tracking-wide text-white">
                   <tr>
                     <th className="px-4 py-2.5 align-middle">Event name</th>
                     <th className="px-4 py-2.5 align-middle">Date</th>
                     <th className="px-4 py-2.5 align-middle">Session</th>
+                    <th className="px-4 py-2.5 align-middle min-w-[140px]">Audience</th>
                     <th className="px-4 py-2.5 align-middle">Status</th>
                     <th className="px-4 py-2.5 text-right align-middle tabular-nums">Attended</th>
                     <th className="px-4 py-2.5 text-right align-middle tabular-nums">Absent</th>
@@ -1260,7 +1389,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                 <tbody>
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="px-4 py-8 text-center text-sm text-[#07713c]">
+                      <td colSpan={10} className="px-4 py-8 text-center text-sm text-[#07713c]">
                         No events match the current filters.
                       </td>
                     </tr>
@@ -1268,9 +1397,16 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                   {paginatedFiltered.map((ev) => (
                     <tr key={ev.id} className="border-t border-[#07713c]/20 hover:bg-[#07713c]/10">
                       <td className="px-4 py-2.5 font-medium text-[#07713c]">{ev.name}</td>
-                      <td className="px-4 py-2.5 text-[#07713c]">{formatEventDateForDisplay(ev.date)}</td>
-                      <td className="px-4 py-2.5 text-[#07713c]">
+                      <td className="px-4 py-2.5 font-medium text-[#07713c]">
+                        {formatEventDateForDisplay(ev.date)}
+                      </td>
+                      <td className="px-4 py-2.5 font-medium text-[#07713c]">
                         {formatDurationForEventsListWithSessionHint(ev)}
+                      </td>
+                      <td className="px-4 py-2.5 font-medium text-[#07713c]">
+                        <span className="line-clamp-2 break-words" title={attendanceEventListAudienceLabel(ev)}>
+                          {attendanceEventListAudienceLabel(ev)}
+                        </span>
                       </td>
                       <td className="px-4 py-2.5">
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(ev.status)}`}>
@@ -1567,7 +1703,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                     type="search"
                     value={exportEventSearch}
                     onChange={(e) => setExportEventSearch(e.target.value)}
-                    placeholder="Search name, ID, course, major, or college"
+                    placeholder="Search name, ID, course, major, year level, or college"
                     className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 sm:col-span-2"
                   />
                   <select
@@ -1603,6 +1739,18 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                     {exportEventMajorOptions.map((m) => (
                       <option key={m} value={m}>
                         {m}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={exportEventYearLevel}
+                    onChange={(e) => setExportEventYearLevel(e.target.value)}
+                    className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 sm:col-span-2"
+                  >
+                    <option value="all">All year levels</option>
+                    {studentListYearLevelOptions.map((yl) => (
+                      <option key={yl} value={String(yl)}>
+                        {yl}
                       </option>
                     ))}
                   </select>

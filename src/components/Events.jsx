@@ -22,6 +22,7 @@ import {
   sqlTimeToSessionSelectValue,
   twelveHourLabelToSqlTime,
 } from "../utils/eventTimeOptions";
+import { getAudienceScopeLabel } from "../utils/eventAudienceLabel";
 
 /** Legacy "Half Day" rows → concrete value for session `<select>` (no Half Day option). */
 function durationNormalizedForSessionEdit(ev) {
@@ -88,35 +89,6 @@ function getDefaultFinesForEvent(ev) {
   if (!Number.isFinite(rate)) return null;
   const absentCount = Math.round((reg * (100 - rate)) / 100);
   return Math.max(0, absentCount * FINE_PER_ABSENT);
-}
-
-/** Course code from one `audiences[]` row (snake_case / camelCase / program_* aliases). */
-function audienceRowCourseCode(audience) {
-  if (!audience || typeof audience !== "object") return null;
-  const code =
-    audience.course_code ??
-    audience.courseCode ??
-    audience.program_code ??
-    audience.programCode;
-  if (code == null || String(code).trim() === "") return null;
-  return String(code).trim();
-}
-
-/** Audience column on Events: course code(s) only; institute-wide stays “All departments”. */
-function getAudienceScopeLabel(ev) {
-  if (ev.is_all_departments) return "All departments";
-
-  if (Array.isArray(ev.audiences) && ev.audiences.length > 0) {
-    const codes = ev.audiences.map((a) => audienceRowCourseCode(a)).filter(Boolean);
-    const unique = [...new Set(codes)];
-    if (unique.length) return unique.join(", ");
-  }
-
-  if (ev.course_code != null && String(ev.course_code).trim() !== "") {
-    return String(ev.course_code).trim();
-  }
-
-  return "—";
 }
 
 function finiteGraceMinutes(v) {
@@ -404,10 +376,6 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
     return FINE_PER_ABSENT;
   };
 
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  const dateStr = now.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-
   const navItems = [
     { id: "dashboard", label: "Dashboard" },
     { id: "attendance", label: "Attendance" },
@@ -654,10 +622,6 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
             ))}
           </div>
         </nav>
-        <div className="p-4 border-t border-white/15">
-          <p className="text-sm font-medium">{timeStr}</p>
-          <p className="text-xs text-green-200">{dateStr}</p>
-        </div>
       </aside>
 
       {/* Main content */}
@@ -808,17 +772,21 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
                             className="cursor-pointer border-b border-[#07713c]/15 hover:bg-[#07713c]/[0.04]"
                             onClick={() => openEventModal(ev, "view")}
                           >
-                            <td className="min-w-0 px-3 py-3 align-middle">
-                              <span className="block truncate font-medium text-[#07713c]">{ev.name}</span>
+                            <td className="min-w-0 px-3 py-3 align-middle font-medium text-[#07713c]">
+                              <span className="block truncate">{ev.name}</span>
                             </td>
-                            <td className="whitespace-nowrap px-3 py-3 align-middle text-[#07713c]">{formatEventDateForDisplay(ev.date)}</td>
-                            <td className="px-3 py-3 align-middle text-[#07713c]">{formatDurationForEventsList(ev)}</td>
-                            <td className="min-w-0 px-3 py-3 align-middle text-[#07713c]">
+                            <td className="whitespace-nowrap px-3 py-3 align-middle font-medium text-[#07713c]">
+                              {formatEventDateForDisplay(ev.date)}
+                            </td>
+                            <td className="px-3 py-3 align-middle font-medium text-[#07713c]">
+                              {formatDurationForEventsList(ev)}
+                            </td>
+                            <td className="min-w-0 px-3 py-3 align-middle font-medium text-[#07713c]">
                               <span className="line-clamp-2 break-words" title={ev.venue}>
                                 {ev.venue}
                               </span>
                             </td>
-                            <td className="min-w-0 px-3 py-3 align-middle text-[#07713c]">
+                            <td className="min-w-0 px-3 py-3 align-middle font-medium text-[#07713c]">
                               <span className="line-clamp-2 break-words" title={getAudienceScopeLabel(ev)}>
                                 {getAudienceScopeLabel(ev)}
                               </span>
@@ -900,11 +868,11 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
                           {displayEventStatus(ev.status)}
                         </span>
                       </div>
-                      <p className="mb-1 text-xs text-[#07713c]/85">{formatEventDateForDisplay(ev.date)}</p>
-                      <p className="mb-1 text-xs text-[#07713c]/85">{ev.venue}</p>
-                      <p className="mb-1 text-xs text-[#07713c]">{formatDurationForEventsList(ev)}</p>
-                      <p className="mb-2 line-clamp-2 text-xs text-[#07713c]/90" title={getAudienceScopeLabel(ev)}>
-                        <span className="font-medium text-[#07713c]">Audience: </span>{getAudienceScopeLabel(ev)}
+                      <p className="mb-1 text-sm font-medium text-[#07713c]">{formatEventDateForDisplay(ev.date)}</p>
+                      <p className="mb-1 text-sm font-medium text-[#07713c]">{ev.venue}</p>
+                      <p className="mb-1 text-sm font-medium text-[#07713c]">{formatDurationForEventsList(ev)}</p>
+                      <p className="mb-2 line-clamp-2 text-sm font-medium text-[#07713c]" title={getAudienceScopeLabel(ev)}>
+                        Audience: {getAudienceScopeLabel(ev)}
                       </p>
                       <div className="border-t border-[#07713c]/15 pt-2">
                         <div className="flex items-baseline justify-between gap-3">

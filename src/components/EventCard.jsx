@@ -1,4 +1,5 @@
 import { formatEventDateForDisplay, formatSqlTimeForDisplay } from "../hooks/useGetEvents";
+import { abbrevBsedMajorLabel, formatAudienceYearLevel, getAudienceScopeLabel } from "../utils/eventAudienceLabel";
 
 const ALL_DEPARTMENT_COURSES = [
   { code: "BEED", name: "Bachelor of Elementary Education", major: "" },
@@ -104,38 +105,6 @@ function Row({ label, value, small }) {
       <span className={`text-gray-800 ${small ? "text-xs" : "text-sm"}`}>{value || "—"}</span>
     </div>
   );
-}
-
-function formatYearLevel(yl) {
-  if (yl == null || yl === "") return "—";
-  const n = Number(yl);
-  if (!Number.isFinite(n)) return String(yl);
-  const ord = ["", "1st", "2nd", "3rd", "4th"];
-  if (n >= 1 && n <= 4) return `${ord[n]} Year`;
-  return `${n}th Year`;
-}
-
-function formatAudienceRule(audience) {
-  if (!audience || typeof audience !== "object") return null;
-
-  const courseCode =
-    audience.course_code ??
-    audience.courseCode ??
-    audience.program_code ??
-    audience.programCode;
-  const departmentName = audience.department_name ?? audience.departmentName;
-  const programName = audience.program_name ?? audience.programName;
-  const yearLevel = audience.year_level ?? audience.yearLevel;
-  const major = audience.major;
-
-  const parts = [];
-  if (courseCode) parts.push(String(courseCode));
-  if (programName) parts.push(String(programName));
-  if (departmentName) parts.push(String(departmentName));
-  if (major) parts.push(`major ${major}`);
-  parts.push(yearLevel != null ? formatYearLevel(yearLevel) : "all years");
-
-  return parts.join(" - ");
 }
 
 function graceMins(v) {
@@ -280,12 +249,7 @@ function MandatoryYesNo({ ev, compact }) {
 }
 
 function EventCardMinimal({ ev }) {
-  const audience = ev.is_all_departments
-    ? "All departments"
-    : (ev.audiences || [])
-        .map((a) => formatAudienceRule(a))
-        .filter(Boolean)
-        .join(" · ") || "—";
+  const audience = ev.is_all_departments ? "All departments" : getAudienceScopeLabel(ev);
 
   return (
     <div className="rounded-lg bg-white/80 px-4 py-4 sm:px-5 border border-[#36454F]/8 shadow-sm">
@@ -358,7 +322,7 @@ function EventCardMinimal({ ev }) {
                     {a?.department_name ?? "—"}
                     {a?.course_code ? ` · ${a.course_code}` : ""}
                     {a?.course_name ? ` · ${a.course_name}` : ""}
-                    {a?.year_level != null ? ` · ${formatYearLevel(a.year_level)}` : ""}
+                    {a?.year_level != null ? ` · ${formatAudienceYearLevel(a.year_level)}` : ""}
                   </div>
                 ))}
           </div>
@@ -381,12 +345,7 @@ function HRow({ label, value, small }) {
 
 /** Wide two-column layout for dashboard modal. */
 function EventCardModalHorizontal({ ev }) {
-  const audience = ev.is_all_departments
-    ? "All departments"
-    : (ev.audiences || [])
-        .map((a) => formatAudienceRule(a))
-        .filter(Boolean)
-        .join(", ") || "—";
+  const audience = ev.is_all_departments ? "All departments" : getAudienceScopeLabel(ev);
 
   const bsedPrograms = ALL_DEPARTMENT_COURSES.filter((c) => c.code === "BSED");
   const beedProgram = ALL_DEPARTMENT_COURSES.find((c) => c.code === "BEED");
@@ -547,7 +506,7 @@ function EventCardModalHorizontal({ ev }) {
                     <Row label="Department" small value={a?.department_name ?? "—"} />
                     <Row label="Course code" small value={a?.course_code ?? "—"} />
                     <Row label="Course name" small value={a?.course_name ?? "—"} />
-                    <Row label="Year level" small value={a?.year_level != null ? formatYearLevel(a.year_level) : "—"} />
+                    <Row label="Year level" small value={a?.year_level != null ? formatAudienceYearLevel(a.year_level) : "—"} />
                   </div>
                 ))}
             </div>
@@ -566,12 +525,7 @@ export default function EventCard({ event: ev, variant = "default" }) {
     return <EventCardModalHorizontal ev={ev} />;
   }
 
-  const audience = ev.is_all_departments
-    ? "All departments"
-    : (ev.audiences || [])
-        .map((a) => formatAudienceRule(a))
-        .filter(Boolean)
-        .join(", ") || "—";
+  const audience = ev.is_all_departments ? "All departments" : getAudienceScopeLabel(ev);
 
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-5 flex flex-col gap-4">
@@ -628,7 +582,7 @@ export default function EventCard({ event: ev, variant = "default" }) {
                     <Row label="Department" small value={a?.department_name ?? "—"} />
                     <Row label="Course code" small value={a?.course_code ?? "—"} />
                     <Row label="Course name" small value={a?.course_name ?? "—"} />
-                    <Row label="Year level" small value={a?.year_level != null ? formatYearLevel(a.year_level) : "—"} />
+                    <Row label="Year level" small value={a?.year_level != null ? formatAudienceYearLevel(a.year_level) : "—"} />
                   </div>
                 ))}
           </div>

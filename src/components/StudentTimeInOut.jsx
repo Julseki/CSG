@@ -212,7 +212,6 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
   const { data: authSession } = useAuthSession();
   const session = authSession ?? sessionProp;
 
-  const [clock, setClock] = useState(() => new Date());
   const [showSettings, setShowSettings] = useState(false);
   const [step, setStep] = useState(1);
   const [selectedCollegeKey, setSelectedCollegeKey] = useState(null);
@@ -230,17 +229,57 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
   });
 
   const { data: eventBundle } = useGetCurrentEvent();
-  const currentEvent = eventBundle?.current ?? null;
+
+  const normEvStatus = (s) => String(s ?? "").trim().toLowerCase();
+
+  const ongoingEvents = useMemo(() => {
+    const list = Array.isArray(eventBundle?.ongoing) ? eventBundle.ongoing : [];
+    if (list.length > 0) return list;
+    const ce = eventBundle?.current;
+    const n = normEvStatus(ce?.status);
+    if (n === "ongoing" || n === "active") return ce ? [ce] : [];
+    return [];
+  }, [eventBundle]);
+
+  const [selectedOngoingEventId, setSelectedOngoingEventId] = useState(null);
+
+  useEffect(() => {
+    if (ongoingEvents.length === 0) {
+      setSelectedOngoingEventId(null);
+      return;
+    }
+    setSelectedOngoingEventId((prev) => {
+      if (
+        prev != null &&
+        ongoingEvents.some((e) => Number(e?.id) === Number(prev))
+      ) {
+        return prev;
+      }
+      return ongoingEvents[0]?.id ?? null;
+    });
+  }, [ongoingEvents]);
+
+  const displayEvent = useMemo(() => {
+    if (ongoingEvents.length > 0) {
+      const id = selectedOngoingEventId;
+      const match =
+        id != null
+          ? ongoingEvents.find((e) => Number(e?.id) === Number(id))
+          : null;
+      return match ?? ongoingEvents[0] ?? null;
+    }
+    return eventBundle?.current ?? null;
+  }, [ongoingEvents, selectedOngoingEventId, eventBundle]);
 
   const sidebarEventHeading = useMemo(() => {
-    if (!currentEvent) return "Current Event";
-    const s = String(currentEvent.status ?? "")
+    if (!displayEvent) return "Current Event";
+    const s = String(displayEvent.status ?? "")
       .trim()
       .toLowerCase();
     if (s === "active") return "Current Event";
     if (s === "upcoming") return "Upcoming Event";
     return "Current Event";
-  }, [currentEvent]);
+  }, [displayEvent]);
 
   const selectedCollege = useMemo(
     () => COLLEGES.find((c) => c.key === selectedCollegeKey) || null,
@@ -252,11 +291,6 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
       selectedCollege.courses.find((c) => c.key === selectedCourseKey) || null
     );
   }, [selectedCollege, selectedCourseKey]);
-
-  useEffect(() => {
-    const id = setInterval(() => setClock(new Date()), 30_000);
-    return () => clearInterval(id);
-  }, []);
 
   useEffect(() => {
     const key =
@@ -348,17 +382,6 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
     [],
   );
 
-  const dateStr = clock.toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-  const timeStr = clock.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-
   const canNextFrom1 = !!selectedCollegeKey;
   const canNextFrom2 = !!selectedCourseKey;
   const canNextFrom3 =
@@ -402,6 +425,7 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
     const payload = {
       studentId: details.studentId,
       attendanceKind: details.attendanceKind,
+      ...(displayEvent?.id != null ? { eventId: displayEvent.id } : {}),
     };
 
     console.log("[StudentTimeInOut] Submitting payload:", payload);
@@ -479,16 +503,16 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
             {sidebarEventHeading}
           </p>
           <div className="rounded-lg p-4 border border-white/20 bg-black/15 text-center">
-            {currentEvent ? (
+            {displayEvent ? (
               <>
                 <div className="text-sm font-semibold leading-snug">
-                  {currentEvent.name}
+                  {displayEvent.name}
                 </div>
                 <div className="mt-1.5 text-xs font-medium text-[#FFC90B]">
-                  {academicYearFromEventDate(currentEvent.date)}
+                  {academicYearFromEventDate(displayEvent.date)}
                 </div>
                 <div className="mt-1.5 text-[11px] text-green-100">
-                  {currentEvent.venue || "—"}
+                  {displayEvent.venue || "—"}
                 </div>
               </>
             ) : (
@@ -500,11 +524,6 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
               </>
             )}
           </div>
-        </div>
-
-        <div className="p-4 border-t border-white/15 shrink-0 text-center">
-          <p className="text-sm font-medium">{timeStr}</p>
-          <p className="text-xs text-green-200">{dateStr}</p>
         </div>
       </aside>
 
@@ -549,8 +568,30 @@ export default function StudentTimeInOut({ onLogout, session: sessionProp }) {
         </header>
 
         <main className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
+          {ongoingEvents.length > 1 && (
+            <div className="mb-4 rounded-lg border border-[#CCECCC] bg-white px-3 py-2.5">
+              <label className="block text-[11px] font-semibold text-gray-600 mb-1">
+                Which event are you attending?
+              </label>
+              <select
+                className={inputCls}
+                value={selectedOngoingEventId ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setSelectedOngoingEventId(v === "" ? null : Number(v));
+                }}
+              >
+                {ongoingEvents.map((ev) => (
+                  <option key={ev.id} value={ev.id}>
+                    {ev.name?.trim() ? ev.name : `Event #${ev.id}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="mb-4">
-            <EventSummaryStrip event={currentEvent} />
+            <EventSummaryStrip event={displayEvent} />
           </div>
 
           <div className="flex flex-wrap items-center gap-3 mb-6">

@@ -190,6 +190,7 @@ export default function Home() {
     const payload = {
       studentId,
       attendanceKind,
+      ...(selectedOngoingEvent?.id != null ? { eventId: selectedOngoingEvent.id } : {}),
       ...(useTestTime && (testTime || testDate)
         ? {
             ...(testTime ? { simulatedTapTime: testTime } : {}),
@@ -407,7 +408,7 @@ export default function Home() {
                 <span className="text-lg font-bold leading-none">×</span>
               </button>
             </div>
-            <div className="max-h-[70vh] overflow-y-auto p-4">
+            <div className="max-h-[70vh] overflow-y-auto p-4 [scrollbar-width:thin] [scrollbar-color:rgba(7,113,60,0.28)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#07713c]/30 [&::-webkit-scrollbar-thumb]:hover:bg-[#07713c]/40 [&::-webkit-scrollbar-track]:bg-transparent">
               <UpcomingEventsList
                 events={pagedUpcomingEvents}
                 isLoading={isCurrentEventLoading}

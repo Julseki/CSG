@@ -4,6 +4,8 @@ import { Pie } from "react-chartjs-2";
 import PaginationBar from "./PaginationBar";
 import SearchMagnifierIcon from "./SearchMagnifierIcon";
 import { useStudentDashboardDetail, useStudentDashboardList } from "../hooks/useStudentDashboard";
+import { useGovernorScope } from "../hooks/useGovernorScope";
+import { normalizeRoleKey } from "../utils/roles";
 import { formatEventDateForDisplay } from "../hooks/useGetEvents";
 
 void ChartJS;
@@ -120,12 +122,53 @@ export const ROSTER_COURSE_CATALOG = [
   },
 ];
 
+/** Course filter: all BSED tracks (Eng, Math, Filipino), excluding BEED — CEAS governor only. */
+const ROSTER_BSED_ALL_FILTER_VALUE = "BSED_ALL";
+
 function getRosterCourseRow(filterValue) {
   return ROSTER_COURSE_CATALOG.find((r) => r.filterValue === filterValue);
 }
 
 function getRosterCourseDisplayLabel(filterValue) {
+  if (filterValue === ROSTER_BSED_ALL_FILTER_VALUE) return "BSED (all majors)";
   return getRosterCourseRow(filterValue)?.label ?? String(filterValue ?? "—");
+}
+
+function rosterBsedAllOption() {
+  return {
+    id: "ceas-bsed-all-majors",
+    code: "BSED",
+    college: "College of Education, Arts and Sciences",
+    collegeCode: "CEAS",
+    label: "BSED — all majors (Eng, Math, Filipino)",
+    full: "Bachelor of Secondary Education (all majors)",
+    filterValue: ROSTER_BSED_ALL_FILTER_VALUE,
+  };
+}
+
+/** Insert “all BSED” before individual BSED rows when present. */
+function withCeasBsedAllCourseOption(catalog, enabled) {
+  if (!enabled || !catalog.length) return catalog;
+  if (!catalog.some((c) => c.code === "BSED")) return catalog;
+  const i = catalog.findIndex((c) => c.code === "BSED");
+  if (i < 0) return catalog;
+  const opt = rosterBsedAllOption();
+  return [...catalog.slice(0, i), opt, ...catalog.slice(i)];
+}
+
+function studentMatchesRosterCourseFilter(studentCourse, filterValue) {
+  if (filterValue === "all") return true;
+  if (filterValue === ROSTER_BSED_ALL_FILTER_VALUE) {
+    return getRosterCourseRow(studentCourse)?.code === "BSED";
+  }
+  return studentCourse === filterValue;
+}
+
+function getRosterYearLevel(student) {
+  const y = student?.yearLevel ?? student?.year_level;
+  if (y == null || y === "") return null;
+  const n = Number(y);
+  return Number.isFinite(n) ? n : null;
 }
 
 function downloadTextFile(filename, text, mime = "text/csv;charset=utf-8") {
@@ -147,11 +190,32 @@ const ROSTER_COLLEGE_FILTER_OPTIONS = [
   { value: "College of Business Administration", label: "CBA — College of Business Administration" },
 ];
 
+function normalizeGovernorCourseCodeKey(code) {
+  return String(code ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, "_");
+}
+
+/** Catalog rows for a governor's `courses` list (matches `ROSTER_COURSE_CATALOG.code`, case-insensitive). */
+function rosterCatalogEntriesForGovernorCourses(courseCodes) {
+  if (!Array.isArray(courseCodes) || !courseCodes.length) return [];
+  const wanted = new Set(courseCodes.map((c) => normalizeGovernorCourseCodeKey(c)));
+  return ROSTER_COURSE_CATALOG.filter((entry) => wanted.has(normalizeGovernorCourseCodeKey(entry.code)));
+}
+
+function rosterCollegeNamesForGovernorCourses(courseCodes) {
+  const rows = rosterCatalogEntriesForGovernorCourses(courseCodes);
+  return Array.from(new Set(rows.map((r) => r.college))).sort((a, b) => a.localeCompare(b));
+}
+
 function rosterCourseMatchesSearchQuery(student, qLower) {
   if (!qLower) return true;
   if (student.name.toLowerCase().includes(qLower)) return true;
   if (student.id.toLowerCase().includes(qLower)) return true;
   if (String(student.course ?? "").toLowerCase().includes(qLower)) return true;
+  const yl = getRosterYearLevel(student);
+  if (yl != null && String(yl).includes(qLower)) return true;
   const row = getRosterCourseRow(student.course);
   if (!row) return false;
   const blob = [row.label, row.full, row.major, row.code, row.filterValue].filter(Boolean).join(" ").toLowerCase();
@@ -217,8 +281,12 @@ function getEventFinePhp(ev) {
 
 function TimeSlot({ value }) {
   const v = String(value ?? "").trim();
-  if (v) return <span className="font-mono text-xs text-[#07713c]">{v}</span>;
-  return <span className="text-amber-700">No record</span>;
+  if (v) return <span className="text-xs text-[#07713c]">{v}</span>;
+  return (
+    <span className="text-xs font-medium text-amber-800">
+      No record
+    </span>
+  );
 }
 
 function getHistorySessionKey(ev) {
@@ -273,6 +341,8 @@ function matchesHistoryPeriodFilter(ev, periodFilter) {
 const ROSTER_PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
 
 export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
+  const { role, isGovernor, governorScope } = useGovernorScope();
+  const isCeasGovernor = normalizeRoleKey(role) === "ceas_governor";
   const { data: rosterList = [], isPending: rosterLoading, isError: rosterError } = useStudentDashboardList();
   const [selectedId, setSelectedId] = useState("");
   const { data: detailData } = useStudentDashboardDetail(selectedId);
@@ -281,6 +351,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
   const [search, setSearch] = useState("");
   const [rosterCourseFilter, setRosterCourseFilter] = useState("all");
   const [rosterCollegeFilter, setRosterCollegeFilter] = useState("all");
+  const [rosterYearLevelFilter, setRosterYearLevelFilter] = useState("all");
   const [rosterPage, setRosterPage] = useState(1);
   const [rosterPageSize, setRosterPageSize] = useState(10);
   const [historyPage, setHistoryPage] = useState(1);
@@ -294,12 +365,51 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
   const [exportSearch, setExportSearch] = useState("");
   const [exportCollegeFilter, setExportCollegeFilter] = useState("all");
   const [exportCourseFilter, setExportCourseFilter] = useState("all");
+  const [exportYearLevelFilter, setExportYearLevelFilter] = useState("all");
   const [exportStatusFilter, setExportStatusFilter] = useState("all");
 
   const openStudentDetailModal = (studentId) => {
     setSelectedId(studentId);
     setIsStudentDetailModalOpen(true);
   };
+
+  const governorCollegeNames = useMemo(() => {
+    if (!isGovernor || !governorScope?.courses?.length) return null;
+    return rosterCollegeNamesForGovernorCourses(governorScope.courses);
+  }, [isGovernor, governorScope]);
+
+  const rosterCollegeSelectOptions = useMemo(() => {
+    if (!isGovernor || !governorCollegeNames?.length) return ROSTER_COLLEGE_FILTER_OPTIONS;
+    return [
+      { value: "all", label: "All (my department)" },
+      ...ROSTER_COLLEGE_FILTER_OPTIONS.filter(
+        (o) => o.value !== "all" && governorCollegeNames.includes(o.value),
+      ),
+    ];
+  }, [isGovernor, governorCollegeNames]);
+
+  const showCollegeFilterSelect = !isGovernor || (governorCollegeNames && governorCollegeNames.length > 1);
+
+  useEffect(() => {
+    if (!isGovernor || governorCollegeNames?.length !== 1) return;
+    const only = governorCollegeNames[0];
+    setRosterCollegeFilter((prev) => (prev === only ? prev : only));
+    setExportCollegeFilter((prev) => (prev === only ? prev : only));
+  }, [isGovernor, governorCollegeNames]);
+
+  useEffect(() => {
+    if (!isGovernor || !governorCollegeNames || governorCollegeNames.length <= 1) return;
+    if (rosterCollegeFilter !== "all" && !governorCollegeNames.includes(rosterCollegeFilter)) {
+      setRosterCollegeFilter("all");
+    }
+  }, [isGovernor, governorCollegeNames, rosterCollegeFilter]);
+
+  useEffect(() => {
+    if (!isGovernor || !governorCollegeNames || governorCollegeNames.length <= 1) return;
+    if (exportCollegeFilter !== "all" && !governorCollegeNames.includes(exportCollegeFilter)) {
+      setExportCollegeFilter("all");
+    }
+  }, [isGovernor, governorCollegeNames, exportCollegeFilter]);
 
   useEffect(() => {
     const ms = 280;
@@ -331,27 +441,66 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
     };
   }, [studentDetail, rosterList, selectedId]);
 
+  const rosterYearLevelOptions = useMemo(() => {
+    const set = new Set();
+    for (const s of rosterList) {
+      const yl = getRosterYearLevel(s);
+      if (yl != null) set.add(yl);
+    }
+    return Array.from(set).sort((a, b) => a - b);
+  }, [rosterList]);
+
   const filteredRoster = useMemo(() => {
     const q = search.toLowerCase().trim();
     return rosterList.filter((s) => {
-      if (rosterCourseFilter !== "all" && s.course !== rosterCourseFilter) return false;
+      const college = getRosterCourseRow(s.course)?.college ?? "";
+      if (isGovernor && governorCollegeNames?.length) {
+        if (!governorCollegeNames.includes(college)) return false;
+      }
+      if (!studentMatchesRosterCourseFilter(s.course, rosterCourseFilter)) return false;
       if (rosterCollegeFilter !== "all") {
-        const college = getRosterCourseRow(s.course)?.college ?? "";
         if (college !== rosterCollegeFilter) return false;
+      }
+      if (rosterYearLevelFilter !== "all") {
+        const want = Number(rosterYearLevelFilter);
+        const yl = getRosterYearLevel(s);
+        if (!Number.isFinite(want) || yl !== want) return false;
       }
       return rosterCourseMatchesSearchQuery(s, q);
     });
-  }, [rosterList, search, rosterCourseFilter, rosterCollegeFilter]);
+  }, [
+    rosterList,
+    search,
+    rosterCourseFilter,
+    rosterCollegeFilter,
+    rosterYearLevelFilter,
+    isGovernor,
+    governorCollegeNames,
+  ]);
 
   const availableCourseOptions = useMemo(() => {
-    if (rosterCollegeFilter === "all") return ROSTER_COURSE_CATALOG;
-    return ROSTER_COURSE_CATALOG.filter((course) => course.college === rosterCollegeFilter);
-  }, [rosterCollegeFilter]);
+    let catalog = ROSTER_COURSE_CATALOG;
+    if (isGovernor && governorCollegeNames?.length) {
+      catalog = catalog.filter((c) => governorCollegeNames.includes(c.college));
+    }
+    if (rosterCollegeFilter === "all") {
+      return withCeasBsedAllCourseOption(catalog, isCeasGovernor);
+    }
+    const narrowed = catalog.filter((course) => course.college === rosterCollegeFilter);
+    return withCeasBsedAllCourseOption(narrowed, isCeasGovernor);
+  }, [isGovernor, governorCollegeNames, rosterCollegeFilter, isCeasGovernor]);
 
   const exportCourseOptions = useMemo(() => {
-    if (exportCollegeFilter === "all") return ROSTER_COURSE_CATALOG;
-    return ROSTER_COURSE_CATALOG.filter((course) => course.college === exportCollegeFilter);
-  }, [exportCollegeFilter]);
+    let catalog = ROSTER_COURSE_CATALOG;
+    if (isGovernor && governorCollegeNames?.length) {
+      catalog = catalog.filter((c) => governorCollegeNames.includes(c.college));
+    }
+    if (exportCollegeFilter === "all") {
+      return withCeasBsedAllCourseOption(catalog, isCeasGovernor);
+    }
+    const narrowed = catalog.filter((course) => course.college === exportCollegeFilter);
+    return withCeasBsedAllCourseOption(narrowed, isCeasGovernor);
+  }, [isGovernor, governorCollegeNames, exportCollegeFilter, isCeasGovernor]);
 
   const rosterTotal = filteredRoster.length;
   const rosterTotalPages = Math.max(1, Math.ceil(rosterTotal / rosterPageSize) || 1);
@@ -364,7 +513,14 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
 
   useEffect(() => {
     setRosterPage(1);
-  }, [search, rosterCourseFilter, rosterCollegeFilter]);
+  }, [search, rosterCourseFilter, rosterCollegeFilter, rosterYearLevelFilter]);
+
+  useEffect(() => {
+    if (rosterYearLevelFilter === "all") return;
+    if (!rosterYearLevelOptions.includes(Number(rosterYearLevelFilter))) {
+      setRosterYearLevelFilter("all");
+    }
+  }, [rosterYearLevelFilter, rosterYearLevelOptions]);
 
   useEffect(() => {
     if (rosterCourseFilter === "all") return;
@@ -379,8 +535,9 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
     setExportSearch(search);
     setExportCollegeFilter(rosterCollegeFilter);
     setExportCourseFilter(rosterCourseFilter);
+    setExportYearLevelFilter(rosterYearLevelFilter);
     setExportStatusFilter("all");
-  }, [exportOpen, search, rosterCollegeFilter, rosterCourseFilter]);
+  }, [exportOpen, search, rosterCollegeFilter, rosterCourseFilter, rosterYearLevelFilter]);
 
   useEffect(() => {
     if (!onRegisterExportOpen) return undefined;
@@ -397,6 +554,13 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
   }, [exportCourseFilter, exportCourseOptions]);
 
   useEffect(() => {
+    if (exportYearLevelFilter === "all") return;
+    if (!rosterYearLevelOptions.includes(Number(exportYearLevelFilter))) {
+      setExportYearLevelFilter("all");
+    }
+  }, [exportYearLevelFilter, rosterYearLevelOptions]);
+
+  useEffect(() => {
     const ids = new Set(filteredRoster.map((s) => s.id));
     if (!ids.has(selectedId) && filteredRoster.length > 0) {
       setSelectedId(filteredRoster[0].id);
@@ -409,30 +573,58 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
 
   const tier = student ? getActivityTier(student.attendanceRate) : getActivityTier(0);
   const showLowMsg = student && student.attendanceRate < 70;
+  const selectedStudentYearLevel = student ? getRosterYearLevel(student) : null;
 
   const exportFilteredRoster = useMemo(() => {
     const q = exportSearch.toLowerCase().trim();
     return rosterList.filter((s) => {
+      const college = getRosterCourseRow(s.course)?.college ?? "";
+      if (isGovernor && governorCollegeNames?.length) {
+        if (!governorCollegeNames.includes(college)) return false;
+      }
       if (exportCollegeFilter !== "all") {
-        const college = getRosterCourseRow(s.course)?.college ?? "";
         if (college !== exportCollegeFilter) return false;
       }
-      if (exportCourseFilter !== "all" && s.course !== exportCourseFilter) return false;
+      if (!studentMatchesRosterCourseFilter(s.course, exportCourseFilter)) return false;
+      if (exportYearLevelFilter !== "all") {
+        const want = Number(exportYearLevelFilter);
+        const yl = getRosterYearLevel(s);
+        if (!Number.isFinite(want) || yl !== want) return false;
+      }
       if (exportStatusFilter !== "all" && getActivityTier(s.attendanceRate).key !== exportStatusFilter) return false;
       return rosterCourseMatchesSearchQuery(s, q);
     });
-  }, [rosterList, exportSearch, exportCollegeFilter, exportCourseFilter, exportStatusFilter]);
+  }, [
+    rosterList,
+    exportSearch,
+    exportCollegeFilter,
+    exportCourseFilter,
+    exportYearLevelFilter,
+    exportStatusFilter,
+    isGovernor,
+    governorCollegeNames,
+  ]);
 
   const exportRosterCsv = () => {
-    const header = ["Student ID", "Student Name", "College", "Course", "Attendance Rate", "Status"];
+    const header = [
+      "Student ID",
+      "Student Name",
+      "College",
+      "Course",
+      "Year Level",
+      "Attendance Rate",
+      "Status",
+    ];
     const body = exportFilteredRoster.map((s) => {
       const status = getActivityTier(s.attendanceRate);
       const courseRow = getRosterCourseRow(s.course);
+      const yl = getRosterYearLevel(s);
       return [
         `"${s.id}"`,
         `"${String(s.name ?? "").replace(/"/g, '""')}"`,
         `"${String(courseRow?.college ?? "—").replace(/"/g, '""')}"`,
         `"${String(getRosterCourseDisplayLabel(s.course)).replace(/"/g, '""')}"`,
+        yl != null ? String(yl) : "—",
         `"${s.attendanceRate}%"`,
         `"${status.label}"`,
       ];
@@ -611,9 +803,9 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                   type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search name, ID, or course"
+                  placeholder="Search name, ID, course, or year level"
                   className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
-                  aria-label="Search students by name, ID, or course"
+                  aria-label="Search students by name, ID, course, or year level"
                 />
                 {search.trim() !== "" && (
                   <button
@@ -626,21 +818,23 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                   </button>
                 )}
               </div>
-              <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
-                Colleges
-                <select
-                  value={rosterCollegeFilter}
-                  onChange={(e) => setRosterCollegeFilter(e.target.value)}
-                  className="h-9 min-w-[12rem] rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
-                  aria-label="Filter by college"
-                >
-                  {ROSTER_COLLEGE_FILTER_OPTIONS.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {showCollegeFilterSelect && (
+                <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
+                  Colleges
+                  <select
+                    value={rosterCollegeFilter}
+                    onChange={(e) => setRosterCollegeFilter(e.target.value)}
+                    className="h-9 min-w-[12rem] rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
+                    aria-label="Filter by college"
+                  >
+                    {rosterCollegeSelectOptions.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
                 Course
                 <select
@@ -651,8 +845,24 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                 >
                   <option value="all">All courses</option>
                   {availableCourseOptions.map((c) => (
-                    <option key={c.id} value={c.filterValue}>
+                    <option key={c.filterValue} value={c.filterValue}>
                       {c.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
+                Year level
+                <select
+                  value={rosterYearLevelFilter}
+                  onChange={(e) => setRosterYearLevelFilter(e.target.value)}
+                  className="h-9 min-w-[9rem] rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
+                  aria-label="Filter by year level"
+                >
+                  <option value="all">All year levels</option>
+                  {rosterYearLevelOptions.map((yl) => (
+                    <option key={yl} value={String(yl)}>
+                      {yl}
                     </option>
                   ))}
                 </select>
@@ -678,12 +888,13 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
           </div>
         </div>
         <div className="overflow-x-auto rounded-lg border border-[#07713c]/20">
-          <table className="w-full min-w-[520px] text-sm">
+          <table className="w-full min-w-[600px] text-sm">
             <thead className="border-b border-[#07713c]/30 bg-[#07713c] text-xs font-semibold uppercase tracking-wide text-white">
               <tr>
                 <th className="px-3 py-2.5 text-left align-middle">Student ID</th>
                 <th className="px-3 py-2.5 text-left align-middle">Name</th>
                 <th className="px-3 py-2.5 text-left align-middle">Course</th>
+                <th className="min-w-[5rem] whitespace-nowrap px-3 py-2.5 text-center align-middle tabular-nums">Year level</th>
                 <th className="min-w-[5.5rem] whitespace-nowrap px-3 py-2.5 text-center align-middle tabular-nums">Attendance</th>
                 <th className="px-3 py-2.5 text-left align-middle">Status</th>
                 <th className="px-3 py-2.5 text-center align-middle">Select</th>
@@ -692,6 +903,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
             <tbody>
               {paginatedRoster.map((s) => {
                 const t = getActivityTier(s.attendanceRate);
+                const rowYl = getRosterYearLevel(s);
                 return (
                   <tr
                     key={s.id}
@@ -713,6 +925,9 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                     <td className="px-3 py-1.5 text-left font-medium leading-snug text-[#07713c]">{s.name}</td>
                     <td className="px-3 py-1.5 text-left font-medium leading-snug text-[#07713c]">
                       {getRosterCourseDisplayLabel(s.course)}
+                    </td>
+                    <td className="px-3 py-1.5 text-center tabular-nums leading-snug text-[#07713c]">
+                      {rowYl != null ? rowYl : "—"}
                     </td>
                     <td className="px-3 py-1.5 text-center tabular-nums font-semibold leading-snug text-[#07713c] whitespace-nowrap">
                       {s.attendanceRate}%
@@ -1120,7 +1335,9 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
               <p className="text-[11px] font-semibold uppercase tracking-wide text-[#07713c]/85">Selected student</p>
               <p className="mt-1 font-semibold text-[#07713c]">{student.name}</p>
               <p className="text-xs text-[#07713c]/85">
-                {student.id} · {getRosterCourseDisplayLabel(student.course)}
+                {[student.id, getRosterCourseDisplayLabel(student.course), ...(selectedStudentYearLevel != null ? [`Year ${selectedStudentYearLevel}`] : [])].join(
+                  " · ",
+                )}
               </p>
             </div>
             {student.totalEvents > 0 ? (
@@ -1155,13 +1372,17 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
           aria-label="Student details modal"
         >
           <div
-            className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+            className="flex max-h-[90vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between bg-[#07713c] px-5 py-3">
               <div>
                 <p className="text-xs uppercase tracking-wide text-white/80">Student details</p>
                 <h3 className="text-sm font-semibold text-white sm:text-base">{student.name}</h3>
+                <p className="mt-1 text-xs text-white/85">
+                  {student.id} · {getRosterCourseDisplayLabel(student.course)}
+                  {selectedStudentYearLevel != null ? ` · Year ${selectedStudentYearLevel}` : ""}
+                </p>
               </div>
               <button
                 type="button"
@@ -1172,9 +1393,8 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                 <span className="text-lg font-bold">×</span>
               </button>
             </div>
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 [scrollbar-width:thin] [scrollbar-color:rgba(7,113,60,0.28)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#07713c]/30 [&::-webkit-scrollbar-thumb]:hover:bg-[#07713c]/40 [&::-webkit-scrollbar-track]:bg-transparent sm:p-5">
               <section className="rounded-xl border border-[#07713c]/30 bg-white p-4 shadow-sm">
-                <h3 className="mb-3 text-sm font-semibold text-[#07713c]">1. Main summary</h3>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="rounded-lg border-2 border-[#07713c]/30 bg-[#07713c]/10 p-3 text-center">
                     <p className="text-xs font-medium uppercase tracking-wide text-[#07713c]">Attendance rate ⭐</p>
@@ -1529,7 +1749,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                     type="search"
                     value={exportSearch}
                     onChange={(e) => setExportSearch(e.target.value)}
-                    placeholder="Search name, ID, or course"
+                    placeholder="Search name, ID, course, or year level"
                     className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
                   />
                   {exportSearch.trim() !== "" && (
@@ -1544,20 +1764,22 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                   )}
                 </div>
               </label>
-              <label className="flex flex-col gap-1 text-xs text-[#07713c]">
-                College
-                <select
-                  value={exportCollegeFilter}
-                  onChange={(e) => setExportCollegeFilter(e.target.value)}
-                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
-                >
-                  {ROSTER_COLLEGE_FILTER_OPTIONS.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {showCollegeFilterSelect && (
+                <label className="flex flex-col gap-1 text-xs text-[#07713c]">
+                  College
+                  <select
+                    value={exportCollegeFilter}
+                    onChange={(e) => setExportCollegeFilter(e.target.value)}
+                    className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                  >
+                    {rosterCollegeSelectOptions.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <label className="flex flex-col gap-1 text-xs text-[#07713c]">
                 Course
                 <select
@@ -1567,8 +1789,23 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                 >
                   <option value="all">All courses</option>
                   {exportCourseOptions.map((c) => (
-                    <option key={c.id} value={c.filterValue}>
+                    <option key={c.filterValue} value={c.filterValue}>
                       {c.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-[#07713c] sm:col-span-2">
+                Year level
+                <select
+                  value={exportYearLevelFilter}
+                  onChange={(e) => setExportYearLevelFilter(e.target.value)}
+                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                >
+                  <option value="all">All year levels</option>
+                  {rosterYearLevelOptions.map((yl) => (
+                    <option key={yl} value={String(yl)}>
+                      {yl}
                     </option>
                   ))}
                 </select>
@@ -1607,6 +1844,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                   setExportSearch(search);
                   setExportCollegeFilter(rosterCollegeFilter);
                   setExportCourseFilter(rosterCourseFilter);
+                  setExportYearLevelFilter(rosterYearLevelFilter);
                   setExportStatusFilter("all");
                 }}
                 className="w-full rounded-lg border border-[#07713c]/30 px-4 py-2 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/8"
