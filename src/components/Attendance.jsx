@@ -10,8 +10,9 @@ import { canOpenCreateUser, getDashboardRoleLabel } from "../utils/roles";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { useAttendancePageEvents } from "../hooks/useAttendancePageEvents";
 import { fetchAttendancePageEventDetail, useAttendancePageEventDetail } from "../hooks/useAttendancePageEventDetail";
-import { formatEventDateForDisplay } from "../hooks/useGetEvents";
+import { formatEventDateForDisplay, formatSqlTimeForDisplay } from "../hooks/useGetEvents";
 import { formatDurationForEventsListWithSessionHint } from "../utils/eventDurationDisplay";
+import { formatGraceDurationLabel } from "../utils/eventTimeOptions";
 import { getAudienceScopeLabel } from "../utils/eventAudienceLabel";
 
 void ChartJS;
@@ -101,6 +102,32 @@ function getStudentActivityTag(studentStatus, studentId) {
 
 function getEventSessionType(event) {
   return event?.sessionType || "whole_day";
+}
+
+/** Times + late grace from attendance detail API (snake_case) or mapped camelCase. */
+function eventTimingFromDetail(ev) {
+  if (!ev || typeof ev !== "object") return null;
+  return {
+    amIn: ev.am_time_in ?? ev.amTimeIn ?? null,
+    amOut: ev.am_time_out ?? ev.amTimeOut ?? null,
+    pmIn: ev.pm_time_in ?? ev.pmTimeIn ?? null,
+    pmOut: ev.pm_time_out ?? ev.pmTimeOut ?? null,
+    amGraceIn: ev.am_grace_in ?? ev.amGraceInMinutes ?? null,
+    pmGraceIn: ev.pm_grace_in ?? ev.pmGraceInMinutes ?? null,
+  };
+}
+
+function sessionRangeLabel(startRaw, endRaw) {
+  const start = formatSqlTimeForDisplay(startRaw);
+  const end = formatSqlTimeForDisplay(endRaw);
+  if (!start && !end) return null;
+  return `${start ?? "—"}–${end ?? "—"}`;
+}
+
+function eventAudienceNotesLabel(ev) {
+  const raw = ev?.audience_notes ?? ev?.audienceNotes;
+  if (raw == null || String(raw).trim() === "") return "—";
+  return String(raw).trim();
 }
 
 function getStudentSessionRecord(student, event) {
@@ -240,6 +267,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
   const [exportAllCourse, setExportAllCourse] = useState("all");
   const [studentListPageSize, setStudentListPageSize] = useState(10);
   const [studentListPage, setStudentListPage] = useState(1);
+  const [selectedStudentId, setSelectedStudentId] = useState(null);
   const isStudentListPath = Boolean(detailEventId) && location.pathname.endsWith("/students");
   const exportEventDetailId = exportAllEventId === "all" ? null : exportAllEventId;
   const { data: exportDetailFromApi } = useAttendancePageEventDetail(exportEventDetailId, {
@@ -249,6 +277,10 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
   useEffect(() => {
     setDetailEventId(eventId || null);
   }, [eventId]);
+
+  useEffect(() => {
+    setSelectedStudentId(null);
+  }, [detailEventId]);
 
   const filtered = useMemo(() => {
     return events.filter((ev) => {
@@ -286,26 +318,51 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
     return events.find((e) => String(e.id) === String(detailEventId)) ?? null;
   }, [detailEventId, detailFromApi, events]);
   const detailEventMeta = detailEvent
-    ? {
-        sessionType: getEventSessionType(detailEvent),
-        hasAmSession: getEventSessionType(detailEvent) === "whole_day" || getEventSessionType(detailEvent) === "am",
-        hasPmSession: getEventSessionType(detailEvent) === "whole_day" || getEventSessionType(detailEvent) === "pm",
-        type: "Mandatory",
-        requiresRegistration: "No",
-        audience: getAudienceScopeLabel(detailEvent),
-        duration: formatDurationForEventsListWithSessionHint(detailEvent),
-        scheduleAm:
-          getEventSessionType(detailEvent) === "whole_day" || getEventSessionType(detailEvent) === "am"
-            ? "6:00 AM - 11:45 AM (late in 15m)"
-            : null,
-        schedulePm:
-          getEventSessionType(detailEvent) === "whole_day" || getEventSessionType(detailEvent) === "pm"
-            ? "1:00 PM - 5:00 PM (late in 15m)"
-            : null,
-        lateAmIn: getEventSessionType(detailEvent) === "whole_day" || getEventSessionType(detailEvent) === "am" ? 15 : null,
-        latePmIn: getEventSessionType(detailEvent) === "whole_day" || getEventSessionType(detailEvent) === "pm" ? 15 : null,
-        notes: detailEvent.status === "upcoming" ? "No attendance recorded yet." : "Attendance records available.",
-      }
+    ? (() => {
+        const sessionType = getEventSessionType(detailEvent);
+        const hasAmSession = sessionType === "whole_day" || sessionType === "am";
+        const hasPmSession = sessionType === "whole_day" || sessionType === "pm";
+        const timing = eventTimingFromDetail(detailEvent);
+        const amRange = hasAmSession && timing ? sessionRangeLabel(timing.amIn, timing.amOut) : null;
+        const pmRange = hasPmSession && timing ? sessionRangeLabel(timing.pmIn, timing.pmOut) : null;
+
+        const rawAmG = timing?.amGraceIn;
+        const rawPmG = timing?.pmGraceIn;
+        const lateAmIn =
+          hasAmSession && rawAmG != null && rawAmG !== "" && Number.isFinite(Number(rawAmG))
+            ? Math.max(0, Number(rawAmG))
+            : null;
+        const latePmIn =
+          hasPmSession && rawPmG != null && rawPmG !== "" && Number.isFinite(Number(rawPmG))
+            ? Math.max(0, Number(rawPmG))
+            : null;
+
+        const scheduleAm =
+          amRange && lateAmIn != null
+            ? `${amRange} (late in ${formatGraceDurationLabel(lateAmIn)})`
+            : amRange;
+        const schedulePm =
+          pmRange && latePmIn != null
+            ? `${pmRange} (late in ${formatGraceDurationLabel(latePmIn)})`
+            : pmRange;
+
+        return {
+          sessionType,
+          hasAmSession,
+          hasPmSession,
+          type: "Mandatory",
+          requiresRegistration: "No",
+          audience: getAudienceScopeLabel(detailEvent),
+          duration: formatDurationForEventsListWithSessionHint(detailEvent),
+          scheduleAmRange: amRange,
+          schedulePmRange: pmRange,
+          scheduleAm,
+          schedulePm,
+          lateAmIn,
+          latePmIn,
+          notes: eventAudienceNotesLabel(detailEvent),
+        };
+      })()
     : null;
 
   const filteredStudentList = useMemo(() => {
@@ -1068,8 +1125,21 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                         const isNoRecordAttendance = detailEvent.status === "upcoming";
                         const isAttended = s.status === "attended";
                         const rowYearLevel = getYearLevel(s);
+                        const rowSelected = String(selectedStudentId) === String(s.id);
                         return (
-                          <tr key={s.id}>
+                          <tr
+                            key={s.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setSelectedStudentId(s.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setSelectedStudentId(s.id);
+                              }
+                            }}
+                            className={`cursor-pointer transition-colors ${rowSelected ? "bg-[#07713c]/12" : ""}`}
+                          >
                             <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center font-medium text-[#07713c]">
                               {String(s.id).toUpperCase()}
                             </td>
@@ -1216,18 +1286,28 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                     <p className="mt-0.5 text-base font-semibold text-[#07713c]">{formatEventDateForDisplay(detailEvent.date)}</p>
                   </div>
                   <div className="mt-4 space-y-4 text-sm">
-                    {detailEventMeta.scheduleAm && (
+                    {detailEventMeta.scheduleAmRange && (
                       <div className="rounded-lg border border-[#07713c]/20 bg-[#07713c]/5 p-3">
                         <p className="font-semibold text-[#07713c]">AM Session</p>
-                        <p className="mt-1 text-[#07713c]">{detailEventMeta.scheduleAm.split(" (")[0]}</p>
-                        <p className="mt-1 text-xs text-[#07713c]">Late in: {detailEventMeta.lateAmIn} mins</p>
+                        <p className="mt-1 text-[#07713c]">{detailEventMeta.scheduleAmRange}</p>
+                        <p className="mt-1 text-xs text-[#07713c]">
+                          Late in:{" "}
+                          {detailEventMeta.lateAmIn != null
+                            ? formatGraceDurationLabel(detailEventMeta.lateAmIn)
+                            : "—"}
+                        </p>
                       </div>
                     )}
-                    {detailEventMeta.schedulePm && (
+                    {detailEventMeta.schedulePmRange && (
                       <div className="rounded-lg border border-[#07713c]/20 bg-[#07713c]/5 p-3">
                         <p className="font-semibold text-[#07713c]">PM Session</p>
-                        <p className="mt-1 text-[#07713c]">{detailEventMeta.schedulePm.split(" (")[0]}</p>
-                        <p className="mt-1 text-xs text-[#07713c]">Late in: {detailEventMeta.latePmIn} mins</p>
+                        <p className="mt-1 text-[#07713c]">{detailEventMeta.schedulePmRange}</p>
+                        <p className="mt-1 text-xs text-[#07713c]">
+                          Late in:{" "}
+                          {detailEventMeta.latePmIn != null
+                            ? formatGraceDurationLabel(detailEventMeta.latePmIn)
+                            : "—"}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -1260,22 +1340,20 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                   <h4 className="text-lg font-semibold text-[#07713c]">Late thresholds</h4>
                   <div className="mt-4 grid grid-cols-2 gap-3">
                     {detailEventMeta.lateAmIn != null && (
-                      <>
-                        <div>
-                          <p className="text-sm text-[#07713c]">AM late in</p>
-                          <p className="text-4xl font-semibold text-[#07713c]">{detailEventMeta.lateAmIn}</p>
-                          <p className="text-sm text-[#07713c]">mins</p>
-                        </div>
-                      </>
+                      <div>
+                        <p className="text-sm text-[#07713c]">AM late in</p>
+                        <p className="text-2xl font-semibold leading-tight text-[#07713c] sm:text-3xl">
+                          {formatGraceDurationLabel(detailEventMeta.lateAmIn)}
+                        </p>
+                      </div>
                     )}
                     {detailEventMeta.latePmIn != null && (
-                      <>
-                        <div>
-                          <p className="text-sm text-[#07713c]">PM late in</p>
-                          <p className="text-4xl font-semibold text-[#07713c]">{detailEventMeta.latePmIn}</p>
-                          <p className="text-sm text-[#07713c]">mins</p>
-                        </div>
-                      </>
+                      <div>
+                        <p className="text-sm text-[#07713c]">PM late in</p>
+                        <p className="text-2xl font-semibold leading-tight text-[#07713c] sm:text-3xl">
+                          {formatGraceDurationLabel(detailEventMeta.latePmIn)}
+                        </p>
+                      </div>
                     )}
                   </div>
                   <div className="mt-4 grid grid-cols-1 gap-3 border-t border-[#07713c]/20 pt-4 sm:grid-cols-2">
@@ -1285,7 +1363,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                     </div>
                     <div className="sm:col-span-2">
                       <p className="text-sm text-[#07713c]">Notes</p>
-                      <p className="text-xl font-semibold text-[#07713c]">{detailEventMeta.notes}</p>
+                      <p className="whitespace-pre-wrap text-xl font-semibold text-[#07713c]">{detailEventMeta.notes}</p>
                     </div>
                   </div>
                 </div>
@@ -1383,19 +1461,30 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                     <th className="px-4 py-2.5 text-right align-middle tabular-nums">Absent</th>
                     <th className="px-4 py-2.5 text-right align-middle tabular-nums">Rate</th>
                     <th className="px-4 py-2.5 text-right align-middle tabular-nums">Fines</th>
-                    <th className="px-4 py-2.5 text-center align-middle">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={10} className="px-4 py-8 text-center text-sm text-[#07713c]">
+                      <td colSpan={9} className="px-4 py-8 text-center text-sm text-[#07713c]">
                         No events match the current filters.
                       </td>
                     </tr>
                   )}
                   {paginatedFiltered.map((ev) => (
-                    <tr key={ev.id} className="border-t border-[#07713c]/20 hover:bg-[#07713c]/10">
+                    <tr
+                      key={ev.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openEventDetails(ev.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openEventDetails(ev.id);
+                        }
+                      }}
+                      className="cursor-pointer border-t border-[#07713c]/20 hover:bg-[#07713c]/10"
+                    >
                       <td className="px-4 py-2.5 font-medium text-[#07713c]">{ev.name}</td>
                       <td className="px-4 py-2.5 font-medium text-[#07713c]">
                         {formatEventDateForDisplay(ev.date)}
@@ -1420,15 +1509,6 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                       </td>
                       <td className="px-4 py-2.5 text-right font-medium text-red-600">
                         {formatPhp(ev.finePerAbsence ?? MOCK_FINE_PER_ABSENCE_PHP)}
-                      </td>
-                      <td className="px-4 py-2.5 text-center">
-                        <button
-                          type="button"
-                          onClick={() => openEventDetails(ev.id)}
-                          className="rounded-md bg-[#07713c] px-2.5 py-1 text-xs font-medium text-white hover:brightness-95"
-                        >
-                          View
-                        </button>
                       </td>
                     </tr>
                   ))}
@@ -1521,24 +1601,40 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                 </div>
                 <div className="rounded-lg bg-[#07713c]/5 p-2">
                   <p className="text-xs text-[#07713c]">Schedule</p>
-                  <p className="font-medium">AM</p>
-                  <p className="text-xs text-[#07713c]">{detailEventMeta.scheduleAm}</p>
-                  <p className="mt-1 font-medium">PM</p>
-                  <p className="text-xs text-[#07713c]">{detailEventMeta.schedulePm}</p>
+                  {detailEventMeta.hasAmSession && (
+                    <>
+                      <p className="font-medium">AM</p>
+                      <p className="text-xs text-[#07713c]">{detailEventMeta.scheduleAm ?? "—"}</p>
+                    </>
+                  )}
+                  {detailEventMeta.hasPmSession && (
+                    <>
+                      <p className={detailEventMeta.hasAmSession ? "mt-1 font-medium" : "font-medium"}>PM</p>
+                      <p className="text-xs text-[#07713c]">{detailEventMeta.schedulePm ?? "—"}</p>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
 
             <div className="mt-3 rounded-lg border border-[#07713c]/30 p-3">
-              <h4 className="text-sm font-semibold text-[#07713c]">Late (minutes)</h4>
+              <h4 className="text-sm font-semibold text-[#07713c]">Late (time in)</h4>
               <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                 <div className="rounded-lg bg-[#07713c]/5 p-2">
                   <p className="text-xs text-[#07713c]">AM late in</p>
-                  <p className="font-medium">{detailEventMeta.lateAmIn} mins</p>
+                  <p className="font-medium">
+                    {detailEventMeta.lateAmIn != null
+                      ? formatGraceDurationLabel(detailEventMeta.lateAmIn)
+                      : "—"}
+                  </p>
                 </div>
                 <div className="rounded-lg bg-[#07713c]/5 p-2">
                   <p className="text-xs text-[#07713c]">PM late in</p>
-                  <p className="font-medium">{detailEventMeta.latePmIn} mins</p>
+                  <p className="font-medium">
+                    {detailEventMeta.latePmIn != null
+                      ? formatGraceDurationLabel(detailEventMeta.latePmIn)
+                      : "—"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -1552,7 +1648,7 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
                 </div>
                 <div className="rounded-lg bg-[#07713c]/5 p-2">
                   <p className="text-xs text-[#07713c]">Notes</p>
-                  <p className="font-medium">{detailEventMeta.notes}</p>
+                  <p className="whitespace-pre-wrap font-medium">{detailEventMeta.notes}</p>
                 </div>
               </div>
             </div>
