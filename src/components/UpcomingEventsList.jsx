@@ -57,10 +57,7 @@ export default function UpcomingEventsList({
                   <span className="font-semibold text-[#07713c]">Session:</span>{" "}
                   {ev.duration || "—"}
                 </p>
-                <p className="truncate">
-                  <span className="font-semibold text-[#07713c]">Venue:</span>{" "}
-                  {ev.venue || "—"}
-                </p>
+                <p className="truncate text-[#07713c]/85">{ev.venue || "—"}</p>
                 <p className="truncate sm:col-span-2">
                   <span className="font-semibold text-[#07713c]">Schedule:</span>{" "}
                   {ev.timeSlots || "—"}

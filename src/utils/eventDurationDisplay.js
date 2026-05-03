@@ -15,10 +15,14 @@ function slotPresent(inVal, outVal) {
 function inferHalfDayFromTimeSlots(ev) {
   const ts = String(ev?.timeSlots ?? "").trim();
   if (!ts) return null;
-  const hasAmTag = /(^|[,，]\s*)AM\s*:/i.test(ts);
-  const hasPmTag = /(^|[,，]\s*)PM\s*:/i.test(ts);
+  const hasAmTag = /(^|[,，\n]\s*)AM\s*:/i.test(ts);
+  const hasPmTag = /(^|[,，\n]\s*)PM\s*:/i.test(ts);
   if (hasAmTag && !hasPmTag) return "am_only";
   if (hasPmTag && !hasAmTag) return "pm_only";
+  const onlyAmTimes = /\d{1,2}:\d{2}\s*AM/i.test(ts) && !/\d{1,2}:\d{2}\s*PM/i.test(ts);
+  const onlyPmTimes = /\d{1,2}:\d{2}\s*PM/i.test(ts) && !/\d{1,2}:\d{2}\s*AM/i.test(ts);
+  if (onlyAmTimes && !onlyPmTimes) return "am_only";
+  if (onlyPmTimes && !onlyAmTimes) return "pm_only";
   return null;
 }
 

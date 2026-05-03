@@ -18,7 +18,12 @@ import {
 import {
   AM_SESSION_TIME_OPTIONS,
   EVENT_TIME_SELECT_CLASS,
+  GRACE_HOUR_OPTIONS,
+  GRACE_MINUTE_OPTIONS,
   PM_SESSION_TIME_OPTIONS,
+  formatGraceDurationLabel,
+  graceTotalMinutes,
+  splitGraceTotalMinutes,
   sqlTimeToSessionSelectValue,
   twelveHourLabelToSqlTime,
 } from "../utils/eventTimeOptions";
@@ -130,9 +135,6 @@ function getEventScheduleFields(ev) {
   };
 }
 
-const scheduleInputClass =
-  "w-full max-w-[11rem] rounded-lg border border-[#07713c]/40 bg-white px-2 py-1.5 text-left text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15";
-
 function EventModalSchedule({ ev, readOnly, onPatch }) {
   const { sessionFilter } = resolveEventDurationUi(ev);
   const s = getEventScheduleFields(ev);
@@ -171,23 +173,68 @@ function EventModalSchedule({ ev, readOnly, onPatch }) {
               <p className="mb-2 text-xs font-medium text-[#07713c]">AM Session</p>
               <div className="space-y-3 text-sm">
                 <div className="grid grid-cols-1 gap-3 text-left sm:grid-cols-2 sm:gap-4">
-                  <div className="flex w-full min-w-0 flex-col gap-1.5 text-left">
-                    <span className="text-xs font-medium text-[#07713c]/85">Time in</span>
-                    <select
-                      className={EVENT_TIME_SELECT_CLASS}
-                      value={sqlTimeToSessionSelectValue(ev.am_time_in ?? ev.amTimeIn, "am")}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        onPatch({ am_time_in: v ? twelveHourLabelToSqlTime(v) : null });
-                      }}
-                    >
-                      <option value="">Select time</option>
-                      {AM_SESSION_TIME_OPTIONS.map((timeOption) => (
-                        <option key={`am-in-${timeOption}`} value={timeOption}>
-                          {timeOption}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="flex min-w-0 flex-col gap-3 text-left">
+                    <div className="flex min-w-0 flex-col gap-1.5">
+                      <span className="text-xs font-medium text-[#07713c]/85">Time in</span>
+                      <select
+                        className={EVENT_TIME_SELECT_CLASS}
+                        value={sqlTimeToSessionSelectValue(ev.am_time_in ?? ev.amTimeIn, "am")}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          onPatch({ am_time_in: v ? twelveHourLabelToSqlTime(v) : null });
+                        }}
+                      >
+                        <option value="">Select time</option>
+                        {AM_SESSION_TIME_OPTIONS.map((timeOption) => (
+                          <option key={`am-in-${timeOption}`} value={timeOption}>
+                            {timeOption}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex min-w-0 flex-col gap-1.5">
+                      <span className="text-xs font-medium text-[#07713c]/85">Late — time in</span>
+                      <div className="grid w-full min-w-0 grid-cols-2 gap-2">
+                        <div className="min-w-0">
+                          <span className="mb-1 block text-[11px] font-medium text-[#07713c]/75">Hour(s)</span>
+                          <select
+                            className="w-full min-w-0 cursor-pointer rounded-lg border border-[#07713c]/40 bg-white px-2 py-1.5 text-left text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
+                            value={splitGraceTotalMinutes(gAmIn ?? 0).hours}
+                            onChange={(e) => {
+                              const h = Number(e.target.value);
+                              const { minutes } = splitGraceTotalMinutes(gAmIn ?? 0);
+                              const v = graceTotalMinutes(h, minutes);
+                              onPatch({ amGraceInMinutes: v, am_grace_in: v });
+                            }}
+                          >
+                            {GRACE_HOUR_OPTIONS.map((h) => (
+                              <option key={`edit-am-grace-h-${h}`} value={h}>
+                                {h}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="min-w-0">
+                          <span className="mb-1 block text-[11px] font-medium text-[#07713c]/75">Minutes</span>
+                          <select
+                            className="w-full min-w-0 cursor-pointer rounded-lg border border-[#07713c]/40 bg-white px-2 py-1.5 text-left text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
+                            value={splitGraceTotalMinutes(gAmIn ?? 0).minutes}
+                            onChange={(e) => {
+                              const m = Number(e.target.value);
+                              const { hours } = splitGraceTotalMinutes(gAmIn ?? 0);
+                              const v = graceTotalMinutes(hours, m);
+                              onPatch({ amGraceInMinutes: v, am_grace_in: v });
+                            }}
+                          >
+                            {GRACE_MINUTE_OPTIONS.map((m) => (
+                              <option key={`edit-am-grace-m-${m}`} value={m}>
+                                {String(m).padStart(2, "0")}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                   <div className="flex w-full min-w-0 flex-col gap-1.5 text-left">
                     <span className="text-xs font-medium text-[#07713c]/85">Time out</span>
@@ -208,19 +255,6 @@ function EventModalSchedule({ ev, readOnly, onPatch }) {
                     </select>
                   </div>
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-[#07713c]/85">Late — time in (minutes)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    className={`${scheduleInputClass} max-w-xs`}
-                    value={gAmIn ?? ""}
-                    onChange={(e) => {
-                      const v = e.target.value === "" ? 0 : Math.max(0, Number(e.target.value));
-                      onPatch({ amGraceInMinutes: v, am_grace_in: v });
-                    }}
-                  />
-                </div>
               </div>
             </div>
           )}
@@ -229,23 +263,68 @@ function EventModalSchedule({ ev, readOnly, onPatch }) {
               <p className="mb-2 text-xs font-medium text-[#07713c]">PM Session</p>
               <div className="space-y-3 text-sm">
                 <div className="grid grid-cols-1 gap-3 text-left sm:grid-cols-2 sm:gap-4">
-                  <div className="flex w-full min-w-0 flex-col gap-1.5 text-left">
-                    <span className="text-xs font-medium text-[#07713c]/85">Time in</span>
-                    <select
-                      className={EVENT_TIME_SELECT_CLASS}
-                      value={sqlTimeToSessionSelectValue(ev.pm_time_in ?? ev.pmTimeIn, "pm")}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        onPatch({ pm_time_in: v ? twelveHourLabelToSqlTime(v) : null });
-                      }}
-                    >
-                      <option value="">Select time</option>
-                      {PM_SESSION_TIME_OPTIONS.map((timeOption) => (
-                        <option key={`pm-in-${timeOption}`} value={timeOption}>
-                          {timeOption}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="flex min-w-0 flex-col gap-3 text-left">
+                    <div className="flex min-w-0 flex-col gap-1.5">
+                      <span className="text-xs font-medium text-[#07713c]/85">Time in</span>
+                      <select
+                        className={EVENT_TIME_SELECT_CLASS}
+                        value={sqlTimeToSessionSelectValue(ev.pm_time_in ?? ev.pmTimeIn, "pm")}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          onPatch({ pm_time_in: v ? twelveHourLabelToSqlTime(v) : null });
+                        }}
+                      >
+                        <option value="">Select time</option>
+                        {PM_SESSION_TIME_OPTIONS.map((timeOption) => (
+                          <option key={`pm-in-${timeOption}`} value={timeOption}>
+                            {timeOption}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex min-w-0 flex-col gap-1.5">
+                      <span className="text-xs font-medium text-[#07713c]/85">Late — time in</span>
+                      <div className="grid w-full min-w-0 grid-cols-2 gap-2">
+                        <div className="min-w-0">
+                          <span className="mb-1 block text-[11px] font-medium text-[#07713c]/75">Hour(s)</span>
+                          <select
+                            className="w-full min-w-0 cursor-pointer rounded-lg border border-[#07713c]/40 bg-white px-2 py-1.5 text-left text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
+                            value={splitGraceTotalMinutes(gPmIn ?? 0).hours}
+                            onChange={(e) => {
+                              const h = Number(e.target.value);
+                              const { minutes } = splitGraceTotalMinutes(gPmIn ?? 0);
+                              const v = graceTotalMinutes(h, minutes);
+                              onPatch({ pmGraceInMinutes: v, pm_grace_in: v });
+                            }}
+                          >
+                            {GRACE_HOUR_OPTIONS.map((h) => (
+                              <option key={`edit-pm-grace-h-${h}`} value={h}>
+                                {h}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="min-w-0">
+                          <span className="mb-1 block text-[11px] font-medium text-[#07713c]/75">Minutes</span>
+                          <select
+                            className="w-full min-w-0 cursor-pointer rounded-lg border border-[#07713c]/40 bg-white px-2 py-1.5 text-left text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
+                            value={splitGraceTotalMinutes(gPmIn ?? 0).minutes}
+                            onChange={(e) => {
+                              const m = Number(e.target.value);
+                              const { hours } = splitGraceTotalMinutes(gPmIn ?? 0);
+                              const v = graceTotalMinutes(hours, m);
+                              onPatch({ pmGraceInMinutes: v, pm_grace_in: v });
+                            }}
+                          >
+                            {GRACE_MINUTE_OPTIONS.map((m) => (
+                              <option key={`edit-pm-grace-m-${m}`} value={m}>
+                                {String(m).padStart(2, "0")}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                   <div className="flex w-full min-w-0 flex-col gap-1.5 text-left">
                     <span className="text-xs font-medium text-[#07713c]/85">Time out</span>
@@ -265,19 +344,6 @@ function EventModalSchedule({ ev, readOnly, onPatch }) {
                       ))}
                     </select>
                   </div>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-[#07713c]/85">Late — time in (minutes)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    className={`${scheduleInputClass} max-w-xs`}
-                    value={gPmIn ?? ""}
-                    onChange={(e) => {
-                      const v = e.target.value === "" ? 0 : Math.max(0, Number(e.target.value));
-                      onPatch({ pmGraceInMinutes: v, pm_grace_in: v });
-                    }}
-                  />
                 </div>
               </div>
             </div>
@@ -308,7 +374,10 @@ function EventModalSchedule({ ev, readOnly, onPatch }) {
             <div className="text-sm">
               {row("Time in", s.amIn)}
               {row("Time out", s.amOut)}
-              {row("Late — time in", s.amGraceIn != null ? `${s.amGraceIn} min` : null)}
+              {row(
+                "Late — time in",
+                s.amGraceIn != null ? formatGraceDurationLabel(s.amGraceIn) : null,
+              )}
             </div>
           </div>
         )}
@@ -318,7 +387,10 @@ function EventModalSchedule({ ev, readOnly, onPatch }) {
             <div className="text-sm">
               {row("Time in", s.pmIn)}
               {row("Time out", s.pmOut)}
-              {row("Late — time in", s.pmGraceIn != null ? `${s.pmGraceIn} min` : null)}
+              {row(
+                "Late — time in",
+                s.pmGraceIn != null ? formatGraceDurationLabel(s.pmGraceIn) : null,
+              )}
             </div>
           </div>
         )}

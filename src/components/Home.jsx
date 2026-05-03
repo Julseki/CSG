@@ -123,9 +123,7 @@ export default function Home() {
     const raw = String(selectedOngoingEvent?.timeSlots ?? "").trim();
     if (!raw) return "—";
     return raw
-      .replace(/\s*,\s*(?=(AM|PM):)/gi, "\n")
-      .replace(/,\s*out\s*\d+m/gi, "")
-      .replace(/\(\s*late\s+in\s*(\d+m)\s*\)/gi, "(late in $1)")
+      .replace(/\s*,\s*(?=\d{1,2}:\d{2}\s*(?:AM|PM))/gi, "\n")
       .trim();
   }, [selectedOngoingEvent]);
   const totalUpcomingPages = Math.max(
@@ -235,7 +233,7 @@ export default function Home() {
                 </span>
               </p>
               <p className="mt-2 text-2xl sm:text-3xl font-bold text-gray-900">{selectedOngoingEvent?.name || "—"}</p>
-              <p className="mt-2 text-lg font-medium text-gray-700">Venue: {selectedOngoingEvent?.venue || "—"}</p>
+              <p className="mt-2 text-lg font-medium text-gray-700">{selectedOngoingEvent?.venue || "—"}</p>
               <p className="mt-1 whitespace-pre-line text-lg font-medium text-gray-700">{ongoingEventTimeDisplay}</p>
               <p className="mt-3 text-xl sm:text-2xl font-bold text-[#07713c]">Status: {selectedOngoingEvent?.status || "Ongoing"}</p>
             </button>

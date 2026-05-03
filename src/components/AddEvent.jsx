@@ -2,7 +2,14 @@ import { useEffect, useState } from "react";
 import { useAddevent } from "../hooks/useAddevent";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { isCsgPresident } from "../utils/roles";
-import { AM_SESSION_TIME_OPTIONS, PM_SESSION_TIME_OPTIONS } from "../utils/eventTimeOptions";
+import {
+  AM_SESSION_TIME_OPTIONS,
+  PM_SESSION_TIME_OPTIONS,
+  GRACE_HOUR_OPTIONS,
+  GRACE_MINUTE_OPTIONS,
+  graceTotalMinutes,
+  formatGraceDurationLabel,
+} from "../utils/eventTimeOptions";
 
 /** Must match `CEAS_GOVERNOR_ALL_PROGRAMS_SENTINEL` in event-tracking-api `event.controller.ts`. */
 const CEAS_GOVERNOR_ALL_PROGRAMS_SENTINEL = "__CEAS_GOVERNOR_ALL_PROGRAMS__";
@@ -26,10 +33,12 @@ export default function AddEvent({ onBack, onNext }) {
   const [duration, setDuration] = useState("whole"); // whole | half
   const [amTimeIn, setAmTimeIn] = useState("");
   const [amTimeOut, setAmTimeOut] = useState("");
-  const [amGraceInMinutes, setAmGraceInMinutes] = useState(15);
+  const [amGraceHours, setAmGraceHours] = useState(1);
+  const [amGraceMinutes, setAmGraceMinutes] = useState(30);
   const [pmTimeIn, setPmTimeIn] = useState("");
   const [pmTimeOut, setPmTimeOut] = useState("");
-  const [pmGraceInMinutes, setPmGraceInMinutes] = useState(15);
+  const [pmGraceHours, setPmGraceHours] = useState(1);
+  const [pmGraceMinutes, setPmGraceMinutes] = useState(30);
   const [errors, setErrors] = useState({});
   const [yearLevel, setYearLevel] = useState("All Year Levels");
   const [department, setDepartment] = useState("All Departments");
@@ -110,13 +119,11 @@ export default function AddEvent({ onBack, onNext }) {
     if (duration === "whole" || (duration === "half" && useAmHalf)) {
       if (!amTimeIn) e.amTimeIn = "AM Time In is required";
       if (!amTimeOut) e.amTimeOut = "AM Time Out is required";
-      if (amGraceInMinutes == null || Number(amGraceInMinutes) < 0) e.amGraceInMinutes = "AM Time In late must be 0 or more";
     }
 
     if (duration === "whole" || (duration === "half" && usePmHalf)) {
       if (!pmTimeIn) e.pmTimeIn = "PM Time In is required";
       if (!pmTimeOut) e.pmTimeOut = "PM Time Out is required";
-      if (pmGraceInMinutes == null || Number(pmGraceInMinutes) < 0) e.pmGraceInMinutes = "PM Time In late must be 0 or more";
     }
 
     setErrors(e);
@@ -135,11 +142,14 @@ export default function AddEvent({ onBack, onNext }) {
     const useAm = duration === "whole" || (duration === "half" && useAmHalf);
     const usePm = duration === "whole" || (duration === "half" && usePmHalf);
 
+    const amGraceInMinutes = graceTotalMinutes(amGraceHours, amGraceMinutes);
+    const pmGraceInMinutes = graceTotalMinutes(pmGraceHours, pmGraceMinutes);
+
     if (useAm && (amTimeIn || amTimeOut)) {
-      slots.push(`AM: ${amTimeIn || "N/A"}-${amTimeOut || "N/A"}`);
+      slots.push(`${amTimeIn || "N/A"} - ${amTimeOut || "N/A"}`);
     }
     if (usePm && (pmTimeIn || pmTimeOut)) {
-      slots.push(`PM: ${pmTimeIn || "N/A"}-${pmTimeOut || "N/A"}`);
+      slots.push(`${pmTimeIn || "N/A"} - ${pmTimeOut || "N/A"}`);
     }
 
     return {
@@ -152,9 +162,9 @@ export default function AddEvent({ onBack, onNext }) {
       reg: 0,
       attRate: null,
       fine: fineAmount === "" ? null : Number(fineAmount),
-      amGraceInMinutes: Number(amGraceInMinutes) || 0,
+      amGraceInMinutes,
       amGraceOutMinutes: 0,
-      pmGraceInMinutes: Number(pmGraceInMinutes) || 0,
+      pmGraceInMinutes,
       pmGraceOutMinutes: 0,
       status: "Upcoming",
     };
@@ -422,27 +432,74 @@ export default function AddEvent({ onBack, onNext }) {
             <div className="rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] p-4">
               <h3 className="text-sm font-semibold text-[#07713c] mb-4">Am Session - Time In / Out</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-[#07713c]">Time In</label>
-                  <div className="flex gap-2">
-                    <select
-                      value={amTimeIn}
-                      onChange={(e) => {
-                        setAmTimeIn(e.target.value);
-                        setErrors((prev) => ({ ...prev, amTimeIn: null }));
-                      }}
-                      className={`flex-1 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.amTimeIn ? "border-red-500" : "border-gray-300"}`}
-                    >
-                      <option value="">Select time</option>
-                      {AM_SESSION_TIME_OPTIONS.map((timeOption) => (
-                        <option key={`am-in-${timeOption}`} value={timeOption}>
-                          {timeOption}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="flex items-center px-2 text-[#07713c]/60">🕐</span>
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-[#07713c]">Time In</label>
+                    <div className="flex gap-2">
+                      <select
+                        value={amTimeIn}
+                        onChange={(e) => {
+                          setAmTimeIn(e.target.value);
+                          setErrors((prev) => ({ ...prev, amTimeIn: null }));
+                        }}
+                        className={`flex-1 min-w-0 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.amTimeIn ? "border-red-500" : "border-gray-300"}`}
+                      >
+                        <option value="">Select time</option>
+                        {AM_SESSION_TIME_OPTIONS.map((timeOption) => (
+                          <option key={`am-in-${timeOption}`} value={timeOption}>
+                            {timeOption}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="flex shrink-0 items-center px-2 text-[#07713c]/60">🕐</span>
+                    </div>
+                    {errors.amTimeIn && <p className="text-xs text-red-600 mt-1">{errors.amTimeIn}</p>}
                   </div>
-                  {errors.amTimeIn && <p className="text-xs text-red-600 mt-1">{errors.amTimeIn}</p>}
+                  <div>
+                    <span className="mb-1 block text-xs font-medium text-[#07713c]">Late — Time In</span>
+                    <div className="flex gap-2">
+                      <div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
+                        <div className="min-w-0">
+                          <label className="mb-1 block text-[11px] font-medium text-[#07713c]/80">Hour(s)</label>
+                          <select
+                            value={amGraceHours}
+                            onChange={(e) => {
+                              setAmGraceHours(Number(e.target.value));
+                              setErrors((prev) => ({ ...prev, amGraceInMinutes: null }));
+                            }}
+                            className={`w-full min-w-0 px-3 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.amGraceInMinutes ? "border-red-500" : "border-gray-300"}`}
+                          >
+                            {GRACE_HOUR_OPTIONS.map((h) => (
+                              <option key={`am-grace-h-${h}`} value={h}>
+                                {h}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="min-w-0">
+                          <label className="mb-1 block text-[11px] font-medium text-[#07713c]/80">Minutes</label>
+                          <select
+                            value={amGraceMinutes}
+                            onChange={(e) => {
+                              setAmGraceMinutes(Number(e.target.value));
+                              setErrors((prev) => ({ ...prev, amGraceInMinutes: null }));
+                            }}
+                            className={`w-full min-w-0 px-3 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.amGraceInMinutes ? "border-red-500" : "border-gray-300"}`}
+                          >
+                            {GRACE_MINUTE_OPTIONS.map((m) => (
+                              <option key={`am-grace-m-${m}`} value={m}>
+                                {String(m).padStart(2, "0")}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <span className="flex shrink-0 items-center self-end px-2 pb-2 text-[#07713c]/60 select-none" aria-hidden>
+                        🕐
+                      </span>
+                    </div>
+                    {errors.amGraceInMinutes && <p className="text-xs text-red-600 mt-1">{errors.amGraceInMinutes}</p>}
+                  </div>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-[#07713c]">Time Out</label>
@@ -453,7 +510,7 @@ export default function AddEvent({ onBack, onNext }) {
                         setAmTimeOut(e.target.value);
                         setErrors((prev) => ({ ...prev, amTimeOut: null }));
                       }}
-                      className={`flex-1 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.amTimeOut ? "border-red-500" : "border-gray-300"}`}
+                      className={`flex-1 min-w-0 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.amTimeOut ? "border-red-500" : "border-gray-300"}`}
                     >
                       <option value="">Select time</option>
                       {AM_SESSION_TIME_OPTIONS.map((timeOption) => (
@@ -462,26 +519,9 @@ export default function AddEvent({ onBack, onNext }) {
                         </option>
                       ))}
                     </select>
-                    <span className="flex items-center px-2 text-[#07713c]/60">🕐</span>
+                    <span className="flex shrink-0 items-center px-2 text-[#07713c]/60">🕐</span>
                   </div>
                   {errors.amTimeOut && <p className="text-xs text-red-600 mt-1">{errors.amTimeOut}</p>}
-                </div>
-                <div className="md:col-span-2">
-                  <label className="mb-1 block text-xs font-medium text-[#07713c]">Late — Time In (minutes)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    onWheel={preventNumberScrollChange}
-                    value={amGraceInMinutes}
-                    onChange={(e) => {
-                      setAmGraceInMinutes(e.target.value === "" ? 0 : Number(e.target.value));
-                      setErrors((prev) => ({ ...prev, amGraceInMinutes: null }));
-                    }}
-                    className={`w-full max-w-xs px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.amGraceInMinutes ? "border-red-500" : "border-gray-300"}`}
-                    placeholder="e.g. 15"
-                  />
-                  {errors.amGraceInMinutes && <p className="text-xs text-red-600 mt-1">{errors.amGraceInMinutes}</p>}
                 </div>
               </div>
             </div>
@@ -492,27 +532,74 @@ export default function AddEvent({ onBack, onNext }) {
             <div className="rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] p-4">
               <h3 className="text-sm font-semibold text-[#07713c] mb-4">Pm Session - Time In / Out</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-[#07713c]">Time In</label>
-                  <div className="flex gap-2">
-                    <select
-                      value={pmTimeIn}
-                      onChange={(e) => {
-                        setPmTimeIn(e.target.value);
-                        setErrors((prev) => ({ ...prev, pmTimeIn: null }));
-                      }}
-                      className={`flex-1 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.pmTimeIn ? "border-red-500" : "border-gray-300"}`}
-                    >
-                      <option value="">Select time</option>
-                      {PM_SESSION_TIME_OPTIONS.map((timeOption) => (
-                        <option key={`pm-in-${timeOption}`} value={timeOption}>
-                          {timeOption}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="flex items-center px-2 text-[#07713c]/60">🕐</span>
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-[#07713c]">Time In</label>
+                    <div className="flex gap-2">
+                      <select
+                        value={pmTimeIn}
+                        onChange={(e) => {
+                          setPmTimeIn(e.target.value);
+                          setErrors((prev) => ({ ...prev, pmTimeIn: null }));
+                        }}
+                        className={`flex-1 min-w-0 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.pmTimeIn ? "border-red-500" : "border-gray-300"}`}
+                      >
+                        <option value="">Select time</option>
+                        {PM_SESSION_TIME_OPTIONS.map((timeOption) => (
+                          <option key={`pm-in-${timeOption}`} value={timeOption}>
+                            {timeOption}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="flex shrink-0 items-center px-2 text-[#07713c]/60">🕐</span>
+                    </div>
+                    {errors.pmTimeIn && <p className="text-xs text-red-600 mt-1">{errors.pmTimeIn}</p>}
                   </div>
-                  {errors.pmTimeIn && <p className="text-xs text-red-600 mt-1">{errors.pmTimeIn}</p>}
+                  <div>
+                    <span className="mb-1 block text-xs font-medium text-[#07713c]">Late — Time In</span>
+                    <div className="flex gap-2">
+                      <div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
+                        <div className="min-w-0">
+                          <label className="mb-1 block text-[11px] font-medium text-[#07713c]/80">Hour(s)</label>
+                          <select
+                            value={pmGraceHours}
+                            onChange={(e) => {
+                              setPmGraceHours(Number(e.target.value));
+                              setErrors((prev) => ({ ...prev, pmGraceInMinutes: null }));
+                            }}
+                            className={`w-full min-w-0 px-3 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.pmGraceInMinutes ? "border-red-500" : "border-gray-300"}`}
+                          >
+                            {GRACE_HOUR_OPTIONS.map((h) => (
+                              <option key={`pm-grace-h-${h}`} value={h}>
+                                {h}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="min-w-0">
+                          <label className="mb-1 block text-[11px] font-medium text-[#07713c]/80">Minutes</label>
+                          <select
+                            value={pmGraceMinutes}
+                            onChange={(e) => {
+                              setPmGraceMinutes(Number(e.target.value));
+                              setErrors((prev) => ({ ...prev, pmGraceInMinutes: null }));
+                            }}
+                            className={`w-full min-w-0 px-3 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.pmGraceInMinutes ? "border-red-500" : "border-gray-300"}`}
+                          >
+                            {GRACE_MINUTE_OPTIONS.map((m) => (
+                              <option key={`pm-grace-m-${m}`} value={m}>
+                                {String(m).padStart(2, "0")}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <span className="flex shrink-0 items-center self-end px-2 pb-2 text-[#07713c]/60 select-none" aria-hidden>
+                        🕐
+                      </span>
+                    </div>
+                    {errors.pmGraceInMinutes && <p className="text-xs text-red-600 mt-1">{errors.pmGraceInMinutes}</p>}
+                  </div>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-[#07713c]">Time Out</label>
@@ -523,7 +610,7 @@ export default function AddEvent({ onBack, onNext }) {
                         setPmTimeOut(e.target.value);
                         setErrors((prev) => ({ ...prev, pmTimeOut: null }));
                       }}
-                      className={`flex-1 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.pmTimeOut ? "border-red-500" : "border-gray-300"}`}
+                      className={`flex-1 min-w-0 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.pmTimeOut ? "border-red-500" : "border-gray-300"}`}
                     >
                       <option value="">Select time</option>
                       {PM_SESSION_TIME_OPTIONS.map((timeOption) => (
@@ -532,26 +619,9 @@ export default function AddEvent({ onBack, onNext }) {
                         </option>
                       ))}
                     </select>
-                    <span className="flex items-center px-2 text-[#07713c]/60">🕐</span>
+                    <span className="flex shrink-0 items-center px-2 text-[#07713c]/60">🕐</span>
                   </div>
                   {errors.pmTimeOut && <p className="text-xs text-red-600 mt-1">{errors.pmTimeOut}</p>}
-                </div>
-                <div className="md:col-span-2">
-                  <label className="mb-1 block text-xs font-medium text-[#07713c]">Late — Time In (minutes)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    onWheel={preventNumberScrollChange}
-                    value={pmGraceInMinutes}
-                    onChange={(e) => {
-                      setPmGraceInMinutes(e.target.value === "" ? 0 : Number(e.target.value));
-                      setErrors((prev) => ({ ...prev, pmGraceInMinutes: null }));
-                    }}
-                    className={`w-full max-w-xs px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.pmGraceInMinutes ? "border-red-500" : "border-gray-300"}`}
-                    placeholder="e.g. 15"
-                  />
-                  {errors.pmGraceInMinutes && <p className="text-xs text-red-600 mt-1">{errors.pmGraceInMinutes}</p>}
                 </div>
               </div>
             </div>
@@ -691,7 +761,7 @@ export default function AddEvent({ onBack, onNext }) {
           <p className="font-semibold mb-1">AM Session</p>
           <p>Time In: {amTimeIn || "-"}</p>
           <p>Time Out: {amTimeOut || "-"}</p>
-          <p>Late — Time In: {amGraceInMinutes ?? 0} mins</p>
+          <p>Late — Time In: {formatGraceDurationLabel(graceTotalMinutes(amGraceHours, amGraceMinutes))}</p>
         </div>
       )}
 
@@ -701,7 +771,7 @@ export default function AddEvent({ onBack, onNext }) {
           <p className="font-semibold mb-1">PM Session</p>
           <p>Time In: {pmTimeIn || "-"}</p>
           <p>Time Out: {pmTimeOut || "-"}</p>
-          <p>Late — Time In: {pmGraceInMinutes ?? 0} mins</p>
+          <p>Late — Time In: {formatGraceDurationLabel(graceTotalMinutes(pmGraceHours, pmGraceMinutes))}</p>
         </div>
       )}
 

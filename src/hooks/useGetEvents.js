@@ -3,6 +3,7 @@ import api from "../api/axiosInstance";
 import { useAuthSession } from "./auth";
 import { getRoleFromSession, seesInstitutionWideEventData } from "../utils/roles";
 import { normalizeEvAudiences } from "../utils/eventAudienceLabel";
+import { formatGraceDurationLabel } from "../utils/eventTimeOptions";
 
 /** Prefix for React Query; scope suffix: all departments vs department governors only. */
 export const EVENTS_QUERY_KEY = ["events", "list"];
@@ -133,14 +134,10 @@ function scheduleSlotLabel(startRaw, endRaw) {
   return `${start ?? "—"}–${end ?? "—"}`;
 }
 
-function graceLabel(inMinutes, outMinutes) {
+function graceLabel(inMinutes, _outMinutes) {
   const inVal = inMinutes != null && inMinutes !== "" ? Number(inMinutes) : null;
-  const outVal = outMinutes != null && outMinutes !== "" ? Number(outMinutes) : null;
-  if (!(Number.isFinite(inVal) || Number.isFinite(outVal))) return "";
-  const parts = [];
-  if (Number.isFinite(inVal)) parts.push(`in ${inVal}m`);
-  if (Number.isFinite(outVal)) parts.push(`out ${outVal}m`);
-  return parts.length ? ` (late ${parts.join(", ")})` : "";
+  if (!Number.isFinite(inVal)) return "";
+  return ` (late in ${formatGraceDurationLabel(inVal)})`;
 }
 
 /**
@@ -165,9 +162,9 @@ export function mapServerEventToDisplay(raw) {
 
   const slots = [];
   const amLabel = scheduleSlotLabel(amIn, amOut);
-  if (amLabel) slots.push(`AM: ${amLabel}${graceLabel(amGraceIn, amGraceOut)}`);
+  if (amLabel) slots.push(`${amLabel}${graceLabel(amGraceIn, amGraceOut)}`);
   const pmLabel = scheduleSlotLabel(pmIn, pmOut);
-  if (pmLabel) slots.push(`PM: ${pmLabel}${graceLabel(pmGraceIn, pmGraceOut)}`);
+  if (pmLabel) slots.push(`${pmLabel}${graceLabel(pmGraceIn, pmGraceOut)}`);
 
   const timeSlots =
     raw.time_slots ??

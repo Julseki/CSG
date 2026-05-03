@@ -9,13 +9,21 @@ export function formatTime12FromTotalMinutes(totalMinutes) {
   return `${hour12}:${String(minute).padStart(2, "0")} ${period}`;
 }
 
-export const AM_SESSION_TIME_OPTIONS = (() => {
-  const options = [];
+/** Minute-of-day marks for AM session dropdown (6:00 AM … 11:59 AM). */
+export const AM_SESSION_MINUTE_MARKS = (() => {
+  const marks = [];
   for (let m = 6 * 60; m <= 11 * 60 + 45; m += 15) {
-    options.push(formatTime12FromTotalMinutes(m));
+    marks.push(m);
   }
-  return options;
+  for (const m of [11 * 60 + 50, 11 * 60 + 55, 11 * 60 + 59]) {
+    marks.push(m);
+  }
+  return marks;
 })();
+
+export const AM_SESSION_TIME_OPTIONS = AM_SESSION_MINUTE_MARKS.map((m) =>
+  formatTime12FromTotalMinutes(m),
+);
 
 export const PM_SESSION_TIME_OPTIONS = (() => {
   const options = [];
@@ -40,17 +48,63 @@ function parseSqlToMinutes(sql) {
 }
 
 /**
- * Backend SQL time → dropdown value (snaps to 15 min within AM/PM session window).
+ * Backend SQL time → dropdown value (AM: snap to nearest allowed mark up to 11:59 AM; PM: 15 min steps).
  */
 export function sqlTimeToSessionSelectValue(sql, session) {
   const minM = session === "am" ? 6 * 60 : 12 * 60;
-  const maxM = session === "am" ? 11 * 60 + 45 : 18 * 60;
+  const maxM = session === "am" ? 11 * 60 + 59 : 18 * 60;
   const mins = parseSqlToMinutes(sql);
   if (mins == null) return "";
   let clamped = Math.max(minM, Math.min(maxM, mins));
+  if (session === "am") {
+    let nearest = AM_SESSION_MINUTE_MARKS[0];
+    let best = Infinity;
+    for (const mark of AM_SESSION_MINUTE_MARKS) {
+      const d = Math.abs(clamped - mark);
+      if (d < best) {
+        best = d;
+        nearest = mark;
+      }
+    }
+    return formatTime12FromTotalMinutes(nearest);
+  }
   clamped = Math.round(clamped / 15) * 15;
   clamped = Math.max(minM, Math.min(maxM, clamped));
   return formatTime12FromTotalMinutes(clamped);
+}
+
+/** Late grace: hour part (0–12). */
+export const GRACE_HOUR_OPTIONS = Array.from({ length: 13 }, (_, i) => i);
+
+/** Late grace: minute part (0–59). */
+export const GRACE_MINUTE_OPTIONS = Array.from({ length: 60 }, (_, i) => i);
+
+/** Combine hour + minute dropdowns → total minutes for `am_grace_in` / `pm_grace_in`. */
+export function graceTotalMinutes(hours, minutes) {
+  const h = Math.max(0, Math.min(12, Number(hours) || 0));
+  const m = Math.max(0, Math.min(59, Number(minutes) || 0));
+  return h * 60 + m;
+}
+
+const GRACE_MAX_TOTAL_MINUTES = 12 * 60 + 59;
+
+/** Stored API minutes → hour/minute parts for dropdowns (capped at 12h 59m). */
+export function splitGraceTotalMinutes(total) {
+  const t = Math.max(0, Math.floor(Number(total) || 0));
+  const capped = Math.min(t, GRACE_MAX_TOTAL_MINUTES);
+  const hours = Math.floor(capped / 60);
+  const minutes = capped % 60;
+  return { hours, minutes };
+}
+
+/** Human-readable grace for confirm screen (e.g. "1 hr 15 mins", "45 mins"). */
+export function formatGraceDurationLabel(totalMinutes) {
+  const n = Math.max(0, Math.floor(Number(totalMinutes) || 0));
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  if (h === 0) return `${m} min${m === 1 ? "" : "s"}`;
+  if (m === 0) return `${h} hr${h === 1 ? "" : "s"}`;
+  return `${h} hr${h === 1 ? "" : "s"} ${m} min${m === 1 ? "" : "s"}`;
 }
 
 /** "8:00 AM" → `HH:MM:SS` for API / mapper */

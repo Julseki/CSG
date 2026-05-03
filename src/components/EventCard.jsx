@@ -113,26 +113,45 @@ function graceMins(v) {
   return Number.isFinite(n) ? `${n} mins` : "—";
 }
 
-/** Splits `timeSlots` on commas that start a new AM/PM slot (keeps parenthetical late-window text intact). */
+/**
+ * Splits `timeSlots` into AM/PM rows: newline, legacy `AM:/PM:` comma, or comma before next clock time.
+ */
 function parseScheduleSlots(timeSlots) {
   if (!timeSlots || typeof timeSlots !== "string") return [];
   const t = timeSlots.trim();
   if (!t) return [];
-  return t
-    .split(/\s*,\s*(?=(?:AM|PM):)/i)
-    .map((p) => p.trim())
-    .filter(Boolean);
+  if (/\n/.test(t)) {
+    return t.split(/\n/).map((p) => p.trim()).filter(Boolean);
+  }
+  const legacy = t.split(/\s*,\s*(?=(?:AM|PM):)/i).map((p) => p.trim()).filter(Boolean);
+  if (legacy.length > 1 || (legacy.length === 1 && /^(AM|PM):/i.test(legacy[0]))) {
+    return legacy;
+  }
+  return t.split(/\s*,\s*(?=\d{1,2}:\d{2}\s*(?:AM|PM))/i).map((p) => p.trim()).filter(Boolean);
 }
 
 function parsePeriodRangeFromTimeSlots(timeSlots, period) {
-  const line = parseScheduleSlots(timeSlots).find((s) => s.toUpperCase().startsWith(`${period}:`));
+  const lines = parseScheduleSlots(timeSlots);
+  const p = period.toUpperCase();
+  let line =
+    p === "PM"
+      ? lines.find((s) => /\d{1,2}:\d{2}\s*PM/i.test(s))
+      : lines.find((s) => /\d{1,2}:\d{2}\s*AM/i.test(s));
+  if (!line && lines.length >= 2) {
+    line = p === "AM" ? lines[0] : lines[1];
+  }
+  if (!line) {
+    line = lines.find((s) => s.toUpperCase().startsWith(`${p}:`));
+  }
   if (!line) return { start: "—", end: "—" };
   const withoutPrefix = line.replace(/^(AM|PM):\s*/i, "").trim();
   const clean = withoutPrefix.split(/\s*\(.*$/)[0].trim();
-  const [startRaw, endRaw] = clean.split(/\s*-\s*/);
+  const parts = clean.split(/\s*[–−-]\s*/);
+  const startRaw = parts[0]?.trim() || "—";
+  const endRaw = parts[1]?.trim() || "—";
   return {
-    start: startRaw?.trim() || "—",
-    end: endRaw?.trim() || "—",
+    start: startRaw,
+    end: endRaw,
   };
 }
 
