@@ -4,7 +4,7 @@ import { Line } from "react-chartjs-2";
 import SidebarNavIcon from "./SidebarNavIcon";
 import UserCircleIcon from "./UserCircleIcon";
 import { useGovernorScope } from "../hooks/useGovernorScope";
-import { canOpenCreateUser, getDashboardRoleLabel } from "../utils/roles";
+import { getDashboardRoleLabel } from "../utils/roles";
 import { formatDateTimeShort, formatEventDateForDisplay, formatSqlTimeForDisplay } from "../hooks/useGetEvents";
 import PaginationBar from "./PaginationBar";
 import SearchMagnifierIcon from "./SearchMagnifierIcon";
@@ -170,7 +170,7 @@ function buildReceiptHtml(receipt, logoUrl) {
 </html>`;
 }
 
-export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpen, onLogout }) {
+export default function Payments({ onNavigate, onLogout }) {
   const { role, isGovernor, governorScope } = useGovernorScope();
   const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
   const { data: paymentRowsFromApi = [], isLoading: isPaymentsLoading, isError: isPaymentsError } = useGetPayments();
@@ -671,6 +671,7 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
             { id: "attendance_students", label: "Students" },
             { id: "payment", label: "Payments" },
             { id: "events", label: "Manage Event" },
+            ...(role === "admin" ? [{ id: "import", label: "Import" }, { id: "users", label: "Users" }] : []),
           ].map((item) => (
             <button
               key={item.id}
@@ -684,33 +685,6 @@ export default function Payments({ onNavigate, onOpenCreateUser, isCreateUserOpe
               {item.label}
             </button>
           ))}
-          {canOpenCreateUser(isGovernor, role) && (
-            <button
-              type="button"
-              onClick={() => onOpenCreateUser?.()}
-              className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left text-sm font-semibold text-white transition-colors ${
-                isCreateUserOpen ? "bg-white/15 hover:bg-white/25" : "bg-transparent hover:bg-white/15"
-              }`}
-            >
-              <span className="text-base">＋</span>
-              Create User
-            </button>
-          )}
-          <div className="pt-4">
-            <p className="px-4 text-xs font-medium text-green-200 uppercase tracking-wider">Reports</p>
-            <button type="button" className="w-full px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-white/15">
-              Export
-            </button>
-            <button type="button" className="w-full px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-white/15">
-              Import
-            </button>
-            <button type="button" className="w-full px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-white/15">
-              <span className="flex items-center gap-2">
-                <span>Settings</span>
-                <span className="inline-flex items-center rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold text-white">{roleLabel}</span>
-              </span>
-            </button>
-          </div>
         </nav>
       </aside>
 

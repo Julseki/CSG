@@ -48,10 +48,10 @@ export default function LoginDashboard({ onLoginSuccess }) {
 
         <div className="relative z-10 w-full max-w-6xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row">
           {/* Left side - marketing / features */}
-          <section className="md:w-1/2 bg-green-700 text-white relative overflow-hidden">
+          <section className="md:w-1/2 bg-[#07713c] text-white relative overflow-hidden">
             {/* Decorative circles */}
-            <div className="absolute -left-10 -top-10 w-40 h-40 border-4 border-green-500 rounded-full opacity-40" />
-            <div className="absolute -right-20 bottom-0 w-56 h-56 border-4 border-green-500 rounded-full opacity-40" />
+            <div className="absolute -left-10 -top-10 w-40 h-40 border border-[#055a2e] rounded-full opacity-40" />
+            <div className="absolute -right-20 bottom-0 w-56 h-56 border border-[#055a2e] rounded-full opacity-40" />
 
             <div className="relative z-10 h-full flex flex-col justify-center items-center px-8 sm:px-10 py-8 sm:py-10 space-y-8 sm:space-y-10 text-center">
               <div className="space-y-6 w-full max-w-md">
@@ -61,13 +61,12 @@ export default function LoginDashboard({ onLoginSuccess }) {
                   <h1 className="text-2xl sm:text-3xl font-semibold">
                     Real-Time Attendance
                   </h1>
-                  <p className="text-sm text-green-100">
+                  <p className="text-sm text-white/85">
                     Track time in &amp; time out live for every student and
                     staff member.
                   </p>
                 </div>
               </div>
-
               <div className="space-y-6 w-full max-w-md text-left">
                 <FeatureItem
                   icon="🕒"
@@ -102,7 +101,7 @@ export default function LoginDashboard({ onLoginSuccess }) {
           <section className="md:w-1/2 bg-gray-50">
             <div className="h-full px-8 sm:px-12 py-8 sm:py-10 flex flex-col justify-center">
               <div className="space-y-2 mb-8">
-                <p className="text-xs uppercase tracking-[0.2em] text-green-600">
+                <p className="text-xs uppercase tracking-[0.2em] text-[#07713c]">
                   Welcome Back
                 </p>
                 <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900">
@@ -125,7 +124,7 @@ export default function LoginDashboard({ onLoginSuccess }) {
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full rounded-full border border-green-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="w-full rounded-full border border-[#07713c]/40 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-[#07713c]"
                   />
                 </div>
 
@@ -138,12 +137,12 @@ export default function LoginDashboard({ onLoginSuccess }) {
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full rounded-full border border-green-300 bg-white px-4 py-2.5 pr-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      className="w-full rounded-full border border-[#07713c]/40 bg-white px-4 py-2.5 pr-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-[#07713c]"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword((prev) => !prev)}
-                      className="absolute inset-y-0 right-3 flex items-center text-green-600 hover:text-green-700 text-xs"
+                      className="absolute inset-y-0 right-3 flex items-center text-[#07713c] hover:text-[#055a2e] text-xs"
                     >
                       {showPassword ? "Hide" : "Show"}
                     </button>
@@ -153,7 +152,7 @@ export default function LoginDashboard({ onLoginSuccess }) {
                 <button
                   type="submit"
                   disabled={signInLoading}
-                  className="w-full rounded-full bg-green-600 hover:bg-green-700 disabled:opacity-70 text-white text-sm font-medium py-2.5 mt-2 transition-colors duration-150"
+                  className="w-full rounded-full bg-[#07713c] hover:bg-[#055a2e] disabled:opacity-70 text-white text-sm font-medium py-2.5 mt-2 transition-colors duration-150"
                 >
                   {signInLoading ? "Signing in…" : "Sign In"}
                 </button>
@@ -162,7 +161,7 @@ export default function LoginDashboard({ onLoginSuccess }) {
               <div className="mt-4 flex justify-between items-center text-xs">
                 <button
                   type="button"
-                  className="text-green-600 hover:text-green-700 font-medium"
+                  className="text-[#07713c] hover:text-[#055a2e] font-medium"
                 >
                   Forgot password?
                 </button>
@@ -181,12 +180,12 @@ export default function LoginDashboard({ onLoginSuccess }) {
 function FeatureItem({ icon, title, description }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-green-600/80 text-lg">
+      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#055a2e]/80 text-lg">
         <span>{icon}</span>
       </div>
       <div>
         <p className="text-sm font-medium">{title}</p>
-        <p className="text-xs text-green-100">{description}</p>
+        <p className="text-xs text-white/85">{description}</p>
       </div>
     </div>
   );

@@ -6,7 +6,7 @@ import PaginationBar from "./PaginationBar";
 import SearchMagnifierIcon from "./SearchMagnifierIcon";
 import SidebarNavIcon from "./SidebarNavIcon";
 import UserCircleIcon from "./UserCircleIcon";
-import { canOpenCreateUser, getDashboardRoleLabel } from "../utils/roles";
+import { getDashboardRoleLabel } from "../utils/roles";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { useAttendancePageEvents } from "../hooks/useAttendancePageEvents";
 import { fetchAttendancePageEventDetail, useAttendancePageEventDetail } from "../hooks/useAttendancePageEventDetail";
@@ -222,13 +222,13 @@ function downloadTextFile(filename, text, mime = "text/csv;charset=utf-8") {
   URL.revokeObjectURL(url);
 }
 
-export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isCreateUserOpen }) {
+export default function Attendance({ onLogout, onNavigate }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { eventId } = useParams();
   const { role, isGovernor, governorScope } = useGovernorScope();
   const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
-  const isAdmin = !isGovernor;
+  const isAdmin = String(role || "").toLowerCase().trim() === "admin";
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -711,13 +711,9 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
     { id: "attendance_students", label: "Students" },
     { id: "payment", label: "Payments" },
     { id: "events", label: "Manage Event" },
+    ...(isAdmin ? [{ id: "import", label: "Import" }, { id: "users", label: "Users" }] : []),
   ];
 
-  const reportItems = [
-    { id: "export", label: "Export" },
-    ...(isAdmin ? [{ id: "import", label: "Import" }] : []),
-    { id: "settings", label: "Settings" },
-  ];
 
   const handleNav = (itemId) => {
     if (itemId === "attendance_students") {
@@ -856,37 +852,6 @@ export default function Attendance({ onLogout, onNavigate, onOpenCreateUser, isC
               {item.label}
             </button>
           ))}
-          {canOpenCreateUser(isGovernor, role) && (
-            <button
-              type="button"
-              onClick={() => onOpenCreateUser?.()}
-              className={`flex w-full items-center gap-3 rounded-lg px-4 py-2 text-left text-sm font-semibold text-white transition-colors ${
-                isCreateUserOpen ? "bg-white/15 hover:bg-white/25" : "bg-transparent hover:bg-white/15"
-              }`}
-            >
-              <span className="text-base">＋</span>
-              Create User
-            </button>
-          )}
-          <div className="pt-4">
-            <p className="px-4 text-xs font-medium uppercase tracking-wider text-green-200">Reports</p>
-            {reportItems.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className="flex w-full items-center gap-3 rounded-lg py-2 pl-8 pr-4 text-left text-sm text-green-100 hover:bg-white/15"
-              >
-                <span className="flex items-center gap-2">
-                  <span>{item.label}</span>
-                  {item.id === "settings" && (
-                    <span className="inline-flex items-center rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold text-white">
-                      {roleLabel}
-                    </span>
-                  )}
-                </span>
-              </button>
-            ))}
-          </div>
         </nav>
       </aside>
 

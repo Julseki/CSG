@@ -100,7 +100,6 @@ export function useCreateDepartmentUser({ onSuccess, onError } = {}) {
     mutationFn: async ({
       username,
       password,
-      email,
       department,
       major,
       role = "department",
@@ -108,7 +107,6 @@ export function useCreateDepartmentUser({ onSuccess, onError } = {}) {
       const response = await api.post("/signup", {
         username,
         password,
-        email,
         department,
         major,
         role,

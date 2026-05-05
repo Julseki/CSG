@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import SidebarNavIcon from "./SidebarNavIcon";
 import UserCircleIcon from "./UserCircleIcon";
-import { canOpenCreateUser, getDashboardRoleLabel } from "../utils/roles";
+import { getDashboardRoleLabel } from "../utils/roles";
 import { useAuthSession, useCreateDepartmentUser } from "../hooks/auth";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { useGetEvents, formatEventDateForDisplay } from "../hooks/useGetEvents";
@@ -113,7 +113,7 @@ function isValidAllowedEmail(value) {
   return /^[a-z0-9._-]+@(normi\.edu\.ph|gmail\.com)$/.test(email);
 }
 
-export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, isCreateUserOpen }) {
+export default function MainDashboard({ onLogout, onNavigate }) {
   const { data: apiEvents = [] } = useGetEvents();
   console.log(apiEvents, ": API EVENTS")
   const { data: session } = useAuthSession();
@@ -244,7 +244,7 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
 
   const activeNav = "dashboard";
   const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
-  const isAdmin = !isGovernor;
+  const isAdmin = String(role || "").toLowerCase().trim() === "admin";
   const sessionEmail =
     session?.email ||
     session?.user?.email ||
@@ -312,13 +312,9 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
     { id: "attendance_students", label: "Students" },
     { id: "payment", label: "Payments" },
     { id: "events", label: "Manage Event" },
+    ...(isAdmin ? [{ id: "import", label: "Import" }, { id: "users", label: "Users" }] : []),
   ];
 
-  const reportItems = [
-    { id: "export", label: "Export" },
-    ...(isAdmin ? [{ id: "import", label: "Import" }] : []),
-    { id: "settings", label: "Settings" },
-  ];
 
   const closeCreateUserModal = () => {
     if (isCreatingDepartmentUser) return;
@@ -422,42 +418,6 @@ export default function MainDashboard({ onLogout, onNavigate, onOpenCreateUser, 
               {item.label}
             </button>
           ))}
-          {canOpenCreateUser(isGovernor, role) && (
-            <button
-              type="button"
-              onClick={() => onOpenCreateUser?.()}
-              className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left text-sm font-semibold text-white transition-colors ${
-                isCreateUserOpen
-                  ? "bg-white/15 hover:bg-white/25"
-                  : "bg-transparent hover:bg-white/15"
-              }`}
-            >
-              <span className="text-base">＋</span>
-              Create User
-            </button>
-          )}
-          <div className="pt-4">
-            <p className="px-4 text-xs font-medium text-green-200 uppercase tracking-wider">Reports</p>
-            {reportItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setReportMode(item.id);
-                  setShowReportModal(true);
-                }}
-                className="w-full flex items-center gap-3 px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-white/15"
-              >
-                <span className="flex items-center gap-2">
-                  <span>{item.label}</span>
-                  {item.id === "settings" && (
-                    <span className="inline-flex items-center rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold text-white">
-                      {roleLabel}
-                    </span>
-                  )}
-                </span>
-              </button>
-            ))}
-          </div>
         </nav>
       </aside>
 

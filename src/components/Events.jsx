@@ -8,7 +8,7 @@ import { useGetAllEvents } from "../hooks/useGetAllEvents";
 import { useEditEvent } from "../hooks/useEditEvent";
 import { useDeleteEvent } from "../hooks/useDeleteEvent";
 import { useGovernorScope } from "../hooks/useGovernorScope";
-import { canOpenCreateUser, getDashboardRoleLabel } from "../utils/roles";
+import { getDashboardRoleLabel, isCsgPresident } from "../utils/roles";
 import { formatEventDateForDisplay, formatSqlTimeForDisplay } from "../hooks/useGetEvents";
 import {
   formatDurationForEventsList,
@@ -399,7 +399,7 @@ function EventModalSchedule({ ev, readOnly, onPatch }) {
   );
 }
 
-export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreateUserOpen }) {
+export default function Events({ onLogout, onNavigate }) {
   const { data: apiEvents = [], isPending: isEventsLoading, isError: isEventsError } =
     useGetAllEvents();
   const editEventMutation = useEditEvent();
@@ -425,9 +425,10 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
   const [eventsPage, setEventsPage] = useState(1);
   const activeNav = "events";
   const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
-  const isAdmin = !isGovernor;
+  const isCsgRole = isCsgPresident(role);
+  const isAdmin = String(role || "").toLowerCase().trim() === "admin";
   /** Admins and department governors can create and edit events */
-  const canManageEvents = isAdmin || isGovernor;
+  const canManageEvents = isAdmin || isGovernor || isCsgRole;
   /**
    * Display amount for the Fines column — never 0 (uses {@link FINE_PER_ABSENT} as minimum).
    */
@@ -454,13 +455,9 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
     { id: "attendance_students", label: "Students" },
     { id: "payment", label: "Payments" },
     { id: "events", label: "Manage Event" },
+    ...(isAdmin ? [{ id: "import", label: "Import" }, { id: "users", label: "Users" }] : []),
   ];
 
-  const reportItems = [
-    { id: "export", label: "Export" },
-    ...(isAdmin ? [{ id: "import", label: "Import" }] : []),
-    { id: "settings", label: "Settings" },
-  ];
 
   /** Live events from API only. */
   const allEvents = useMemo(() => [...apiEvents], [apiEvents]);
@@ -658,41 +655,6 @@ export default function Events({ onLogout, onNavigate, onOpenCreateUser, isCreat
               {item.label}
             </button>
           ))}
-          {canOpenCreateUser(isGovernor, role) && (
-            <button
-              type="button"
-              onClick={() => onOpenCreateUser?.()}
-              className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left text-sm font-semibold text-white transition-colors ${
-                isCreateUserOpen ? "bg-white/15 hover:bg-white/25" : "bg-transparent hover:bg-white/15"
-              }`}
-            >
-              <span className="text-base">＋</span>
-              Create User
-            </button>
-          )}
-          <div className="pt-4">
-            <p className="px-4 text-xs font-medium text-green-200 uppercase tracking-wider">Reports</p>
-            {reportItems.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  setReportMode(item.id);
-                  setShowReportModal(true);
-                }}
-                className="w-full flex items-center gap-3 px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-white/15"
-              >
-                <span className="flex items-center gap-2">
-                  <span>{item.label}</span>
-                  {item.id === "settings" && (
-                    <span className="inline-flex items-center rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold text-white">
-                      {roleLabel}
-                    </span>
-                  )}
-                </span>
-              </button>
-            ))}
-          </div>
         </nav>
       </aside>
 

@@ -8,7 +8,6 @@ function useCreateUserDebugMutation() {
     mutationFn: async ({
       username,
       password,
-      email,
       department,
       major,
       role = "department",
@@ -16,7 +15,6 @@ function useCreateUserDebugMutation() {
       const requestBody = {
         username,
         password,
-        email,
         department,
         major,
         role,
@@ -96,11 +94,6 @@ const ROLE_DEPARTMENT_MAP = {
   chm_governor: "College of Hospitality Management",
 };
 
-function isValidAllowedEmail(value) {
-  const email = value.trim().toLowerCase();
-  return /^[a-z0-9._-]+@(normi\.edu\.ph|gmail\.com)$/.test(email);
-}
-
 export default function CreateUserModal({ open, onClose }) {
   const { data: session } = useAuthSession();
   const [createUserError, setCreateUserError] = useState("");
@@ -110,7 +103,6 @@ export default function CreateUserModal({ open, onClose }) {
     department: "",
     major: "",
     username: "",
-    email: "",
     password: "",
     confirmPassword: "",
     accountType: "department",
@@ -151,7 +143,6 @@ export default function CreateUserModal({ open, onClose }) {
       department: "",
       major: "",
       username: "",
-      email: "",
       password: "",
       confirmPassword: "",
       accountType: "department",
@@ -173,10 +164,6 @@ export default function CreateUserModal({ open, onClose }) {
       username: "",
     }));
   }, [open, isGovernorLoggedIn, governorDepartmentFromRole]);
-
-  const isEmailValid = !createUserForm.email.trim()
-    ? true
-    : isValidAllowedEmail(createUserForm.email);
 
   const isPasswordValid = !createUserForm.password
     ? false
@@ -218,8 +205,6 @@ export default function CreateUserModal({ open, onClose }) {
   const isCreateDisabled =
     isCreatingUser ||
     !createUserForm.username.trim() ||
-    !createUserForm.email.trim() ||
-    !isEmailValid ||
     !passwordValue ||
     !doPasswordsMatch ||
     !isPasswordValid ||
@@ -249,7 +234,6 @@ export default function CreateUserModal({ open, onClose }) {
       department: "",
       major: "",
       username: "",
-      email: "",
       password: "",
       confirmPassword: "",
       accountType: "department",
@@ -268,7 +252,7 @@ export default function CreateUserModal({ open, onClose }) {
       }}
     >
       <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden">
-        <div className="bg-[#008000] px-5 py-3">
+        <div className="bg-[#07713c] px-5 py-3">
           <h3 className="text-white font-semibold">Create User</h3>
         </div>
         <form
@@ -295,18 +279,6 @@ export default function CreateUserModal({ open, onClose }) {
               return;
             }
 
-            if (!createUserForm.email.trim()) {
-              setCreateUserError("Email is required.");
-              return;
-            }
-
-            if (!isValidAllowedEmail(createUserForm.email)) {
-              setCreateUserError(
-                "Email must end with @normi.edu.ph or @gmail.com.",
-              );
-              return;
-            }
-
             if (
               !createUserForm.password ||
               createUserForm.password.length < 6
@@ -324,7 +296,6 @@ export default function CreateUserModal({ open, onClose }) {
               {
                 username: usernameValue,
                 password: createUserForm.password,
-                email: createUserForm.email.trim(),
                 department:
                   createUserForm.accountType === "csg_president"
                     ? ""
@@ -341,7 +312,6 @@ export default function CreateUserModal({ open, onClose }) {
                 onSuccess: () => {
                   setCreatedAccount({
                     username: usernameValue,
-                    email: createUserForm.email.trim(),
                     password: createUserForm.password,
                     role: roleToSend,
                   });
@@ -380,7 +350,7 @@ export default function CreateUserModal({ open, onClose }) {
                       : null),
                   }));
                 }}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white disabled:bg-gray-100"
+                className="w-full rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] disabled:bg-gray-100"
               >
                 <option value="department">Department User</option>
                 <option value="csg_president">CSG President</option>
@@ -394,7 +364,7 @@ export default function CreateUserModal({ open, onClose }) {
                     Department
                   </label>
                   {isGovernorLoggedIn ? (
-                    <div className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100 text-gray-700">
+                    <div className="w-full rounded-lg border border-[#07713c]/30 bg-gray-100 px-3 py-2 text-sm text-[#07713c]/70">
                       {governorDepartmentFromRole}
                     </div>
                   ) : (
@@ -407,7 +377,7 @@ export default function CreateUserModal({ open, onClose }) {
                           major: "",
                         }))
                       }
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white"
+                      className="w-full rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]"
                     >
                       <option value="">Select Department</option>
                       {DEPARTMENT_OPTIONS.map((option) => (
@@ -435,7 +405,7 @@ export default function CreateUserModal({ open, onClose }) {
                       disabled={
                         !createUserForm.department || majorOptions.length === 0
                       }
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white disabled:bg-gray-100"
+                      className="w-full rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] disabled:bg-gray-100"
                     >
                       <option value="">
                         {createUserForm.department && majorOptions.length === 0
@@ -457,32 +427,6 @@ export default function CreateUserModal({ open, onClose }) {
 
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                Email
-              </label>
-              <input
-                type="email"
-                value={createUserForm.email}
-                onChange={(e) =>
-                  setCreateUserForm((prev) => ({
-                    ...prev,
-                    email: e.target.value,
-                  }))
-                }
-                className={`w-full border rounded-lg px-3 py-2 bg-white ${
-                  isEmailValid ? "border-gray-300" : "border-red-400"
-                }`}
-                placeholder="Enter email (e.g. gov-it@normi.edu.ph)"
-                inputMode="email"
-              />
-              {!isEmailValid && (
-                <p className="text-[11px] text-red-600 mt-1">
-                  Invalid email. Use @normi.edu.ph or @gmail.com only.
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
                 Password
               </label>
               <div className="relative">
@@ -495,20 +439,24 @@ export default function CreateUserModal({ open, onClose }) {
                       password: e.target.value,
                     }))
                   }
-                  className={`w-full border rounded-lg px-3 py-2 pr-14 bg-white ${
-                    isPasswordValid ? "border-gray-300" : "border-red-400"
+                  className={`w-full rounded-lg border px-3 py-2 pr-14 text-sm text-[#07713c] placeholder:text-[#07713c]/45 bg-white focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] ${
+                    !createUserForm.password
+                      ? "border-[#07713c]/40"
+                      : isPasswordValid
+                        ? "border-[#07713c]/40"
+                        : "border-red-400"
                   }`}
                   placeholder="Enter password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowCreatePassword((prev) => !prev)}
-                  className="absolute inset-y-0 right-3 text-[11px] text-green-700 hover:text-green-800"
+                  className="absolute inset-y-0 right-3 text-[11px] text-[#07713c] hover:text-[#055a2e]"
                 >
                   {showCreatePassword ? "Hide" : "Show"}
                 </button>
               </div>
-              {!isPasswordValid && (
+              {createUserForm.password && !isPasswordValid && (
                 <p className="text-[11px] text-red-600 mt-1">
                   Password must be at least 6 characters.
                 </p>
@@ -529,20 +477,24 @@ export default function CreateUserModal({ open, onClose }) {
                       confirmPassword: e.target.value,
                     }))
                   }
-                  className={`w-full border rounded-lg px-3 py-2 pr-14 bg-white ${
-                    doPasswordsMatch ? "border-gray-300" : "border-red-400"
+                  className={`w-full rounded-lg border px-3 py-2 pr-14 text-sm text-[#07713c] placeholder:text-[#07713c]/45 bg-white focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] ${
+                    !createUserForm.confirmPassword
+                      ? "border-[#07713c]/40"
+                      : doPasswordsMatch
+                        ? "border-[#07713c]/40"
+                        : "border-red-400"
                   }`}
                   placeholder="Confirm password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowCreateConfirmPassword((prev) => !prev)}
-                  className="absolute inset-y-0 right-3 text-[11px] text-green-700 hover:text-green-800"
+                  className="absolute inset-y-0 right-3 text-[11px] text-[#07713c] hover:text-[#055a2e]"
                 >
                   {showCreateConfirmPassword ? "Hide" : "Show"}
                 </button>
               </div>
-              {!doPasswordsMatch && (
+              {createUserForm.confirmPassword && !doPasswordsMatch && (
                 <p className="text-[11px] text-red-600 mt-1">
                   Passwords do not match.
                 </p>
@@ -564,11 +516,7 @@ export default function CreateUserModal({ open, onClose }) {
                     username: e.target.value,
                   }))
                 }
-                className={`w-full border rounded-lg px-3 py-2 bg-white ${
-                  createUserForm.username.trim()
-                    ? "border-gray-300"
-                    : "border-red-400"
-                }`}
+                className="w-full rounded-lg border border-[#07713c]/40 px-3 py-2 text-sm text-[#07713c] placeholder:text-[#07713c]/45 bg-white focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]"
                 placeholder="Enter username"
               />
             </div>
@@ -579,19 +527,16 @@ export default function CreateUserModal({ open, onClose }) {
           </div>
 
           {createdAccount && (
-            <div className="rounded-lg border border-green-200 bg-green-50 p-3 space-y-1">
-              <p className="text-xs font-semibold text-green-700">
+            <div className="rounded-lg border border-[#07713c]/30 bg-[#07713c]/10 p-3 space-y-1">
+              <p className="text-xs font-semibold text-[#07713c]">
                 {createdAccount.role === "csg_president"
                   ? "CSG President created successfully."
                   : "User created successfully."}
               </p>
-              <p className="text-xs text-green-700">
-                Email: {createdAccount.email}
-              </p>
-              <p className="text-xs text-green-700">
+              <p className="text-xs text-[#07713c]">
                 Username: {createdAccount.username}
               </p>
-              <p className="text-xs text-green-700">
+              <p className="text-xs text-[#07713c]">
                 Password: {createdAccount.password}
               </p>
             </div>
@@ -612,7 +557,7 @@ export default function CreateUserModal({ open, onClose }) {
             <button
               type="submit"
               disabled={isCreateDisabled}
-              className="px-4 py-2 rounded-lg bg-[#008000] text-white disabled:opacity-70 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-lg bg-[#07713c] text-white disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isCreatingUser ? "Creating..." : "Create User"}
             </button>

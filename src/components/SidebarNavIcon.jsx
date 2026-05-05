@@ -77,11 +77,34 @@ function IconPayment(props) {
   );
 }
 
+function IconImport(props) {
+  return (
+    <svg {...common} {...props}>
+      <path d="M12 3v12" />
+      <path d="M8 11l4 4 4-4" />
+      <rect x="4" y="17" width="16" height="4" rx="1.5" />
+    </svg>
+  );
+}
+
+function IconUsers(props) {
+  return (
+    <svg {...common} {...props}>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3.5 18a5.5 5.5 0 0 1 11 0" />
+      <circle cx="17.5" cy="9.5" r="2.5" />
+      <path d="M14.5 18a4.5 4.5 0 0 1 7 0" />
+    </svg>
+  );
+}
+
 const MAP = {
   dashboard: IconDashboard,
   attendance: IconAnalytics,
   payment: IconPayment,
   events: IconEvents,
+  import: IconImport,
+  users: IconUsers,
   students: IconDepartment,
   attendance_students: IconStudents,
 };

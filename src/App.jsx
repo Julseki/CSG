@@ -8,6 +8,8 @@ import Attendance from "./components/Attendance";
 import StudentAttendancePage from "./components/StudentAttendancePage";
 import Events from "./components/Events";
 import Payments from "./components/Payments";
+import ImportPage from "./components/ImportPage";
+import UsersPage from "./components/UsersPage";
 import CreateUserModal from "./components/CreateUserModal";
 import StudentTimeInOut from "./components/StudentTimeInOut";
 import { AUTH_SESSION_QUERY_KEY, useAuthSession, useLogout } from "./hooks/auth";
@@ -44,6 +46,8 @@ function App() {
   // the Time In/Out flow.
   const effectiveAuth = session ?? loginPayload;
   const decodedUser = effectiveAuth?.user ?? effectiveAuth;
+  const normalizedRole = String(decodedUser?.role ?? "").toLowerCase().trim();
+  const isAdminUser = normalizedRole === "admin";
   const hasDepartmentInfo =
     Boolean(effectiveAuth?.departmentSession) || Boolean(effectiveAuth?.department);
   const hasFullIdentity = Boolean(decodedUser?.role || decodedUser?.id);
@@ -103,12 +107,14 @@ function App() {
       attendance: "/attendance",
       payment: "/payments",
       events: "/events",
+      import: "/import",
+      users: "/users",
     };
     navigate(pageRoutes[normalizedPage] || defaultRoute);
   };
 
   const openCreateUser = () => {
-    setIsCreateUserOpen(true);
+    navigate("/users");
   };
   const closeCreateUser = () => setIsCreateUserOpen(false);
 
@@ -239,6 +245,36 @@ function App() {
                     onOpenCreateUser={openCreateUser}
                     isCreateUserOpen={isCreateUserOpen}
                   />
+                }
+              />
+              <Route
+                path="/import"
+                element={
+                  isAdminUser ? (
+                    <ImportPage
+                      onLogout={handleLogout}
+                      onNavigate={handleNavigate}
+                      onOpenCreateUser={openCreateUser}
+                      isCreateUserOpen={isCreateUserOpen}
+                    />
+                  ) : (
+                    <Navigate to={defaultRoute} replace />
+                  )
+                }
+              />
+              <Route
+                path="/users"
+                element={
+                  isAdminUser ? (
+                    <UsersPage
+                      onLogout={handleLogout}
+                      onNavigate={handleNavigate}
+                      onOpenCreateUser={openCreateUser}
+                      isCreateUserOpen={isCreateUserOpen}
+                    />
+                  ) : (
+                    <Navigate to={defaultRoute} replace />
+                  )
                 }
               />
               <Route

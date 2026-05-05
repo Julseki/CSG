@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import SidebarNavIcon from "./SidebarNavIcon";
 import UserCircleIcon from "./UserCircleIcon";
 import { useGovernorScope } from "../hooks/useGovernorScope";
-import { canOpenCreateUser, getDashboardRoleLabel } from "../utils/roles";
+import { getDashboardRoleLabel } from "../utils/roles";
 import StudentAttendanceDashboard from "./StudentAttendanceDashboard";
 
 /** Shell for the Students (per-student attendance) view at `/students`. */
-export default function StudentAttendancePage({ onLogout, onNavigate, onOpenCreateUser, isCreateUserOpen }) {
+export default function StudentAttendancePage({ onLogout, onNavigate }) {
   const navigate = useNavigate();
   const [showLogout, setShowLogout] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -16,7 +16,7 @@ export default function StudentAttendancePage({ onLogout, onNavigate, onOpenCrea
 
   const { role, isGovernor, governorScope } = useGovernorScope();
   const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
-  const isAdmin = !isGovernor;
+  const isAdmin = String(role || "").toLowerCase().trim() === "admin";
 
   const navItems = [
     { id: "dashboard", label: "Dashboard" },
@@ -24,13 +24,9 @@ export default function StudentAttendancePage({ onLogout, onNavigate, onOpenCrea
     { id: "attendance_students", label: "Students" },
     { id: "payment", label: "Payments" },
     { id: "events", label: "Manage Event" },
+    ...(isAdmin ? [{ id: "import", label: "Import" }, { id: "users", label: "Users" }] : []),
   ];
 
-  const reportItems = [
-    { id: "export", label: "Export" },
-    ...(isAdmin ? [{ id: "import", label: "Import" }] : []),
-    { id: "settings", label: "Settings" },
-  ];
 
   const handleNav = (itemId) => {
     if (itemId === "attendance_students") {
@@ -72,41 +68,6 @@ export default function StudentAttendancePage({ onLogout, onNavigate, onOpenCrea
               {item.label}
             </button>
           ))}
-          {canOpenCreateUser(isGovernor, role) && (
-            <button
-              type="button"
-              onClick={() => onOpenCreateUser?.()}
-              className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left text-sm font-semibold text-white transition-colors ${
-                isCreateUserOpen ? "bg-white/15 hover:bg-white/25" : "bg-transparent hover:bg-white/15"
-              }`}
-            >
-              <span className="text-base">＋</span>
-              Create User
-            </button>
-          )}
-          <div className="pt-4">
-            <p className="px-4 text-xs font-medium text-green-200 uppercase tracking-wider">Reports</p>
-            {reportItems.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  setReportMode(item.id);
-                  setShowReportModal(true);
-                }}
-                className="w-full flex items-center gap-3 px-4 py-2 pl-8 rounded-lg text-left text-sm text-green-100 hover:bg-white/15"
-              >
-                <span className="flex items-center gap-2">
-                  <span>{item.label}</span>
-                  {item.id === "settings" && (
-                    <span className="inline-flex items-center rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold text-white">
-                      {roleLabel}
-                    </span>
-                  )}
-                </span>
-              </button>
-            ))}
-          </div>
         </nav>
       </aside>
 

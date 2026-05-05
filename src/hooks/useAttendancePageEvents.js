@@ -7,6 +7,8 @@ export const ATTENDANCE_PAGE_EVENTS_KEY = ["attendance-page", "events"];
 function apiBaseUrl() {
   const b = api.defaults.baseURL;
   if (b && String(b).trim()) return String(b).replace(/\/$/, "");
+  const envBase = import.meta.env.VITE_API_BASE_URL;
+  if (envBase && String(envBase).trim()) return String(envBase).replace(/\/$/, "");
   return "http://localhost:5000";
 }
 
