@@ -25,6 +25,7 @@ const STEPS = [
 
 export default function AddEvent({ onBack, onNext }) {
   const { role, isGovernor, governorScope } = useGovernorScope();
+  const isCsgRole = isCsgPresident(role);
   const [step, setStep] = useState(1);
   const [eventName, setEventName] = useState("");
   const [eventDate, setEventDate] = useState("");
@@ -48,8 +49,8 @@ export default function AddEvent({ onBack, onNext }) {
   const [useAmHalf, setUseAmHalf] = useState(true);
   const [usePmHalf, setUsePmHalf] = useState(false);
   const addEvent = useAddevent();
-  const shouldShowMajorSelection =
-    role === "ceas_governor" || role === "cba_governor";
+  const isCeasOrCbaGovernor = role === "ceas_governor" || role === "cba_governor";
+  const shouldShowMajorSelection = false;
   const majorOptions =
     role === "cba_governor"
       ? [
@@ -102,12 +103,21 @@ export default function AddEvent({ onBack, onNext }) {
   }, [isGovernor, governorScope, role]);
 
   useEffect(() => {
-    if (!shouldShowMajorSelection || majorOptions.length === 0) {
+    setYearLevel("All Year Levels");
+  }, []);
+
+  useEffect(() => {
+    if (!isCsgRole) return;
+    setIsMandatory(true);
+  }, [isCsgRole]);
+
+  useEffect(() => {
+    if (!isCeasOrCbaGovernor || majorOptions.length === 0) {
       setMajor("All Majors");
       return;
     }
-    setMajor(majorOptions[0]);
-  }, [shouldShowMajorSelection, role]);
+    setMajor("All Majors");
+  }, [isCeasOrCbaGovernor, role]);
 
   const validateBasicInfo = () => {
     const e = {};
@@ -203,7 +213,8 @@ export default function AddEvent({ onBack, onNext }) {
                 ? ""
                 : major
               : "",
-        isMandatory,
+        yearLevel: "All Year Levels",
+        isMandatory: isCsgRole ? true : isMandatory,
         audienceNotes: audienceNotes?.trim() || "",
         amTimeIn: amTimeIn || "",
         amTimeOut: amTimeOut || "",
@@ -636,21 +647,6 @@ export default function AddEvent({ onBack, onNext }) {
             {/* Year level & Department */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Year Level</label>
-                <select
-                  value={yearLevel}
-                  onChange={(e) => setYearLevel(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55"
-                >
-                  <option>All Year Levels</option>
-                  <option>1st Year</option>
-                  <option>2nd Year</option>
-                  <option>3rd Year</option>
-                  <option>4th Year</option>
-                </select>
-              </div>
-
-              <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Department</label>
                 {isGovernor && governorScope ? (
                   <div className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-sm text-gray-700">
@@ -700,18 +696,20 @@ export default function AddEvent({ onBack, onNext }) {
             )}
 
             {/* Mandatory toggle */}
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-semibold text-gray-700">Mandatory Event?</span>
-              <button
-                type="button"
-                onClick={() => setIsMandatory((v) => !v)}
-                className={`px-4 py-1.5 text-xs font-medium rounded-full border ${
-                  isMandatory ? "bg-[#07713c] text-white border-[#07713c]" : "bg-white text-gray-700 border-gray-300"
-                }`}
-              >
-                {isMandatory ? "Yes, mandatory" : "No, optional"}
-              </button>
-            </div>
+            {!isCsgRole && (
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-gray-700">Mandatory Event?</span>
+                <button
+                  type="button"
+                  onClick={() => setIsMandatory((v) => !v)}
+                  className={`px-4 py-1.5 text-xs font-medium rounded-full border ${
+                    isMandatory ? "bg-[#07713c] text-white border-[#07713c]" : "bg-white text-gray-700 border-gray-300"
+                  }`}
+                >
+                  {isMandatory ? "Yes, mandatory" : "No, optional"}
+                </button>
+              </div>
+            )}
 
             {/* Audience notes */}
             <div>
@@ -802,7 +800,7 @@ export default function AddEvent({ onBack, onNext }) {
             )}
           </>
         )}
-        <p>Mandatory: {isMandatory ? "Yes" : "No"}</p>
+        {!isCsgRole && <p>Mandatory: {isMandatory ? "Yes" : "No"}</p>}
         {audienceNotes && <p>Notes: {audienceNotes}</p>}
       </div>
     </div>
