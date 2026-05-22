@@ -18,7 +18,7 @@ function normalizeSessionKind(kindRaw) {
   return "whole";
 }
 
-function mapPaymentRow(raw) {
+export function mapPaymentRow(raw) {
   const events = Array.isArray(raw?.events) ? raw.events : [];
   const majorRaw = raw?.major;
   const major =
@@ -61,5 +61,19 @@ export function useGetPayments(options = {}) {
     queryFn: getPayments,
     staleTime: 30_000,
     ...options,
+  });
+}
+
+/** Merge one student row from POST/PUT payment responses — avoids refetching the full list. */
+export function patchPaymentsStudentInCache(queryClient, rawStudent) {
+  if (!rawStudent?.studentId) return;
+  const updated = mapPaymentRow(rawStudent);
+  queryClient.setQueryData(PAYMENTS_QUERY_KEY, (old) => {
+    if (!Array.isArray(old)) return old;
+    const index = old.findIndex((row) => row.studentId === updated.studentId);
+    if (index < 0) return old;
+    const next = [...old];
+    next[index] = updated;
+    return next;
   });
 }

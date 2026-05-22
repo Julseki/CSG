@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../api/axiosInstance";
-import { PAYMENTS_QUERY_KEY } from "./useGetPayments";
+import { patchPaymentsStudentInCache } from "./useGetPayments";
 
 export function useRecordPayment() {
   const queryClient = useQueryClient();
@@ -15,8 +15,11 @@ export function useRecordPayment() {
       });
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: PAYMENTS_QUERY_KEY });
+    onSuccess: (data) => {
+      if (data?.student) {
+        patchPaymentsStudentInCache(queryClient, data.student);
+        return;
+      }
     },
   });
 }

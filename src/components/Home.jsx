@@ -20,8 +20,14 @@ function sqlTimeToMinutes(value) {
   return Number(m[1]) * 60 + Number(m[2]);
 }
 
+const ID_TYPES = [
+  { value: "studentId", label: "Student ID" },
+  { value: "rfid", label: "RFID" },
+];
+
 export default function Home() {
   const [userId, setUserId] = useState("");
+  const [idType, setIdType] = useState("studentId");
   const [detailEvent, setDetailEvent] = useState(null);
   const [showUpcomingModal, setShowUpcomingModal] = useState(false);
   const [upcomingPage, setUpcomingPage] = useState(1);
@@ -210,10 +216,10 @@ export default function Home() {
   });
 
   const handleSubmitAttendance = () => {
-    const studentId = userId.trim();
-    if (!studentId) return;
+    const identifier = userId.trim();
+    if (!identifier) return;
     const payload = {
-      studentId,
+      ...(idType === "rfid" ? { rfid: identifier } : { studentId: identifier }),
       attendanceKind,
       ...(selectedOngoingEvent?.id != null ? { eventId: selectedOngoingEvent.id } : {}),
       ...(useTestTime && (testTime || testDate)
@@ -287,8 +293,8 @@ export default function Home() {
           <div className="mt-6 flex justify-center">
             <div className="w-full max-w-md text-left">
               <div className="mb-2 flex items-center justify-between gap-2">
-                <label htmlFor="student-id" className="block text-sm font-medium text-[#07713c]">
-                  Student ID
+                <label htmlFor="attendance-identifier" className="block text-sm font-medium text-[#07713c]">
+                  {idType === "rfid" ? "RFID" : "Student ID"}
                 </label>
                 {attendancePhase && (
                   <p className={`inline-flex items-center justify-end gap-1 text-xs font-semibold sm:text-sm ${attendancePhase.className}`}>
@@ -333,12 +339,40 @@ export default function Home() {
                     </span>
                   </div>
                 </div>
+                <div
+                  className="inline-flex w-full rounded-lg border border-[#07713c]/30 bg-white p-0.5"
+                  role="group"
+                  aria-label="Identifier type"
+                >
+                  {ID_TYPES.map((option) => {
+                    const selected = idType === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          setIdType(option.value);
+                          setUserId("");
+                        }}
+                        className={[
+                          "flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition",
+                          selected
+                            ? "bg-[#07713c] text-white"
+                            : "text-[#07713c] hover:bg-[#07713c]/5",
+                        ].join(" ")}
+                        aria-pressed={selected}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
                 <input
-                  id="student-id"
+                  id="attendance-identifier"
                   type="text"
                   value={userId}
                   onChange={(e) => setUserId(e.target.value)}
-                  placeholder="Enter student id"
+                  placeholder={idType === "rfid" ? "Enter RFID" : "Enter student ID"}
                   className="block w-full appearance-none rounded-lg border-[1.5px] border-[#07713c] bg-white px-3 py-2 text-sm text-[#07713c] shadow-none outline-none [box-shadow:none] hover:border-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-0 focus:ring-transparent focus-visible:border-[#07713c] focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent focus-visible:[box-shadow:none]"
                 />
                 <button
