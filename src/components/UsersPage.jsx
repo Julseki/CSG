@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import SidebarNavIcon from "./SidebarNavIcon";
 import UserCircleIcon from "./UserCircleIcon";
 import CreateUserModal from "./CreateUserModal";
+import { getAppNavItems } from "../utils/appNav";
 import { getDashboardRoleLabel } from "../utils/roles";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { useDeleteUser, useUpdateUser, useUsersList } from "../hooks/useUsersManagement";
@@ -21,14 +22,7 @@ export default function UsersPage({ onNavigate, onLogout }) {
   const updateUserMutation = useUpdateUser();
   const deleteUserMutation = useDeleteUser();
 
-  const navItems = [
-    { id: "dashboard", label: "Dashboard" },
-    { id: "attendance", label: "Attendance" },
-    { id: "attendance_students", label: "Students" },
-    { id: "payment", label: "Payments" },
-    { id: "events", label: "Manage Event" },
-    ...(isAdmin ? [{ id: "import", label: "Import" }, { id: "users", label: "Users" }] : []),
-  ];
+  const navItems = getAppNavItems({ isAdmin });
 
   const sortedUsers = useMemo(
     () => [...users].sort((a, b) => Number(a.id) - Number(b.id)),
@@ -43,7 +37,7 @@ export default function UsersPage({ onNavigate, onLogout }) {
 
   useEffect(() => {
     if (isAdmin) return;
-    onNavigate?.("dashboard");
+    onNavigate?.("attendance");
   }, [isAdmin, onNavigate]);
 
   if (!isAdmin) {

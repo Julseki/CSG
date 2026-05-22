@@ -6,6 +6,7 @@ import PaginationBar from "./PaginationBar";
 import SearchMagnifierIcon from "./SearchMagnifierIcon";
 import SidebarNavIcon from "./SidebarNavIcon";
 import UserCircleIcon from "./UserCircleIcon";
+import { getAppNavItems } from "../utils/appNav";
 import { getDashboardRoleLabel } from "../utils/roles";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { useAttendancePageEvents } from "../hooks/useAttendancePageEvents";
@@ -709,14 +710,7 @@ export default function Attendance({ onLogout, onNavigate }) {
     }
   }, [exportAllEventId, exportCompletedEventOptions]);
 
-  const navItems = [
-    { id: "dashboard", label: "Dashboard" },
-    { id: "attendance", label: "Attendance" },
-    { id: "attendance_students", label: "Students" },
-    { id: "payment", label: "Payments" },
-    { id: "events", label: "Manage Event" },
-    ...(isAdmin ? [{ id: "import", label: "Import" }, { id: "users", label: "Users" }] : []),
-  ];
+  const navItems = getAppNavItems({ isAdmin });
 
 
   const handleNav = (itemId) => {

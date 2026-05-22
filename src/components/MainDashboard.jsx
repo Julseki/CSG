@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import SidebarNavIcon from "./SidebarNavIcon";
 import UserCircleIcon from "./UserCircleIcon";
+import { getAppNavItems, SHOW_DASHBOARD_IN_NAV } from "../utils/appNav";
 import { getDashboardRoleLabel } from "../utils/roles";
 import { useAuthSession, useCreateDepartmentUser } from "../hooks/auth";
 import { useGovernorScope } from "../hooks/useGovernorScope";
@@ -242,7 +243,7 @@ export default function MainDashboard({ onLogout, onNavigate }) {
     }
   }, [showEventDetailModal, selectedUpcomingEvent, upcomingEvents]);
 
-  const activeNav = "dashboard";
+  const activeNav = SHOW_DASHBOARD_IN_NAV ? "dashboard" : "attendance";
   const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
   const isAdmin = String(role || "").toLowerCase().trim() === "admin";
   const sessionEmail =
@@ -306,14 +307,7 @@ export default function MainDashboard({ onLogout, onNavigate }) {
     return selected?.majors || [];
   }, [createUserForm.department]);
 
-  const navItems = [
-    { id: "dashboard", label: "Dashboard" },
-    { id: "attendance", label: "Attendance" },
-    { id: "attendance_students", label: "Students" },
-    { id: "payment", label: "Payments" },
-    { id: "events", label: "Manage Event" },
-    ...(isAdmin ? [{ id: "import", label: "Import" }, { id: "users", label: "Users" }] : []),
-  ];
+  const navItems = getAppNavItems({ isAdmin });
 
 
   const closeCreateUserModal = () => {

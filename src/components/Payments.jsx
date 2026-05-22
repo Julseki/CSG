@@ -8,10 +8,11 @@ import { getDashboardRoleLabel } from "../utils/roles";
 import { formatDateTimeShort, formatEventDateForDisplay, formatSqlTimeForDisplay } from "../hooks/useGetEvents";
 import PaginationBar from "./PaginationBar";
 import SearchMagnifierIcon from "./SearchMagnifierIcon";
-import { useGetPayments } from "../hooks/useGetPayments";
+import { mergePaymentStudentRow, useGetPaymentStudent, useGetPayments } from "../hooks/useGetPayments";
 import { useRecordPayment } from "../hooks/useRecordPayment";
 import { useUpdateFineAmount } from "../hooks/useUpdateFineAmount";
 import { useSetStudentBalance } from "../hooks/useSetStudentBalance";
+import { getAppNavItems } from "../utils/appNav";
 import { formatCourseWithMajor } from "../utils/courseMajorDisplay";
 
 void ChartJS;
@@ -173,6 +174,8 @@ function buildReceiptHtml(receipt, logoUrl) {
 export default function Payments({ onNavigate, onLogout }) {
   const { role, isGovernor, governorScope } = useGovernorScope();
   const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
+  const isAdmin = String(role || "").toLowerCase().trim() === "admin";
+  const navItems = getAppNavItems({ isAdmin });
   const { data: paymentRowsFromApi = [], isLoading: isPaymentsLoading, isError: isPaymentsError } = useGetPayments();
   const recordPaymentMutation = useRecordPayment();
   const updateFineAmountMutation = useUpdateFineAmount();
@@ -208,6 +211,13 @@ export default function Payments({ onNavigate, onLogout }) {
   const hideTimerRef = useRef(null);
   const showTimerRef = useRef(null);
   const isHoveringCardRef = useRef(false);
+
+  const { data: modalDetail, isLoading: isModalDetailLoading } = useGetPaymentStudent(modalStudentId);
+  const graphDetailStudentId =
+    isGraphModalOpen && selectedStudentId && selectedStudentId !== modalStudentId
+      ? selectedStudentId
+      : "";
+  const { data: graphDetail, isLoading: isGraphDetailLoading } = useGetPaymentStudent(graphDetailStudentId);
 
   const cancelHide = () => {
     if (hideTimerRef.current) {
@@ -296,8 +306,7 @@ export default function Payments({ onNavigate, onLogout }) {
         row.studentId.toLowerCase().includes(q) ||
         row.course.toLowerCase().includes(q) ||
         majorQ.includes(q) ||
-        (row.courseDisplay ?? "").toLowerCase().includes(q) ||
-        row.events.some((event) => event.name.toLowerCase().includes(q));
+        (row.courseDisplay ?? "").toLowerCase().includes(q);
       return matchesStatus && matchesCollege && matchesCourse && matchesYear && matchesBalance && matchesSearch;
     });
   };
@@ -374,15 +383,24 @@ export default function Payments({ onNavigate, onLogout }) {
     setStudentsPage((p) => Math.min(p, studentsTotalPages));
   }, [studentsTotalPages]);
 
-  const selectedRow = useMemo(
-    () => filteredRows.find((row) => row.studentId === selectedStudentId) ?? filteredRows[0] ?? null,
-    [filteredRows, selectedStudentId],
-  );
+  const selectedRow = useMemo(() => {
+    const listRow =
+      filteredRows.find((row) => row.studentId === selectedStudentId) ?? filteredRows[0] ?? null;
+    if (!listRow) return null;
+    const detail =
+      listRow.studentId === modalStudentId
+        ? modalDetail
+        : listRow.studentId === graphDetailStudentId
+          ? graphDetail
+          : null;
+    return mergePaymentStudentRow(listRow, detail);
+  }, [filteredRows, selectedStudentId, modalStudentId, modalDetail, graphDetail, graphDetailStudentId]);
 
-  const modalStudent = useMemo(
-    () => filteredRows.find((row) => row.studentId === modalStudentId) ?? null,
-    [filteredRows, modalStudentId],
-  );
+  const modalStudent = useMemo(() => {
+    const listRow = filteredRows.find((row) => row.studentId === modalStudentId) ?? null;
+    if (!listRow) return null;
+    return mergePaymentStudentRow(listRow, modalDetail);
+  }, [filteredRows, modalStudentId, modalDetail]);
 
   const hoverStudent = useMemo(
     () => (hoverCard?.studentId ? filteredRows.find((row) => row.studentId === hoverCard.studentId) ?? null : null),
@@ -620,7 +638,7 @@ export default function Payments({ onNavigate, onLogout }) {
       `"${String(row.studentName || "").replace(/"/g, '""')}"`,
       `"${String(row.courseDisplay || row.course || "").replace(/"/g, '""')}"`,
       `"${String(row.year ?? "")}"`,
-      String(row.totalEvents ?? row.events?.length ?? 0),
+      String(row.totalEvents ?? 0),
       String(Number(row.totalFine) || 0),
       String(Number(row.paidAmount) || 0),
       String(Number(row.remaining) || 0),
@@ -665,14 +683,7 @@ export default function Payments({ onNavigate, onLogout }) {
           <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif]">Northern Mindanao Colleges, Inc.</p>
         </div>
         <nav className="flex-1 px-4 space-y-1">
-          {[
-            { id: "dashboard", label: "Dashboard" },
-            { id: "attendance", label: "Attendance" },
-            { id: "attendance_students", label: "Students" },
-            { id: "payment", label: "Payments" },
-            { id: "events", label: "Manage Event" },
-            ...(role === "admin" ? [{ id: "import", label: "Import" }, { id: "users", label: "Users" }] : []),
-          ].map((item) => (
+          {navItems.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -762,7 +773,7 @@ export default function Payments({ onNavigate, onLogout }) {
                     type="search"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search student, ID, or event"
+                    placeholder="Search student, ID, or course"
                     className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
                   />
                   {search.trim() !== "" && (
@@ -869,9 +880,9 @@ export default function Payments({ onNavigate, onLogout }) {
                             <div className="flex justify-center">
                               <p
                                 className="min-w-0 truncate font-medium whitespace-nowrap tabular-nums text-[#07713c] hover:underline underline-offset-2 decoration-[#07713c]"
-                                title={String(row.totalEvents ?? row.events?.length ?? "")}
+                                title={String(row.totalEvents ?? "")}
                               >
-                                {row.totalEvents ?? row.events.length}
+                                {row.totalEvents ?? 0}
                               </p>
                             </div>
                           </td>
@@ -1009,7 +1020,13 @@ export default function Payments({ onNavigate, onLogout }) {
                     </tr>
                     </thead>
                     <tbody>
-                      {modalEvents.length === 0 ? (
+                      {isModalDetailLoading ? (
+                        <tr className="border-t border-[#07713c]/30">
+                          <td colSpan={modalTableColCount} className="px-4 py-8 text-center text-sm text-[#07713c]/85">
+                            Loading events...
+                          </td>
+                        </tr>
+                      ) : modalEvents.length === 0 ? (
                         <tr className="border-t border-[#07713c]/30">
                           <td colSpan={modalTableColCount} className="px-4 py-8 text-center text-sm text-[#07713c]/85">
                             No events match the current filters.
@@ -1261,7 +1278,9 @@ export default function Payments({ onNavigate, onLogout }) {
             </div>
             <div className="p-5">
               <div className="h-[420px] rounded-lg border border-[#07713c]/20 p-3">
-                {selectedStudentLineData ? (
+                {isGraphDetailLoading ? (
+                  <p className="text-sm text-[#07713c]/75">Loading chart data...</p>
+                ) : selectedStudentLineData ? (
                   <Line data={selectedStudentLineData} options={selectedStudentLineOptions} />
                 ) : (
                   <p className="text-sm text-[#07713c]/75">No chart data available.</p>
@@ -1286,7 +1305,7 @@ export default function Payments({ onNavigate, onLogout }) {
                   type="search"
                   value={exportSearch}
                   onChange={(e) => setExportSearch(e.target.value)}
-                  placeholder="Search student, ID, or event"
+                  placeholder="Search student, ID, or course"
                   className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                 />
               </label>

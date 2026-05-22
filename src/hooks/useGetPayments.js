@@ -3,6 +3,10 @@ import api from "../api/axiosInstance";
 
 export const PAYMENTS_QUERY_KEY = ["payments", "students"];
 
+export function paymentStudentQueryKey(studentId) {
+  return ["payments", "student", String(studentId ?? "")];
+}
+
 function normalizeResponseToArray(data) {
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.students)) return data.students;
@@ -49,10 +53,31 @@ export function mapPaymentRow(raw) {
   };
 }
 
+/** List row totals + optional lazy-loaded events. */
+export function mergePaymentStudentRow(listRow, detailRow) {
+  if (!listRow) return detailRow ?? null;
+  if (!detailRow || detailRow.studentId !== listRow.studentId) {
+    return { ...listRow, events: listRow.events ?? [] };
+  }
+  return {
+    ...listRow,
+    totalEvents: detailRow.totalEvents ?? listRow.totalEvents,
+    totalFine: detailRow.totalFine ?? listRow.totalFine,
+    paidAmount: detailRow.paidAmount ?? listRow.paidAmount,
+    waivedAmount: detailRow.waivedAmount ?? listRow.waivedAmount,
+    events: detailRow.events ?? [],
+  };
+}
+
 export async function getPayments() {
   const { data } = await api.get("/payments/students");
   const rows = normalizeResponseToArray(data);
   return rows.map((row) => mapPaymentRow(row));
+}
+
+export async function getPaymentStudent(studentId) {
+  const { data } = await api.get(`/payments/students/${encodeURIComponent(studentId)}`);
+  return mapPaymentRow(data?.student ?? data);
 }
 
 export function useGetPayments(options = {}) {
@@ -64,16 +89,31 @@ export function useGetPayments(options = {}) {
   });
 }
 
-/** Merge one student row from POST/PUT payment responses — avoids refetching the full list. */
+export function useGetPaymentStudent(studentId, options = {}) {
+  const id = String(studentId ?? "").trim();
+  return useQuery({
+    queryKey: paymentStudentQueryKey(id),
+    queryFn: () => getPaymentStudent(id),
+    enabled: Boolean(id) && (options.enabled ?? true),
+    staleTime: 30_000,
+    ...options,
+  });
+}
+
+/** Merge one student from mutation responses into list + detail caches. */
 export function patchPaymentsStudentInCache(queryClient, rawStudent) {
   if (!rawStudent?.studentId) return;
   const updated = mapPaymentRow(rawStudent);
+  const listRow = { ...updated, events: [] };
+
   queryClient.setQueryData(PAYMENTS_QUERY_KEY, (old) => {
     if (!Array.isArray(old)) return old;
     const index = old.findIndex((row) => row.studentId === updated.studentId);
     if (index < 0) return old;
     const next = [...old];
-    next[index] = updated;
+    next[index] = listRow;
     return next;
   });
+
+  queryClient.setQueryData(paymentStudentQueryKey(updated.studentId), updated);
 }

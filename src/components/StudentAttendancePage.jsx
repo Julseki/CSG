@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import SidebarNavIcon from "./SidebarNavIcon";
 import UserCircleIcon from "./UserCircleIcon";
 import { useGovernorScope } from "../hooks/useGovernorScope";
+import { getAppNavItems } from "../utils/appNav";
 import { getDashboardRoleLabel } from "../utils/roles";
 import StudentAttendanceDashboard from "./StudentAttendanceDashboard";
 
@@ -18,14 +19,7 @@ export default function StudentAttendancePage({ onLogout, onNavigate }) {
   const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
   const isAdmin = String(role || "").toLowerCase().trim() === "admin";
 
-  const navItems = [
-    { id: "dashboard", label: "Dashboard" },
-    { id: "attendance", label: "Attendance" },
-    { id: "attendance_students", label: "Students" },
-    { id: "payment", label: "Payments" },
-    { id: "events", label: "Manage Event" },
-    ...(isAdmin ? [{ id: "import", label: "Import" }, { id: "users", label: "Users" }] : []),
-  ];
+  const navItems = getAppNavItems({ isAdmin });
 
 
   const handleNav = (itemId) => {

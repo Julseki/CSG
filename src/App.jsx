@@ -3,7 +3,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import LoginDashboard from "./components/LoginDashboard";
 import Home from "./components/Home";
-import Dashboard from "./components/Dashboard";
 import Attendance from "./components/Attendance";
 import StudentAttendancePage from "./components/StudentAttendancePage";
 import Events from "./components/Events";
@@ -13,6 +12,7 @@ import UsersPage from "./components/UsersPage";
 import CreateUserModal from "./components/CreateUserModal";
 import StudentTimeInOut from "./components/StudentTimeInOut";
 import { AUTH_SESSION_QUERY_KEY, useAuthSession, useLogout } from "./hooks/auth";
+import { DEFAULT_LOGGED_IN_ROUTE } from "./utils/appNav";
 import { CURRENT_EVENT_QUERY_KEY } from "./hooks/useGetCurrentEvent";
 import { EVENTS_QUERY_KEY } from "./hooks/useGetEvents";
 
@@ -29,7 +29,7 @@ function RedirectAttendance2EventStudentsToAttendance() {
 function App() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const defaultRoute = "/dashboard";
+  const defaultRoute = DEFAULT_LOGGED_IN_ROUTE;
   const timeInOutRoute = "/time-in-out";
   const { mutate: logout } = useLogout();
   const { data: session, isLoading: isSessionLoading, refetch: refetchSession } = useAuthSession();
@@ -163,15 +163,9 @@ function App() {
             <>
               <Route
                 path="/dashboard"
-                element={
-                  <Dashboard
-                    onLogout={handleLogout}
-                    onNavigate={handleNavigate}
-                    onOpenCreateUser={openCreateUser}
-                    isCreateUserOpen={isCreateUserOpen}
-                  />
-                }
+                element={<Navigate to={defaultRoute} replace />}
               />
+              {/* Dashboard UI kept in ./components/Dashboard.jsx — hidden from nav; direct /dashboard redirects. */}
               <Route path="/attendance2" element={<Navigate to="/attendance" replace />} />
               <Route
                 path="/attendance2/event/:eventId"

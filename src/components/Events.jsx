@@ -8,6 +8,7 @@ import { useGetAllEvents } from "../hooks/useGetAllEvents";
 import { useEditEvent } from "../hooks/useEditEvent";
 import { useDeleteEvent } from "../hooks/useDeleteEvent";
 import { useGovernorScope } from "../hooks/useGovernorScope";
+import { getAppNavItems } from "../utils/appNav";
 import { getDashboardRoleLabel, isCsgPresident } from "../utils/roles";
 import { formatEventDateForDisplay, formatSqlTimeForDisplay } from "../hooks/useGetEvents";
 import {
@@ -449,14 +450,7 @@ export default function Events({ onLogout, onNavigate }) {
     return FINE_PER_ABSENT;
   };
 
-  const navItems = [
-    { id: "dashboard", label: "Dashboard" },
-    { id: "attendance", label: "Attendance" },
-    { id: "attendance_students", label: "Students" },
-    { id: "payment", label: "Payments" },
-    { id: "events", label: "Manage Event" },
-    ...(isAdmin ? [{ id: "import", label: "Import" }, { id: "users", label: "Users" }] : []),
-  ];
+  const navItems = getAppNavItems({ isAdmin });
 
 
   /** Live events from API only. */

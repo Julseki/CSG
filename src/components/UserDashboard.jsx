@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { useGetEvents, selectActiveOrUpcomingEvent } from "../hooks/useGetEvents";
 import EventSummaryStrip from "./EventSummaryStrip";
 import SidebarNavIcon from "./SidebarNavIcon";
+import { SHOW_DASHBOARD_IN_NAV } from "../utils/appNav";
 import UserCircleIcon from "./UserCircleIcon";
 const COLLEGES = [
   {
@@ -181,17 +182,21 @@ export default function UserDashboard({ onLogout, onNavigate }) {
         </div>
 
         <nav className="flex-1 px-4 space-y-1">
-          <button
-            onClick={() => onNavigate?.("dashboard")}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors bg-[#055a2e] text-white"
-          >
-            <SidebarNavIcon navId="dashboard" />
-            Governor Dashboard
-          </button>
+          {SHOW_DASHBOARD_IN_NAV ? (
+            <button
+              onClick={() => onNavigate?.("dashboard")}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors bg-[#055a2e] text-white"
+            >
+              <SidebarNavIcon navId="dashboard" />
+              Governor Dashboard
+            </button>
+          ) : null}
 
           <button
             onClick={() => onNavigate?.("attendance")}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors text-green-100 hover:bg-white/15"
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-colors ${
+              SHOW_DASHBOARD_IN_NAV ? "text-green-100 hover:bg-white/15" : "bg-[#055a2e] text-white"
+            }`}
           >
             <SidebarNavIcon navId="attendance" />
             Attendance
