@@ -762,7 +762,7 @@ export default function Payments({ onNavigate, onLogout }) {
                     type="search"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search student, ID, course, major, event"
+                    placeholder="Search student, ID, or event"
                     className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
                   />
                   {search.trim() !== "" && (
@@ -809,8 +809,7 @@ export default function Payments({ onNavigate, onLogout }) {
                 <table className="w-full min-w-[1080px] table-fixed border-collapse text-sm">
                   <thead className="border-b border-[#07713c]/30 bg-[#07713c]">
                     <tr>
-                      <th className="w-[22%] px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Student</th>
-                      <th className="w-[15%] px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Course</th>
+                      <th className="w-[28%] px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Student</th>
                       <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Year</th>
                       <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Total Events</th>
                       <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Total Fine</th>
@@ -822,15 +821,15 @@ export default function Payments({ onNavigate, onLogout }) {
                   <tbody>
                     {isPaymentsLoading ? (
                       <tr>
-                        <td colSpan={8} className="py-8 px-4 text-center text-[#07713c]/85 text-sm">Loading payment records...</td>
+                        <td colSpan={7} className="py-8 px-4 text-center text-[#07713c]/85 text-sm">Loading payment records...</td>
                       </tr>
                     ) : isPaymentsError ? (
                       <tr>
-                        <td colSpan={8} className="py-8 px-4 text-center text-red-700 text-sm">Unable to load payment records right now.</td>
+                        <td colSpan={7} className="py-8 px-4 text-center text-red-700 text-sm">Unable to load payment records right now.</td>
                       </tr>
                     ) : paginatedStudents.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="py-8 px-4 text-center text-[#07713c]/85 text-sm">No payment records found for this filter.</td>
+                        <td colSpan={7} className="py-8 px-4 text-center text-[#07713c]/85 text-sm">No payment records found for this filter.</td>
                       </tr>
                     ) : (
                       paginatedStudents.map((row) => (
@@ -854,14 +853,6 @@ export default function Payments({ onNavigate, onLogout }) {
                               title={row.studentName}
                             >
                               {row.studentName}
-                            </p>
-                          </td>
-                          <td className="py-3 px-3 overflow-hidden">
-                            <p
-                              className="truncate font-medium whitespace-nowrap text-[#07713c] hover:underline underline-offset-2 decoration-[#07713c]"
-                              title={row.courseDisplay}
-                            >
-                              {row.courseDisplay}
                             </p>
                           </td>
                           <td className="py-3 px-3 overflow-hidden">
@@ -1110,7 +1101,6 @@ export default function Payments({ onNavigate, onLogout }) {
                   <div className="mt-2 space-y-1.5 text-[#07713c]">
                     <p><span className="font-semibold">Name:</span> {selectedRow.studentName}</p>
                     <p><span className="font-semibold">Student ID:</span> {selectedRow.studentId}</p>
-                    <p><span className="font-semibold">Course:</span> {selectedRow.courseDisplay}</p>
                     <p><span className="font-semibold">Year:</span> {selectedRow.year}</p>
                   </div>
                 </div>
@@ -1296,7 +1286,7 @@ export default function Payments({ onNavigate, onLogout }) {
                   type="search"
                   value={exportSearch}
                   onChange={(e) => setExportSearch(e.target.value)}
-                  placeholder="Search student, ID, course, major, event"
+                  placeholder="Search student, ID, or event"
                   className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                 />
               </label>
@@ -1325,21 +1315,6 @@ export default function Payments({ onNavigate, onLogout }) {
                   {exportCollegeOptions.map((college) => (
                     <option key={college} value={college}>
                       {college}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1 text-xs text-[#07713c]">
-                Course
-                <select
-                  value={exportCourseFilter}
-                  onChange={(e) => setExportCourseFilter(e.target.value)}
-                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
-                >
-                  <option value="all">All courses</option>
-                  {exportCourseOptions.map((course) => (
-                    <option key={course} value={course}>
-                      {course}
                     </option>
                   ))}
                 </select>

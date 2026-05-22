@@ -5,6 +5,11 @@ import PaginationBar from "./PaginationBar";
 import { getDashboardRoleLabel } from "../utils/roles";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { useImportStudentsCsv } from "../hooks/useImportStudentsCsv";
+import {
+  detectStudentCsvFormat,
+  STUDENT_CSV_OPTIONAL_LEGACY_HEADERS,
+  validateStudentCsvHeaders,
+} from "../utils/studentCsvImport";
 
 function parseCsvPreview(text) {
   const lines = String(text || "")
@@ -76,6 +81,14 @@ export default function ImportPage({ onNavigate, onLogout }) {
   ];
 
   const preview = useMemo(() => parseCsvPreview(previewText), [previewText]);
+  const headerValidation = useMemo(
+    () => validateStudentCsvHeaders(preview.headers, preview.rows.length),
+    [preview.headers, preview.rows.length],
+  );
+  const detectedFormat = useMemo(
+    () => detectStudentCsvFormat(preview.headers),
+    [preview.headers],
+  );
   const existingStudents = result?.existingStudents ?? [];
   const existingStudentsTotalPages = Math.max(
     1,
@@ -111,6 +124,10 @@ export default function ImportPage({ onNavigate, onLogout }) {
     if (!fileToImport) {
       setError("");
       fileInputRef.current?.click();
+      return;
+    }
+    if (!headerValidation.valid) {
+      setError(headerValidation.message || "CSV is empty.");
       return;
     }
     setError("");
@@ -192,11 +209,31 @@ export default function ImportPage({ onNavigate, onLogout }) {
           <div className="space-y-6">
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4">
               <p className="text-sm text-gray-700">
-                Upload CSV using your updated ALL DEPARTMENTS format (no <span className="font-semibold">Name</span> column).
+                Upload a student CSV. Use the new 4-column format, or include legacy columns when you have program and department data.
               </p>
-              <p className="text-xs text-gray-500">
-                Required headers: ID Number (or Student ID), First Name, Last Name, School Year, Course, Year, Department.
-              </p>
+              <div className="rounded-lg border border-green-100 bg-green-50/60 px-3 py-2 text-xs text-gray-700 space-y-1">
+                <p>
+                  <span className="font-semibold text-[#07713c]">Imports all rows</span> — duplicates are updated, and
+                  missing fields are left empty when not provided.
+                </p>
+                <p>
+                  <span className="font-semibold text-gray-600">Typical columns:</span>{" "}
+                  <code className="text-[11px]">id_number</code>, <code className="text-[11px]">rfid</code>,{" "}
+                  <code className="text-[11px]">full_name</code>, <code className="text-[11px]">level</code>
+                </p>
+                <p>
+                  <span className="font-semibold text-gray-600">Also supported (optional):</span>{" "}
+                  {STUDENT_CSV_OPTIONAL_LEGACY_HEADERS.join(", ")}.
+                </p>
+              </div>
+              {preview.headers.length > 0 && headerValidation.valid && (
+                <p className="text-xs text-green-700">
+                  Ready to import {preview.rows.length} row(s) ({detectedFormat} mapping).
+                </p>
+              )}
+              {preview.headers.length > 0 && !headerValidation.valid && (
+                <p className="text-xs text-red-600">{headerValidation.message}</p>
+              )}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -289,14 +326,16 @@ export default function ImportPage({ onNavigate, onLogout }) {
                 )}
                 {(result.existingStudents?.length ?? 0) > 0 && (
                   <div className="mt-3">
-                    <p className="text-xs font-semibold text-blue-700">Existing Students Found</p>
+                    <p className="text-xs font-semibold text-blue-700">Updated Existing Students (still imported)</p>
                     <div className="mt-2 overflow-auto rounded-lg border border-blue-200 bg-white">
                       <table className="min-w-full border-collapse text-[11px] text-blue-900">
                         <thead className="bg-blue-50">
                           <tr>
                             <th className="border border-blue-200 px-2 py-1 text-left font-semibold">Row</th>
                             <th className="border border-blue-200 px-2 py-1 text-left font-semibold">Student ID</th>
-                            <th className="border border-blue-200 px-2 py-1 text-left font-semibold">Name</th>
+                            <th className="border border-blue-200 px-2 py-1 text-left font-semibold">Full Name</th>
+                            <th className="border border-blue-200 px-2 py-1 text-left font-semibold">RFID</th>
+                            <th className="border border-blue-200 px-2 py-1 text-left font-semibold">Level</th>
                             <th className="border border-blue-200 px-2 py-1 text-left font-semibold">Department(s)</th>
                             <th className="border border-blue-200 px-2 py-1 text-left font-semibold">Major(s)</th>
                           </tr>
@@ -307,6 +346,8 @@ export default function ImportPage({ onNavigate, onLogout }) {
                               <td className="border border-blue-100 px-2 py-1 align-top">{item.row}</td>
                               <td className="border border-blue-100 px-2 py-1 align-top font-medium">{item.studentId}</td>
                               <td className="border border-blue-100 px-2 py-1 align-top">{item.fullName}</td>
+                              <td className="border border-blue-100 px-2 py-1 align-top">{item.rfid || "—"}</td>
+                              <td className="border border-blue-100 px-2 py-1 align-top">{item.yearLevelLabel || item.yearLevel || "—"}</td>
                               <td className="border border-blue-100 px-2 py-1 align-top">{item.departments || "N/A"}</td>
                               <td className="border border-blue-100 px-2 py-1 align-top">{item.majors || "No major"}</td>
                             </tr>

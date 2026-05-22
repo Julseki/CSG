@@ -25,6 +25,9 @@ const ATTENDANCE_MAJOR_OPTIONS_BY_COURSE = {
   BSBA: ["Financial Management", "Human Resource Development Management", "Marketing Management"],
 };
 
+/** College and major filters hidden for all roles (CSV roster has no college/major). */
+const SHOW_COLLEGE_MAJOR_FILTER_DROPDOWNS = false;
+
 /** Default fine per absence (₱) — mock only */
 const MOCK_FINE_PER_ABSENCE_PHP = 50;
 
@@ -461,7 +464,8 @@ export default function Attendance({ onLogout, onNavigate }) {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [detailEvent, studentListCourse, studentListCollege]);
 
-  const showStudentListMajorFilter = studentListMajorOptions.length > 0;
+  const showStudentListMajorFilter =
+    SHOW_COLLEGE_MAJOR_FILTER_DROPDOWNS && studentListMajorOptions.length > 0;
 
   const exportEventCourses = useMemo(() => {
     if (!detailEvent) return [];
@@ -935,7 +939,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                     type="search"
                     value={studentListSearch}
                     onChange={(e) => setStudentListSearch(e.target.value)}
-                    placeholder="Search name, ID, course, major, year level, or college"
+                    placeholder="Search name, ID, or year level"
                     className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
                   />
                   {studentListSearch.trim() !== "" && (
@@ -949,6 +953,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                     </button>
                   )}
                 </div>
+                {SHOW_COLLEGE_MAJOR_FILTER_DROPDOWNS && (
                 <label className="min-w-[200px] max-w-[min(100%,320px)] shrink-0 text-xs text-[#07713c]">
                   College
                   <select
@@ -964,21 +969,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                     ))}
                   </select>
                 </label>
-                <label className="text-xs text-[#07713c]">
-                  Course
-                  <select
-                    value={studentListCourse}
-                    onChange={(e) => setStudentListCourse(e.target.value)}
-                    className="mt-1 block w-full rounded-lg border border-[#07713c]/40 bg-white px-2 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
-                  >
-                    <option value="all">All courses</option>
-                    {studentListCourses.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                )}
                 {showStudentListMajorFilter && (
                   <label className="w-[260px] text-xs text-[#07713c]">
                     Major
@@ -1044,7 +1035,6 @@ export default function Attendance({ onLogout, onNavigate }) {
                     <tr>
                       <th rowSpan={2} className="border-b border-x border-[#07713c]/30 px-3 py-2 align-middle">Student ID</th>
                       <th rowSpan={2} className="border-b border-x border-[#07713c]/30 px-3 py-2 align-middle">Name</th>
-                      <th rowSpan={2} className="border-b border-x border-[#07713c]/30 px-3 py-2 align-middle">Course</th>
                       <th rowSpan={2} className="border-b border-x border-[#07713c]/30 px-3 py-2 align-middle">Year level</th>
                       <th rowSpan={2} className="border-b border-x border-[#07713c]/30 px-3 py-2 align-middle">Attendance</th>
                       {detailEventMeta.hasAmSession && detailEventMeta.hasPmSession ? (
@@ -1078,7 +1068,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                     {filteredStudentList.length === 0 ? (
                       <tr>
                         <td
-                        colSpan={6 + (detailEventMeta.hasAmSession ? 2 : 0) + (detailEventMeta.hasPmSession ? 2 : 0)}
+                        colSpan={5 + (detailEventMeta.hasAmSession ? 2 : 0) + (detailEventMeta.hasPmSession ? 2 : 0)}
                         className="border border-[#07713c]/30 px-3 py-6 text-center text-sm text-[#07713c]"
                       >
                           No students match the current filters.
@@ -1109,9 +1099,6 @@ export default function Attendance({ onLogout, onNavigate }) {
                               {String(s.id).toUpperCase()}
                             </td>
                             <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center font-medium text-[#07713c]">{s.name}</td>
-                            <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center text-[#07713c]">
-                              <span className="font-medium">{getCourseWithMajorCode(s)}</span>
-                            </td>
                             <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center tabular-nums text-[#07713c]">
                               {rowYearLevel != null ? rowYearLevel : "—"}
                             </td>
@@ -1361,7 +1348,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                       type="text"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Filter by name or audience…"
+                      placeholder="Filter by event name…"
                       className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-4 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]"
                     />
                   </div>
@@ -1420,7 +1407,6 @@ export default function Attendance({ onLogout, onNavigate }) {
                     <th className="px-4 py-2.5 align-middle">Event name</th>
                     <th className="px-4 py-2.5 align-middle">Date</th>
                     <th className="px-4 py-2.5 align-middle">Session</th>
-                    <th className="px-4 py-2.5 align-middle min-w-[140px]">Audience</th>
                     <th className="px-4 py-2.5 align-middle">Status</th>
                     <th className="px-4 py-2.5 text-right align-middle tabular-nums">Attended</th>
                     <th className="px-4 py-2.5 text-right align-middle tabular-nums">Absent</th>
@@ -1431,7 +1417,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                 <tbody>
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="px-4 py-8 text-center text-sm text-[#07713c]">
+                      <td colSpan={8} className="px-4 py-8 text-center text-sm text-[#07713c]">
                         No events match the current filters.
                       </td>
                     </tr>
@@ -1456,11 +1442,6 @@ export default function Attendance({ onLogout, onNavigate }) {
                       </td>
                       <td className="px-4 py-2.5 font-medium text-[#07713c]">
                         {formatDurationForEventsListWithSessionHint(ev)}
-                      </td>
-                      <td className="px-4 py-2.5 font-medium text-[#07713c]">
-                        <span className="line-clamp-2 break-words" title={attendanceEventListAudienceLabel(ev)}>
-                          {attendanceEventListAudienceLabel(ev)}
-                        </span>
                       </td>
                       <td className="px-4 py-2.5">
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(ev.status)}`}>
@@ -1725,6 +1706,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                   <option value="ongoing">Ongoing</option>
                   <option value="upcoming">Upcoming</option>
                 </select>
+                {SHOW_COLLEGE_MAJOR_FILTER_DROPDOWNS && (
                 <select
                   value={exportAllCollege}
                   onChange={(e) => setExportAllCollege(e.target.value)}
@@ -1737,6 +1719,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                     </option>
                   ))}
                 </select>
+                )}
                 <select
                   value={exportAllCourse}
                   onChange={(e) => setExportAllCourse(e.target.value)}
@@ -1764,9 +1747,10 @@ export default function Attendance({ onLogout, onNavigate }) {
                     type="search"
                     value={exportEventSearch}
                     onChange={(e) => setExportEventSearch(e.target.value)}
-                    placeholder="Search name, ID, course, major, year level, or college"
+                    placeholder="Search name, ID, or year level"
                     className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 sm:col-span-2"
                   />
+                  {SHOW_COLLEGE_MAJOR_FILTER_DROPDOWNS && (
                   <select
                     value={exportEventCollege}
                     onChange={(e) => setExportEventCollege(e.target.value)}
@@ -1779,6 +1763,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                       </option>
                     ))}
                   </select>
+                  )}
                   <select
                     value={exportEventCourse}
                     onChange={(e) => setExportEventCourse(e.target.value)}
@@ -1791,6 +1776,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                       </option>
                     ))}
                   </select>
+                  {SHOW_COLLEGE_MAJOR_FILTER_DROPDOWNS && (
                   <select
                     value={exportEventMajor}
                     onChange={(e) => setExportEventMajor(e.target.value)}
@@ -1803,6 +1789,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                       </option>
                     ))}
                   </select>
+                  )}
                   <select
                     value={exportEventYearLevel}
                     onChange={(e) => setExportEventYearLevel(e.target.value)}

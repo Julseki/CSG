@@ -767,14 +767,13 @@ export default function Events({ onLogout, onNavigate }) {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[960px] table-fixed border-collapse text-sm">
                   <colgroup>
-                    <col className="w-[18%]" />
-                    <col className="w-[11%]" />
-                    <col className="w-[9%]" />
-                    <col className="w-[14%]" />
-                    <col className="w-[16%]" />
-                    <col className="w-[8%]" />
+                    <col className="w-[20%]" />
+                    <col className="w-[12%]" />
                     <col className="w-[10%]" />
-                    <col className="w-[14%]" />
+                    <col className="w-[18%]" />
+                    <col className="w-[9%]" />
+                    <col className="w-[11%]" />
+                    <col className="w-[20%]" />
                   </colgroup>
                   <thead className="border-b border-[#07713c]/30 bg-[#07713c]">
                     <tr>
@@ -782,7 +781,6 @@ export default function Events({ onLogout, onNavigate }) {
                       <th className="align-middle px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Date</th>
                       <th className="align-middle px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Session</th>
                       <th className="align-middle px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Venue</th>
-                      <th className="align-middle px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Audience</th>
                       <th className="whitespace-nowrap px-3 py-3 text-right align-middle text-xs font-semibold uppercase tracking-wide text-white">
                         Fines
                       </th>
@@ -793,7 +791,7 @@ export default function Events({ onLogout, onNavigate }) {
                   <tbody>
                     {filteredEvents.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="px-4 py-10 text-center text-sm text-[#07713c]/70">
+                        <td colSpan={7} className="px-4 py-10 text-center text-sm text-[#07713c]/70">
                           No event records.
                         </td>
                       </tr>
@@ -818,11 +816,6 @@ export default function Events({ onLogout, onNavigate }) {
                             <td className="min-w-0 px-3 py-3 align-middle font-medium text-[#07713c]">
                               <span className="line-clamp-2 break-words" title={ev.venue}>
                                 {ev.venue}
-                              </span>
-                            </td>
-                            <td className="min-w-0 px-3 py-3 align-middle font-medium text-[#07713c]">
-                              <span className="line-clamp-2 break-words" title={getAudienceScopeLabel(ev)}>
-                                {getAudienceScopeLabel(ev)}
                               </span>
                             </td>
                             <td className="align-middle py-3 px-3 text-right tabular-nums text-sm font-semibold text-red-600">
@@ -904,10 +897,7 @@ export default function Events({ onLogout, onNavigate }) {
                       </div>
                       <p className="mb-1 text-sm font-medium text-[#07713c]">{formatEventDateForDisplay(ev.date)}</p>
                       <p className="mb-1 text-sm font-medium text-[#07713c]">{ev.venue}</p>
-                      <p className="mb-1 text-sm font-medium text-[#07713c]">{formatDurationForEventsList(ev)}</p>
-                      <p className="mb-2 line-clamp-2 text-sm font-medium text-[#07713c]" title={getAudienceScopeLabel(ev)}>
-                        Audience: {getAudienceScopeLabel(ev)}
-                      </p>
+                      <p className="mb-2 text-sm font-medium text-[#07713c]">{formatDurationForEventsList(ev)}</p>
                       <div className="border-t border-[#07713c]/15 pt-2">
                         <div className="flex items-baseline justify-between gap-3">
                           <span className="shrink-0 text-xs font-medium text-[#07713c]">Fines</span>
@@ -1203,12 +1193,14 @@ export default function Events({ onLogout, onNavigate }) {
                 readOnly={eventModalMode === "view"}
                 onPatch={eventModalMode === "edit" ? patchEditableEventSchedule : undefined}
               />
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-[#07713c]">Audience scope</label>
-                <p className="min-h-[2.5rem] rounded-lg border border-[#07713c]/30 bg-[#07713c]/5 px-3 py-2 text-sm text-[#07713c]">
-                  {getAudienceScopeLabel(editableEvent)}
-                </p>
-              </div>
+              {eventModalMode !== "view" && (
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-[#07713c]">Audience scope</label>
+                  <p className="min-h-[2.5rem] rounded-lg border border-[#07713c]/30 bg-[#07713c]/5 px-3 py-2 text-sm text-[#07713c]">
+                    {getAudienceScopeLabel(editableEvent)}
+                  </p>
+                </div>
+              )}
               <div>
                 <label className="mb-1 block text-xs font-semibold text-[#07713c]">Audience notes</label>
                 {eventModalMode === "view" ? (

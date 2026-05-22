@@ -10,6 +10,9 @@ import { formatEventDateForDisplay } from "../hooks/useGetEvents";
 
 void ChartJS;
 
+/** College filter hidden for all roles (CSV roster has no college). */
+const SHOW_COLLEGE_MAJOR_FILTER_DROPDOWNS = false;
+
 function getActivityTier(rate) {
   if (rate >= 90) return { key: "active", label: "Active", emoji: "🟢", range: "90–100%" };
   if (rate >= 70) return { key: "moderate", label: "Moderate", emoji: "🟡", range: "70–89%" };
@@ -388,7 +391,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
     ];
   }, [isGovernor, governorCollegeNames]);
 
-  const showCollegeFilterSelect = !isGovernor || (governorCollegeNames && governorCollegeNames.length > 1);
+  const showCollegeFilterSelect = SHOW_COLLEGE_MAJOR_FILTER_DROPDOWNS;
 
   useEffect(() => {
     if (!isGovernor || governorCollegeNames?.length !== 1) return;
@@ -803,9 +806,9 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                   type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search name, ID, course, or year level"
+                  placeholder="Search name, ID, or year level"
                   className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
-                  aria-label="Search students by name, ID, course, or year level"
+                  aria-label="Search students by name, ID, or year level"
                 />
                 {search.trim() !== "" && (
                   <button
@@ -835,22 +838,6 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                   </select>
                 </label>
               )}
-              <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
-                Course
-                <select
-                  value={rosterCourseFilter}
-                  onChange={(e) => setRosterCourseFilter(e.target.value)}
-                  className="h-9 min-w-[10rem] rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
-                  aria-label="Filter by course"
-                >
-                  <option value="all">All courses</option>
-                  {availableCourseOptions.map((c) => (
-                    <option key={c.filterValue} value={c.filterValue}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
               <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
                 Year level
                 <select
@@ -893,7 +880,6 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
               <tr>
                 <th className="px-3 py-2.5 text-left align-middle">Student ID</th>
                 <th className="px-3 py-2.5 text-left align-middle">Name</th>
-                <th className="px-3 py-2.5 text-left align-middle">Course</th>
                 <th className="min-w-[5rem] whitespace-nowrap px-3 py-2.5 text-center align-middle tabular-nums">Year level</th>
                 <th className="min-w-[5.5rem] whitespace-nowrap px-3 py-2.5 text-center align-middle tabular-nums">Attendance</th>
                 <th className="px-3 py-2.5 text-left align-middle">Status</th>
@@ -923,9 +909,6 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                   >
                     <td className="px-3 py-1.5 text-left font-medium leading-snug text-[#07713c]">{s.id}</td>
                     <td className="px-3 py-1.5 text-left font-medium leading-snug text-[#07713c]">{s.name}</td>
-                    <td className="px-3 py-1.5 text-left font-medium leading-snug text-[#07713c]">
-                      {getRosterCourseDisplayLabel(s.course)}
-                    </td>
                     <td className="px-3 py-1.5 text-center tabular-nums leading-snug text-[#07713c]">
                       {rowYl != null ? rowYl : "—"}
                     </td>
@@ -1335,9 +1318,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
               <p className="text-[11px] font-semibold uppercase tracking-wide text-[#07713c]/85">Selected student</p>
               <p className="mt-1 font-semibold text-[#07713c]">{student.name}</p>
               <p className="text-xs text-[#07713c]/85">
-                {[student.id, getRosterCourseDisplayLabel(student.course), ...(selectedStudentYearLevel != null ? [`Year ${selectedStudentYearLevel}`] : [])].join(
-                  " · ",
-                )}
+                {[student.id, ...(selectedStudentYearLevel != null ? [`Year ${selectedStudentYearLevel}`] : [])].join(" · ")}
               </p>
             </div>
             {student.totalEvents > 0 ? (
@@ -1380,7 +1361,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                 <p className="text-xs uppercase tracking-wide text-white/80">Student details</p>
                 <h3 className="text-sm font-semibold text-white sm:text-base">{student.name}</h3>
                 <p className="mt-1 text-xs text-white/85">
-                  {student.id} · {getRosterCourseDisplayLabel(student.course)}
+                  {student.id}
                   {selectedStudentYearLevel != null ? ` · Year ${selectedStudentYearLevel}` : ""}
                 </p>
               </div>
@@ -1749,7 +1730,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                     type="search"
                     value={exportSearch}
                     onChange={(e) => setExportSearch(e.target.value)}
-                    placeholder="Search name, ID, course, or year level"
+                    placeholder="Search name, ID, or year level"
                     className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
                   />
                   {exportSearch.trim() !== "" && (
@@ -1780,21 +1761,6 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                   </select>
                 </label>
               )}
-              <label className="flex flex-col gap-1 text-xs text-[#07713c]">
-                Course
-                <select
-                  value={exportCourseFilter}
-                  onChange={(e) => setExportCourseFilter(e.target.value)}
-                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
-                >
-                  <option value="all">All courses</option>
-                  {exportCourseOptions.map((c) => (
-                    <option key={c.filterValue} value={c.filterValue}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
               <label className="flex flex-col gap-1 text-xs text-[#07713c] sm:col-span-2">
                 Year level
                 <select

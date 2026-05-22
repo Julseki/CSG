@@ -644,36 +644,6 @@ export default function AddEvent({ onBack, onNext }) {
           <div className="space-y-6">
             <h2 className="text-base font-semibold text-[#07713c]">Audience Details</h2>
 
-            {/* Year level & Department */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Department</label>
-                {isGovernor && governorScope ? (
-                  <div className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-sm text-gray-700">
-                    {governorScope.label}
-                  </div>
-                ) : isCsgPresident(role) ? (
-                  <div className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-sm text-gray-700">
-                    All departments
-                  </div>
-                ) : (
-                  <select
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55"
-                  >
-                    <option>All Departments</option>
-                    <option>BSBA</option>
-                    <option>BSIT</option>
-                    <option>BSCrim</option>
-                    <option>BEED</option>
-                    <option>BSED</option>
-                    <option>BSHM</option>
-                  </select>
-                )}
-              </div>
-            </div>
-
             {shouldShowMajorSelection && (
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Major</label>
@@ -776,29 +746,17 @@ export default function AddEvent({ onBack, onNext }) {
       {/* Audience */}
       <div className="mt-3 border-t border-[#07713c]/15 pt-3 text-xs text-[#07713c]">
         <p className="font-semibold mb-1">Audience</p>
-        <p>Year Level: {yearLevel}</p>
-        {role === "ceas_governor" && major === "All Majors" ? (
-          <p>Audience scope: CEAS</p>
-        ) : role === "cba_governor" && major === "All Majors" ? (
-          <p>Audience scope: CBA (all BSBA tracks: MM, FM, HRDM)</p>
-        ) : role === "ceas_governor" && major === "BSED" ? (
-          <>
-            <p>Department: {department}</p>
-            <p>Major: BSED — English, Filipino, Math only (BEED excluded)</p>
-          </>
-        ) : (
-          <>
-            <p>Department: {department}</p>
-            {shouldShowMajorSelection && (
-              <p>
-                {role === "cba_governor" ? (
-                  <>Target audience: {cbaMajorOptionLabel(major)}</>
-                ) : (
-                  <>Major: {major}</>
-                )}
-              </p>
+        {role === "ceas_governor" && major === "BSED" ? (
+          <p>Major: BSED — English, Filipino, Math only (BEED excluded)</p>
+        ) : null}
+        {shouldShowMajorSelection && role !== "ceas_governor" && (
+          <p>
+            {role === "cba_governor" ? (
+              <>Target audience: {cbaMajorOptionLabel(major)}</>
+            ) : (
+              <>Major: {major}</>
             )}
-          </>
+          </p>
         )}
         {!isCsgRole && <p>Mandatory: {isMandatory ? "Yes" : "No"}</p>}
         {audienceNotes && <p>Notes: {audienceNotes}</p>}
