@@ -14,6 +14,7 @@ import { useUpdateFineAmount } from "../hooks/useUpdateFineAmount";
 import { useSetStudentBalance } from "../hooks/useSetStudentBalance";
 import { getAppNavItems } from "../utils/appNav";
 import { formatCourseWithMajor } from "../utils/courseMajorDisplay";
+import { downloadPdfTable } from "../utils/downloadPdfTable";
 
 void ChartJS;
 
@@ -275,11 +276,13 @@ export default function Payments({ onNavigate, onLogout }) {
       const payableBalance = Math.max(0, totalFine - waivedAmount);
       let status = "Unpaid";
       const hasProgress = paidAmount > 0 || waivedAmount > 0;
-      if (payableBalance <= 0 && totalFine > 0) {
+      if (totalFine <= 0 && remaining <= 0) {
+        status = "Paid";
+      } else if (payableBalance <= 0 && totalFine > 0) {
         status = "Waived";
       } else if (hasProgress && remaining > 0) {
         status = "Partial";
-      } else if (paidAmount > 0 && remaining <= 0 && totalFine > 0) {
+      } else if (remaining <= 0 && totalFine > 0) {
         status = "Paid";
       }
       const courseDisplay = formatCourseWithMajor(student.course, student.major ?? null);
@@ -650,8 +653,39 @@ export default function Payments({ onNavigate, onLogout }) {
     );
   };
 
-  const mockPdfExport = () => {
-    window.alert("Mock: PDF report would be generated for current payment filters.");
+  const buildPaymentsExportSubtitle = () => {
+    const parts = [
+      `Generated ${new Date().toLocaleString("en-PH")}`,
+      `${exportFilteredRows.length} student record(s)`,
+    ];
+    if (exportStatusFilter !== "All") parts.push(`Status: ${exportStatusFilter}`);
+    if (exportCollegeFilter !== "all") parts.push(`College: ${exportCollegeFilter}`);
+    if (exportYearFilter !== "all") parts.push(`Year: ${exportYearFilter}`);
+    if (exportBalanceFilter === "with_balance") parts.push("With balance");
+    if (exportBalanceFilter === "zero_balance") parts.push("Zero balance");
+    if (exportSearch.trim()) parts.push(`Search: ${exportSearch.trim()}`);
+    return parts.join(" · ");
+  };
+
+  const exportPaymentsPdf = () => {
+    const header = ["Student ID", "Student Name", "Year", "Total Events", "Total Fine", "Paid Amount", "Remaining", "Status"];
+    const body = exportFilteredRows.map((row) => [
+      String(row.studentId || ""),
+      String(row.studentName || ""),
+      String(row.year ?? ""),
+      String(row.totalEvents ?? 0),
+      Number(row.totalFine) || 0,
+      Number(row.paidAmount) || 0,
+      Number(row.remaining) || 0,
+      String(row.status || ""),
+    ]);
+    downloadPdfTable({
+      filename: `payments-${new Date().toISOString().slice(0, 10)}.pdf`,
+      title: "Payments Report",
+      subtitle: buildPaymentsExportSubtitle(),
+      head: header,
+      body,
+    });
   };
 
   const handleSaveFineEdit = async () => {
@@ -1383,12 +1417,12 @@ export default function Payments({ onNavigate, onLogout }) {
               <button
                 type="button"
                 onClick={() => {
-                  mockPdfExport();
+                  exportPaymentsPdf();
                   setExportOpen(false);
                 }}
                 className="w-full rounded-lg border border-[#07713c]/40 px-4 py-2.5 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/10"
               >
-                Export PDF (mock)
+                Export PDF — filtered payments
               </button>
               <button
                 type="button"

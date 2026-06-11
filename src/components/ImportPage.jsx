@@ -7,10 +7,11 @@ import { getDashboardRoleLabel } from "../utils/roles";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { useImportStudentsCsv } from "../hooks/useImportStudentsCsv";
 import {
-  detectStudentCsvFormat,
-  STUDENT_CSV_OPTIONAL_LEGACY_HEADERS,
-  validateStudentCsvHeaders,
-} from "../utils/studentCsvImport";
+  DATA_RESET_CONFIRMATION_PHRASE,
+  useDataReset,
+  useDataResetPreview,
+} from "../hooks/useDataReset";
+import { detectStudentCsvFormat, validateStudentCsvHeaders } from "../utils/studentCsvImport";
 
 function parseCsvPreview(text) {
   const lines = String(text || "")
@@ -69,7 +70,17 @@ export default function ImportPage({ onNavigate, onLogout }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [existingStudentsPage, setExistingStudentsPage] = useState(1);
+  const [resetConfirmation, setResetConfirmation] = useState("");
+  const [resetAcknowledged, setResetAcknowledged] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
+  const [resetError, setResetError] = useState("");
   const importMutation = useImportStudentsCsv();
+  const {
+    data: resetPreview,
+    refetch: refetchResetPreview,
+    isFetching: isResetPreviewLoading,
+  } = useDataResetPreview({ enabled: isAdmin });
+  const resetMutation = useDataReset();
   const EXISTING_STUDENTS_PAGE_SIZE = 20;
 
   const navItems = getAppNavItems({ isAdmin });
@@ -110,6 +121,34 @@ export default function ImportPage({ onNavigate, onLogout }) {
     }
     const text = await file.text();
     setPreviewText(text);
+  };
+
+  const onResetAllData = () => {
+    setResetMessage("");
+    setResetError("");
+    if (!resetAcknowledged) {
+      setResetError("Check the box to confirm you understand this cannot be undone.");
+      return;
+    }
+    if (resetConfirmation.trim() !== DATA_RESET_CONFIRMATION_PHRASE) {
+      setResetError(`Type ${DATA_RESET_CONFIRMATION_PHRASE} to confirm.`);
+      return;
+    }
+    resetMutation.mutate(DATA_RESET_CONFIRMATION_PHRASE, {
+      onSuccess: (data) => {
+        setResetMessage(data?.message || "All data has been reset.");
+        setResetConfirmation("");
+        setResetAcknowledged(false);
+        setResult(null);
+        setPreviewText("");
+        setSelectedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        refetchResetPreview();
+      },
+      onError: (err) => {
+        setResetError(err?.response?.data?.message || "Reset failed.");
+      },
+    });
   };
 
   const onImport = () => {
@@ -203,9 +242,8 @@ export default function ImportPage({ onNavigate, onLogout }) {
           <div className="space-y-6">
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4">
               <p className="text-sm text-gray-700">
-                Upload a student CSV (export from Excel as CSV UTF-8). Use the 4-column format, add{" "}
-                <code className="text-[11px]">department</code> to link students to a college, or include full legacy
-                columns when you have program and school year data.
+                Upload a student CSV (export from Excel as CSV UTF-8). Use the 5-column format below to link each
+                student to a college department.
               </p>
               <div className="rounded-lg border border-green-100 bg-green-50/60 px-3 py-2 text-xs text-gray-700 space-y-1">
                 <p>
@@ -215,12 +253,8 @@ export default function ImportPage({ onNavigate, onLogout }) {
                 <p>
                   <span className="font-semibold text-gray-600">Typical columns:</span>{" "}
                   <code className="text-[11px]">id_number</code>, <code className="text-[11px]">rfid</code>,{" "}
-                  <code className="text-[11px]">full_name</code>, <code className="text-[11px]">level</code>, optional{" "}
+                  <code className="text-[11px]">full_name</code>, <code className="text-[11px]">level</code>,{" "}
                   <code className="text-[11px]">department</code>
-                </p>
-                <p>
-                  <span className="font-semibold text-gray-600">Also supported (optional):</span>{" "}
-                  {STUDENT_CSV_OPTIONAL_LEGACY_HEADERS.join(", ")}.
                 </p>
               </div>
               {preview.headers.length > 0 && headerValidation.valid && (
@@ -285,6 +319,85 @@ export default function ImportPage({ onNavigate, onLogout }) {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {isAdmin && (
+              <div className="rounded-xl border border-red-300 bg-red-50/40 p-5 shadow-sm space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-red-800">Reset all data</h3>
+                  <p className="mt-1 text-xs text-red-900/90">
+                    Deletes all students, colleges, courses, events, attendance, fines, payments, and
+                    non-admin users. <span className="font-semibold">Admin account(s) are kept.</span> This
+                    cannot be undone.
+                  </p>
+                </div>
+                <div className="rounded-lg border border-red-200 bg-white p-3 text-xs text-gray-800">
+                  <p className="mb-2 font-semibold text-red-800">Records that will be removed</p>
+                  {isResetPreviewLoading && !resetPreview ? (
+                    <p className="text-gray-500">Loading counts…</p>
+                  ) : resetPreview ? (
+                    <ul className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
+                      <li>Students: {resetPreview.students}</li>
+                      <li>Enrollments: {resetPreview.enrollments}</li>
+                      <li>Departments: {resetPreview.departments}</li>
+                      <li>Programs: {resetPreview.programs}</li>
+                      <li>Events: {resetPreview.events}</li>
+                      <li>Attendance: {resetPreview.attendance}</li>
+                      <li>Fines: {resetPreview.fines}</li>
+                      <li>Payments: {resetPreview.payments}</li>
+                      <li>Non-admin users: {resetPreview.nonAdminUsers}</li>
+                    </ul>
+                  ) : (
+                    <p className="text-gray-500">Could not load preview.</p>
+                  )}
+                  {resetPreview && (
+                    <p className="mt-2 text-[11px] text-gray-600">
+                      Admin accounts kept: {resetPreview.adminUsers}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => refetchResetPreview()}
+                    disabled={isResetPreviewLoading}
+                    className="mt-2 text-[11px] font-medium text-[#07713c] underline disabled:opacity-60"
+                  >
+                    Refresh counts
+                  </button>
+                </div>
+                <label className="flex items-start gap-2 text-xs text-red-900">
+                  <input
+                    type="checkbox"
+                    checked={resetAcknowledged}
+                    onChange={(e) => setResetAcknowledged(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span>I understand all data above will be permanently deleted (admin kept).</span>
+                </label>
+                <div>
+                  <label htmlFor="reset-confirmation" className="block text-xs font-medium text-red-800 mb-1">
+                    Type <code className="text-[11px]">{DATA_RESET_CONFIRMATION_PHRASE}</code> to confirm
+                  </label>
+                  <input
+                    id="reset-confirmation"
+                    type="text"
+                    value={resetConfirmation}
+                    onChange={(e) => setResetConfirmation(e.target.value)}
+                    placeholder={DATA_RESET_CONFIRMATION_PHRASE}
+                    className="block w-full max-w-md appearance-none rounded-lg border-[1.5px] border-red-600 bg-white px-3 py-2 text-sm text-gray-900 shadow-none outline-none [box-shadow:none] hover:border-red-700 focus:border-red-700 focus:outline-none focus:ring-0 focus-visible:border-red-700 focus-visible:outline-none focus-visible:ring-0 focus-visible:[box-shadow:none]"
+                    autoComplete="off"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={onResetAllData}
+                  disabled={resetMutation.isPending}
+                  className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800 disabled:opacity-60"
+                >
+                  {resetMutation.isPending ? "Resetting…" : "Reset all data"}
+                </button>
+                {resetError && <p className="text-sm text-red-700">{resetError}</p>}
+                {resetMessage && <p className="text-sm font-medium text-green-800">{resetMessage}</p>}
               </div>
             )}
 

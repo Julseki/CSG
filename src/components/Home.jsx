@@ -3,8 +3,7 @@ import Navbar from "./Navbar";
 import EventCard from "./EventCard";
 import UpcomingEventsList from "./UpcomingEventsList";
 import PaginationBar from "./PaginationBar";
-import normiBackground from "../assets/normi-background.jpg";
-import normiLogoPng from "../assets/NORMI_LOGO.png";
+import csgLogo from "../assets/CSG LOGO.jpg";
 import { useGetCurrentEvent } from "../hooks/useGetCurrentEvent";
 import { formatEventDateForDisplay } from "../hooks/useGetEvents";
 import { useSubmitAttendance } from "../hooks/useSubmitAttendance";
@@ -20,18 +19,12 @@ function sqlTimeToMinutes(value) {
   return Number(m[1]) * 60 + Number(m[2]);
 }
 
-const ID_TYPES = [
-  { value: "studentId", label: "Student ID" },
-  { value: "rfid", label: "RFID" },
-];
-
 /** Wait for RFID wedge / typing to finish before auto-submit. */
 const AUTO_SUBMIT_DEBOUNCE_MS = 500;
 const MIN_AUTO_SUBMIT_LENGTH = 6;
 
 export default function Home() {
   const [userId, setUserId] = useState("");
-  const [idType, setIdType] = useState("studentId");
   const identifierInputRef = useRef(null);
   const autoSubmitTimerRef = useRef(null);
   const lastSubmittedIdentifierRef = useRef("");
@@ -197,6 +190,12 @@ export default function Home() {
     return () => clearInterval(id);
   }, []);
 
+  const clearIdentifierInput = useCallback(() => {
+    setUserId("");
+    lastSubmittedIdentifierRef.current = "";
+    identifierInputRef.current?.focus();
+  }, []);
+
   const { mutate: submitAttendance, isPending: isSubmittingAttendance } = useSubmitAttendance({
     onSuccess: (data) => {
       const status = String(data?.status ?? "").toLowerCase();
@@ -207,22 +206,16 @@ export default function Home() {
           message ||
             "Time out is not active yet. Please tap again during the time out schedule.",
         );
-        lastSubmittedIdentifierRef.current = "";
+        clearIdentifierInput();
         return;
       }
 
       toast.success(message || "Attendance submitted successfully.");
-
-      // Keep the input for non-recorded outcomes (e.g. time-out window not active yet).
-      if (status !== "time_out_not_active" && status !== "already_submitted") {
-        setUserId("");
-        lastSubmittedIdentifierRef.current = "";
-        identifierInputRef.current?.focus();
-      }
+      clearIdentifierInput();
     },
     onError: (error) => {
-      lastSubmittedIdentifierRef.current = "";
       toast.error(error?.response?.data?.message || "Failed to submit attendance.");
+      clearIdentifierInput();
     },
   });
 
@@ -234,7 +227,7 @@ export default function Home() {
 
       lastSubmittedIdentifierRef.current = identifier;
       const payload = {
-        ...(idType === "rfid" ? { rfid: identifier } : { studentId: identifier }),
+        identifier,
         attendanceKind,
         ...(selectedOngoingEvent?.id != null ? { eventId: selectedOngoingEvent.id } : {}),
         ...(useTestTime && (testTime || testDate)
@@ -249,7 +242,6 @@ export default function Home() {
     [
       attendanceKind,
       hasOngoingEvent,
-      idType,
       isSubmittingAttendance,
       now,
       selectedOngoingEvent?.id,
@@ -260,14 +252,6 @@ export default function Home() {
       userId,
     ],
   );
-
-  const handleSubmitAttendance = () => {
-    if (autoSubmitTimerRef.current) {
-      clearTimeout(autoSubmitTimerRef.current);
-      autoSubmitTimerRef.current = null;
-    }
-    submitIdentifier(userId);
-  };
 
   useEffect(() => {
     if (!hasOngoingEvent || detailEvent || showUpcomingModal) return;
@@ -293,13 +277,9 @@ export default function Home() {
   }, [hasOngoingEvent, isSubmittingAttendance, submitIdentifier, userId]);
 
   return (
-    <main
-      className="relative pt-50 min-h-screen px-4 py-6 pt-24 sm:px-8 lg:px-12 bg-cover bg-center bg-no-repeat [&_button]:cursor-pointer"
-      style={{ backgroundImage: `url("${normiBackground}")` }}
-    >
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#0b5f33]/40 via-[#0b5f33]/24 to-[#0b5f33]/45" />
+    <main className="relative flex min-h-screen items-center justify-center bg-[#07713c]/[0.04] px-4 py-24 sm:px-8 lg:px-12 [&_button]:cursor-pointer">
       <Navbar showSettings />
-      <section className="relative mx-auto w-full max-w-xl rounded-2xl border border-white/50 bg-white/92 px-5 py-6 sm:px-8 shadow-xl backdrop-blur-[2px] text-center">
+      <section className="relative w-full max-w-xl rounded-2xl border border-white/50 bg-white/92 px-5 py-6 sm:px-8 shadow-xl backdrop-blur-[2px] text-center">
         <div className="mt-2 px-1 sm:px-3 flex justify-center">
           {isCurrentEventLoading ? (
             <div className="w-full max-w-md rounded-lg p-6 text-center">
@@ -313,8 +293,8 @@ export default function Home() {
             >
               <div className="mb-4 flex justify-center">
                 <img
-                  src={normiLogoPng}
-                  alt="Normi Logo"
+                  src={csgLogo}
+                  alt="CSG Logo"
                   className="h-24 w-24 sm:h-28 sm:w-28 object-contain"
                 />
               </div>
@@ -334,8 +314,8 @@ export default function Home() {
             <div className="w-full max-w-md rounded-lg p-6 text-center">
               <div className="mb-4 flex justify-center">
                 <img
-                  src={normiLogoPng}
-                  alt="Normi Logo"
+                  src={csgLogo}
+                  alt="CSG Logo"
                   className="h-20 w-20 object-contain"
                 />
               </div>
@@ -354,7 +334,7 @@ export default function Home() {
             <div className="w-full max-w-md text-left">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <label htmlFor="attendance-identifier" className="block text-sm font-medium text-[#07713c]">
-                  {idType === "rfid" ? "RFID" : "Student ID"}
+                  Student ID or RFID
                 </label>
                 {attendancePhase && (
                   <p className={`inline-flex items-center justify-end gap-1 text-xs font-semibold sm:text-sm ${attendancePhase.className}`}>
@@ -399,35 +379,6 @@ export default function Home() {
                     </span>
                   </div>
                 </div>
-                <div
-                  className="inline-flex w-full rounded-lg border border-[#07713c]/30 bg-white p-0.5"
-                  role="group"
-                  aria-label="Identifier type"
-                >
-                  {ID_TYPES.map((option) => {
-                    const selected = idType === option.value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => {
-                          setIdType(option.value);
-                          setUserId("");
-                          lastSubmittedIdentifierRef.current = "";
-                        }}
-                        className={[
-                          "flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition",
-                          selected
-                            ? "bg-[#07713c] text-white"
-                            : "text-[#07713c] hover:bg-[#07713c]/5",
-                        ].join(" ")}
-                        aria-pressed={selected}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
-                </div>
                 <input
                   ref={identifierInputRef}
                   id="attendance-identifier"
@@ -445,17 +396,12 @@ export default function Home() {
                     }
                     submitIdentifier(userId);
                   }}
-                  placeholder={idType === "rfid" ? "Tap RFID or enter number" : "Enter student ID"}
+                  placeholder="Tap or enter student ID / RFID"
                   className="block w-full appearance-none rounded-lg border-[1.5px] border-[#07713c] bg-white px-3 py-2 text-sm text-[#07713c] shadow-none outline-none [box-shadow:none] hover:border-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-0 focus:ring-transparent focus-visible:border-[#07713c] focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent focus-visible:[box-shadow:none]"
                 />
-                <button
-                  type="button"
-                  onClick={handleSubmitAttendance}
-                  disabled={!userId.trim() || isSubmittingAttendance}
-                  className="rounded-lg bg-[#07713c] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#055c30] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#07713c]"
-                >
-                  {isSubmittingAttendance ? "Submitting..." : "Submit"}
-                </button>
+                {isSubmittingAttendance && (
+                  <p className="text-center text-xs font-medium text-[#07713c]/80">Submitting…</p>
+                )}
               </div>
             </div>
           </div>

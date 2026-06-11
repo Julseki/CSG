@@ -312,9 +312,15 @@ export default function CreateUserModal({ open, onClose }) {
                 onSuccess: () => {
                   setCreatedAccount({
                     username: usernameValue,
-                    password: createUserForm.password,
                     role: roleToSend,
                   });
+                  setCreateUserForm((prev) => ({
+                    ...prev,
+                    password: "",
+                    confirmPassword: "",
+                  }));
+                  setShowCreatePassword(false);
+                  setShowCreateConfirmPassword(false);
                 },
                 onError: (err) => {
                   setCreateUserError(
@@ -535,9 +541,6 @@ export default function CreateUserModal({ open, onClose }) {
               </p>
               <p className="text-xs text-[#07713c]">
                 Username: {createdAccount.username}
-              </p>
-              <p className="text-xs text-[#07713c]">
-                Password: {createdAccount.password}
               </p>
             </div>
           )}

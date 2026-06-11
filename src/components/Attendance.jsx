@@ -15,6 +15,7 @@ import { formatEventDateForDisplay, formatSqlTimeForDisplay } from "../hooks/use
 import { formatDurationForEventsListWithSessionHint } from "../utils/eventDurationDisplay";
 import { formatGraceDurationLabel } from "../utils/eventTimeOptions";
 import { getAudienceScopeLabel } from "../utils/eventAudienceLabel";
+import { downloadPdfTable } from "../utils/downloadPdfTable";
 
 void ChartJS;
 
@@ -807,31 +808,117 @@ export default function Attendance({ onLogout, onNavigate }) {
     );
   };
 
-  const exportCsvEvent = (ev, students = null) => {
-    const rows = Array.isArray(students) ? students : ev.students || [];
+  const buildEventExportRows = (ev, students = null) => {
+    const list = Array.isArray(students) ? students : ev.students || [];
     const header = ["Student ID", "Student", "Department", "Course", "Major", "Year Level", "Status", "Fine PHP"];
-    const body = rows.map((s) => {
+    const body = list.map((s) => {
       const yl = getYearLevel(s);
       return [
-        `"${String(s.id || "").replace(/"/g, '""')}"`,
-        `"${String(s.name).replace(/"/g, '""')}"`,
-        `"${String(getStudentDepartmentLabel(s)).replace(/"/g, '""')}"`,
-        `"${String(getCourse(s)).replace(/"/g, '""')}"`,
-        `"${String(getMajor(s) || "—").replace(/"/g, '""')}"`,
+        String(s.id || ""),
+        String(s.name || ""),
+        String(getStudentDepartmentLabel(s)),
+        String(getCourse(s)),
+        String(getMajor(s) || "—"),
         yl != null ? yl : "—",
-        ev.status === "upcoming" ? "No record" : s.status,
+        ev.status === "upcoming" ? "No record" : String(s.status || ""),
         Number(s.finePhp) || 0,
       ];
     });
-    downloadTextFile(`attendance-${ev.id}-${ev.date}.csv`, [header.join(","), ...body.map((r) => r.join(","))].join("\n"));
+    return { header, body };
   };
 
-  const mockPdfExport = (scope) => {
-    window.alert(
-      scope === "all"
-        ? "Mock: PDF report would be generated for all events (connect backend or pdf library in production)."
-        : "Mock: PDF would download for this event only.",
+  const exportCsvEvent = (ev, students = null) => {
+    const { header, body } = buildEventExportRows(ev, students);
+    const csvBody = body.map((row) =>
+      row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","),
     );
+    downloadTextFile(`attendance-${ev.id}-${ev.date}.csv`, [header.join(","), ...csvBody].join("\n"));
+  };
+
+  const buildEventExportRowsForPdf = (ev, students = null) => {
+    const list = Array.isArray(students) ? students : ev.students || [];
+    const header = ["Student ID", "Student", "Department", "Year Level", "Status", "Fine PHP"];
+    const body = list.map((s) => {
+      const yl = getYearLevel(s);
+      return [
+        String(s.id || ""),
+        String(s.name || ""),
+        String(getStudentDepartmentLabel(s)),
+        yl != null ? yl : "—",
+        ev.status === "upcoming" ? "No record" : String(s.status || ""),
+        Number(s.finePhp) || 0,
+      ];
+    });
+    return { header, body };
+  };
+
+  const exportPdfEvent = (ev, students = null) => {
+    const { header, body } = buildEventExportRowsForPdf(ev, students);
+    downloadPdfTable({
+      filename: `attendance-${ev.id}-${ev.date}.pdf`,
+      title: "Attendance Report",
+      subtitle: `${ev.name || "Event"} · ${formatEventDateForDisplay(ev.date)} · ${ev.status || ""}`,
+      head: header,
+      body,
+    });
+  };
+
+  const exportPdfAll = async () => {
+    const selectedEvents = events.filter((ev) => {
+      if (exportAllEventId !== "all" && String(ev.id) !== String(exportAllEventId)) return false;
+      if (exportAllEventStatus !== "all" && ev.status !== exportAllEventStatus) return false;
+      return true;
+    });
+    const detailedEvents = await Promise.all(
+      selectedEvents.map(async (ev) => {
+        try {
+          const full = await fetchAttendancePageEventDetail(ev.id);
+          return full || ev;
+        } catch {
+          return ev;
+        }
+      }),
+    );
+    const header = [
+      "Event",
+      "Date",
+      "Event Status",
+      "Student ID",
+      "Student Name",
+      "Department",
+      "Year Level",
+      "Attendance",
+      "Fine PHP",
+    ];
+    const body = [];
+    for (const ev of detailedEvents) {
+      for (const s of ev.students || []) {
+        const course = getCourseWithMajorCode(s);
+        const college = getStudentDepartmentName(s);
+        if (exportAllCollege !== "all" && college !== exportAllCollege) continue;
+        if (exportAllCourse !== "all" && course !== exportAllCourse) continue;
+        const attendance = ev.status === "upcoming" ? "no_record" : s.status === "attended" ? "attended" : "absent";
+        const yl = getYearLevel(s);
+        body.push([
+          String(ev.name || ""),
+          ev.date,
+          ev.status,
+          String(s.id || ""),
+          String(s.name || ""),
+          college,
+          yl != null ? yl : "—",
+          attendance === "no_record" ? "No record" : attendance,
+          Number(s.finePhp) || 0,
+        ]);
+      }
+    }
+    downloadPdfTable({
+      filename: `attendance-report-students-${new Date().toISOString().slice(0, 10)}.pdf`,
+      title: "Attendance Report — All Events",
+      subtitle: `Generated ${new Date().toLocaleString("en-PH")} · ${body.length} student record(s)`,
+      head: header,
+      body,
+    });
   };
 
   const statusBadgeClass = (st) => {
@@ -1292,10 +1379,10 @@ export default function Attendance({ onLogout, onNavigate }) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => mockPdfExport("event")}
+                      onClick={() => exportPdfEvent(detailEvent)}
                       className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/15"
                     >
-                      Export PDF (mock)
+                      Export PDF — this event
                     </button>
                   </div>
                 </div>
@@ -1673,10 +1760,15 @@ export default function Attendance({ onLogout, onNavigate }) {
               </button>
               <button
                 type="button"
-                onClick={() => mockPdfExport("event")}
+                onClick={() =>
+                  exportPdfEvent(
+                    detailEvent,
+                    isStudentListPath ? filteredStudentList : detailEvent.students,
+                  )
+                }
                 className="rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm font-medium hover:bg-[#07713c]/10"
               >
-                Export PDF (mock)
+                Export PDF — this event
               </button>
             </div>
           </div>
@@ -1689,7 +1781,7 @@ export default function Attendance({ onLogout, onNavigate }) {
           <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
             <h3 className="text-lg font-semibold text-[#07713c]">Export / reports</h3>
             <p className="mt-2 text-sm text-[#07713c]">
-              Mock exports: CSV downloads work in-browser. PDF uses a placeholder alert until a library/backend is wired.
+              Download attendance data as CSV (Excel) or PDF. Filters below apply to both formats.
             </p>
             <div className="mt-3 rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] p-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-[#07713c]">
@@ -1839,18 +1931,24 @@ export default function Attendance({ onLogout, onNavigate }) {
                 }}
                 className="w-full rounded-lg bg-[#07713c] px-4 py-2.5 text-sm font-medium text-white hover:brightness-95"
               >
-                Download attendance report (Excel / CSV) — all events (students)
+                Download CSV — all events (students)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  exportPdfAll();
+                  setExportOpen(false);
+                }}
+                className="w-full rounded-lg border border-[#07713c]/40 px-4 py-2.5 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/10"
+              >
+                Download PDF — all events (students)
               </button>
               <button
                 type="button"
                 disabled={!detailEvent}
                 onClick={() => {
-                  if (detailEvent) {
-                    exportCsvEvent(detailEvent, exportFilteredEventStudents);
-                    setExportOpen(false);
-                    return;
-                  }
-                  mockPdfExport("all");
+                  if (!detailEvent) return;
+                  exportCsvEvent(detailEvent, exportFilteredEventStudents);
                   setExportOpen(false);
                 }}
                 className={`w-full rounded-lg border px-4 py-2.5 text-sm font-medium ${
@@ -1859,7 +1957,23 @@ export default function Attendance({ onLogout, onNavigate }) {
                     : "border-[#07713c]/20 text-[#07713c]/50"
                 }`}
               >
-                Export CSV — current event (filtered students)
+                Download CSV — current event (filtered students)
+              </button>
+              <button
+                type="button"
+                disabled={!detailEvent}
+                onClick={() => {
+                  if (!detailEvent) return;
+                  exportPdfEvent(detailEvent, exportFilteredEventStudents);
+                  setExportOpen(false);
+                }}
+                className={`w-full rounded-lg border px-4 py-2.5 text-sm font-medium ${
+                  detailEvent
+                    ? "border-[#07713c]/40 text-[#07713c] hover:bg-[#07713c]/10"
+                    : "border-[#07713c]/20 text-[#07713c]/50"
+                }`}
+              >
+                Download PDF — current event (filtered students)
               </button>
             </div>
             <button
