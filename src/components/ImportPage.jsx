@@ -203,7 +203,9 @@ export default function ImportPage({ onNavigate, onLogout }) {
           <div className="space-y-6">
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4">
               <p className="text-sm text-gray-700">
-                Upload a student CSV. Use the new 4-column format, or include legacy columns when you have program and department data.
+                Upload a student CSV (export from Excel as CSV UTF-8). Use the 4-column format, add{" "}
+                <code className="text-[11px]">department</code> to link students to a college, or include full legacy
+                columns when you have program and school year data.
               </p>
               <div className="rounded-lg border border-green-100 bg-green-50/60 px-3 py-2 text-xs text-gray-700 space-y-1">
                 <p>
@@ -213,7 +215,8 @@ export default function ImportPage({ onNavigate, onLogout }) {
                 <p>
                   <span className="font-semibold text-gray-600">Typical columns:</span>{" "}
                   <code className="text-[11px]">id_number</code>, <code className="text-[11px]">rfid</code>,{" "}
-                  <code className="text-[11px]">full_name</code>, <code className="text-[11px]">level</code>
+                  <code className="text-[11px]">full_name</code>, <code className="text-[11px]">level</code>, optional{" "}
+                  <code className="text-[11px]">department</code>
                 </p>
                 <p>
                   <span className="font-semibold text-gray-600">Also supported (optional):</span>{" "}

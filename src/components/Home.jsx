@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Navbar from "./Navbar";
 import EventCard from "./EventCard";
 import UpcomingEventsList from "./UpcomingEventsList";
@@ -25,9 +25,16 @@ const ID_TYPES = [
   { value: "rfid", label: "RFID" },
 ];
 
+/** Wait for RFID wedge / typing to finish before auto-submit. */
+const AUTO_SUBMIT_DEBOUNCE_MS = 500;
+const MIN_AUTO_SUBMIT_LENGTH = 6;
+
 export default function Home() {
   const [userId, setUserId] = useState("");
   const [idType, setIdType] = useState("studentId");
+  const identifierInputRef = useRef(null);
+  const autoSubmitTimerRef = useRef(null);
+  const lastSubmittedIdentifierRef = useRef("");
   const [detailEvent, setDetailEvent] = useState(null);
   const [showUpcomingModal, setShowUpcomingModal] = useState(false);
   const [upcomingPage, setUpcomingPage] = useState(1);
@@ -200,6 +207,7 @@ export default function Home() {
           message ||
             "Time out is not active yet. Please tap again during the time out schedule.",
         );
+        lastSubmittedIdentifierRef.current = "";
         return;
       }
 
@@ -208,29 +216,81 @@ export default function Home() {
       // Keep the input for non-recorded outcomes (e.g. time-out window not active yet).
       if (status !== "time_out_not_active" && status !== "already_submitted") {
         setUserId("");
+        lastSubmittedIdentifierRef.current = "";
+        identifierInputRef.current?.focus();
       }
     },
     onError: (error) => {
+      lastSubmittedIdentifierRef.current = "";
       toast.error(error?.response?.data?.message || "Failed to submit attendance.");
     },
   });
 
-  const handleSubmitAttendance = () => {
-    const identifier = userId.trim();
-    if (!identifier) return;
-    const payload = {
-      ...(idType === "rfid" ? { rfid: identifier } : { studentId: identifier }),
+  const submitIdentifier = useCallback(
+    (rawIdentifier) => {
+      const identifier = String(rawIdentifier ?? userId).trim();
+      if (!identifier || isSubmittingAttendance || !hasOngoingEvent) return;
+      if (identifier === lastSubmittedIdentifierRef.current) return;
+
+      lastSubmittedIdentifierRef.current = identifier;
+      const payload = {
+        ...(idType === "rfid" ? { rfid: identifier } : { studentId: identifier }),
+        attendanceKind,
+        ...(selectedOngoingEvent?.id != null ? { eventId: selectedOngoingEvent.id } : {}),
+        ...(useTestTime && (testTime || testDate)
+          ? {
+              ...(testTime ? { simulatedTapTime: testTime } : {}),
+              simulatedDate: testDate || new Date(now).toISOString().slice(0, 10),
+            }
+          : {}),
+      };
+      submitAttendance(payload);
+    },
+    [
       attendanceKind,
-      ...(selectedOngoingEvent?.id != null ? { eventId: selectedOngoingEvent.id } : {}),
-      ...(useTestTime && (testTime || testDate)
-        ? {
-            ...(testTime ? { simulatedTapTime: testTime } : {}),
-            simulatedDate: testDate || new Date(now).toISOString().slice(0, 10),
-          }
-        : {}),
-    };
-    submitAttendance(payload);
+      hasOngoingEvent,
+      idType,
+      isSubmittingAttendance,
+      now,
+      selectedOngoingEvent?.id,
+      submitAttendance,
+      testDate,
+      testTime,
+      useTestTime,
+      userId,
+    ],
+  );
+
+  const handleSubmitAttendance = () => {
+    if (autoSubmitTimerRef.current) {
+      clearTimeout(autoSubmitTimerRef.current);
+      autoSubmitTimerRef.current = null;
+    }
+    submitIdentifier(userId);
   };
+
+  useEffect(() => {
+    if (!hasOngoingEvent || detailEvent || showUpcomingModal) return;
+    identifierInputRef.current?.focus();
+  }, [detailEvent, hasOngoingEvent, showUpcomingModal]);
+
+  useEffect(() => {
+    const identifier = userId.trim();
+    if (!identifier || !hasOngoingEvent || isSubmittingAttendance) return;
+    if (!/^\d+$/.test(identifier) || identifier.length < MIN_AUTO_SUBMIT_LENGTH) return;
+
+    if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current);
+    autoSubmitTimerRef.current = setTimeout(() => {
+      submitIdentifier(identifier);
+    }, AUTO_SUBMIT_DEBOUNCE_MS);
+
+    return () => {
+      if (autoSubmitTimerRef.current) {
+        clearTimeout(autoSubmitTimerRef.current);
+        autoSubmitTimerRef.current = null;
+      }
+    };
+  }, [hasOngoingEvent, isSubmittingAttendance, submitIdentifier, userId]);
 
   return (
     <main
@@ -353,6 +413,7 @@ export default function Home() {
                         onClick={() => {
                           setIdType(option.value);
                           setUserId("");
+                          lastSubmittedIdentifierRef.current = "";
                         }}
                         className={[
                           "flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition",
@@ -368,11 +429,23 @@ export default function Home() {
                   })}
                 </div>
                 <input
+                  ref={identifierInputRef}
                   id="attendance-identifier"
                   type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
                   value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
-                  placeholder={idType === "rfid" ? "Enter RFID" : "Enter student ID"}
+                  onChange={(e) => setUserId(e.target.value.replace(/\D/g, ""))}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    if (autoSubmitTimerRef.current) {
+                      clearTimeout(autoSubmitTimerRef.current);
+                      autoSubmitTimerRef.current = null;
+                    }
+                    submitIdentifier(userId);
+                  }}
+                  placeholder={idType === "rfid" ? "Tap RFID or enter number" : "Enter student ID"}
                   className="block w-full appearance-none rounded-lg border-[1.5px] border-[#07713c] bg-white px-3 py-2 text-sm text-[#07713c] shadow-none outline-none [box-shadow:none] hover:border-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-0 focus:ring-transparent focus-visible:border-[#07713c] focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent focus-visible:[box-shadow:none]"
                 />
                 <button

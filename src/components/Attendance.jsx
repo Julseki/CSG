@@ -26,8 +26,8 @@ const ATTENDANCE_MAJOR_OPTIONS_BY_COURSE = {
   BSBA: ["Financial Management", "Human Resource Development Management", "Marketing Management"],
 };
 
-/** College and major filters hidden for all roles (CSV roster has no college/major). */
-const SHOW_COLLEGE_MAJOR_FILTER_DROPDOWNS = false;
+/** College / course filters — shown when roster includes department data from import. */
+const SHOW_COLLEGE_MAJOR_FILTER_DROPDOWNS = true;
 
 /** Default fine per absence (₱) — mock only */
 const MOCK_FINE_PER_ABSENCE_PHP = 50;
@@ -76,6 +76,17 @@ function getCollegeFromCourse(courseRaw) {
   if (course.startsWith("BSHM")) return "College of Hospitality Management";
   if (course.startsWith("BSBA")) return "College of Business Administration";
   return "Unassigned";
+}
+
+function getStudentDepartmentName(student) {
+  const fromApi = String(student?.department ?? "").trim();
+  if (fromApi) return fromApi;
+  return getCollegeFromCourse(getCourse(student));
+}
+
+function getStudentDepartmentLabel(student) {
+  const name = getStudentDepartmentName(student);
+  return name && name !== "Unassigned" ? name : "—";
 }
 
 function getCourseWithMajorCode(student) {
@@ -376,7 +387,7 @@ export default function Attendance({ onLogout, onNavigate }) {
       const sid = String(s.id || "").toLowerCase();
       const name = String(s.name || "").toLowerCase();
       const course = getCourse(s);
-      const college = getCollegeFromCourse(course);
+      const college = getStudentDepartmentName(s);
       const majorLabel = getMajor(s);
       const majorQ = (majorLabel || "").toLowerCase();
       const attendance = detailEvent.status === "upcoming" ? "no_record" : s.status === "attended" ? "attended" : "absent";
@@ -435,7 +446,8 @@ export default function Attendance({ onLogout, onNavigate }) {
     if (!detailEvent) return [];
     const set = new Set();
     for (const s of detailEvent.students || []) {
-      set.add(getCollegeFromCourse(getCourse(s)));
+      const dept = getStudentDepartmentName(s);
+      if (dept && dept !== "Unassigned") set.add(dept);
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [detailEvent]);
@@ -457,7 +469,7 @@ export default function Attendance({ onLogout, onNavigate }) {
     const studentsScoped =
       studentListCollege === "all"
         ? detailEvent.students || []
-        : (detailEvent.students || []).filter((s) => getCollegeFromCourse(getCourse(s)) === studentListCollege);
+        : (detailEvent.students || []).filter((s) => getStudentDepartmentName(s) === studentListCollege);
     for (const s of studentsScoped) {
       const m = getMajor(s);
       if (m) set.add(m);
@@ -485,7 +497,7 @@ export default function Attendance({ onLogout, onNavigate }) {
     const studentsScoped =
       exportEventCollege === "all"
         ? detailEvent.students || []
-        : (detailEvent.students || []).filter((s) => getCollegeFromCourse(getCourse(s)) === exportEventCollege);
+        : (detailEvent.students || []).filter((s) => getStudentDepartmentName(s) === exportEventCollege);
     for (const s of studentsScoped) {
       const m = getMajor(s);
       if (m) set.add(m);
@@ -500,7 +512,7 @@ export default function Attendance({ onLogout, onNavigate }) {
       const sid = String(s.id || "").toLowerCase();
       const name = String(s.name || "").toLowerCase();
       const course = getCourse(s);
-      const college = getCollegeFromCourse(course);
+      const college = getStudentDepartmentName(s);
       const majorLabel = getMajor(s);
       const majorQ = (majorLabel || "").toLowerCase();
       const ylExport = getYearLevel(s);
@@ -650,7 +662,8 @@ export default function Attendance({ onLogout, onNavigate }) {
     const set = new Set();
     for (const ev of events) {
       for (const s of ev.students || []) {
-        set.add(getCollegeFromCourse(getCourse(s)));
+        const dept = getStudentDepartmentName(s);
+      if (dept && dept !== "Unassigned") set.add(dept);
       }
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b));
@@ -661,7 +674,7 @@ export default function Attendance({ onLogout, onNavigate }) {
     for (const ev of events) {
       for (const s of ev.students || []) {
         const course = getCourseWithMajorCode(s);
-        if (exportAllCollege === "all" || getCollegeFromCourse(course) === exportAllCollege) {
+        if (exportAllCollege === "all" || getStudentDepartmentName(s) === exportAllCollege) {
           set.add(course);
         }
       }
@@ -685,7 +698,7 @@ export default function Attendance({ onLogout, onNavigate }) {
           : ev.students || [];
       for (const s of scopedStudents) {
         const course = getCourseWithMajorCode(s);
-        const college = getCollegeFromCourse(course);
+        const college = getStudentDepartmentName(s);
         if (exportAllCollege !== "all" && college !== exportAllCollege) continue;
         if (exportAllCourse !== "all" && course !== exportAllCourse) continue;
         const attendance = ev.status === "upcoming" ? "no_record" : s.status === "attended" ? "attended" : "absent";
@@ -757,7 +770,7 @@ export default function Attendance({ onLogout, onNavigate }) {
       "Event Status",
       "Student ID",
       "Student Name",
-      "College",
+      "Department",
       "Course",
       "Major",
       "Year Level",
@@ -768,7 +781,7 @@ export default function Attendance({ onLogout, onNavigate }) {
     for (const ev of detailedEvents) {
       for (const s of ev.students || []) {
         const course = getCourseWithMajorCode(s);
-        const college = getCollegeFromCourse(course);
+        const college = getStudentDepartmentName(s);
         if (exportAllCollege !== "all" && college !== exportAllCollege) continue;
         if (exportAllCourse !== "all" && course !== exportAllCourse) continue;
         const attendance = ev.status === "upcoming" ? "no_record" : s.status === "attended" ? "attended" : "absent";
@@ -796,12 +809,13 @@ export default function Attendance({ onLogout, onNavigate }) {
 
   const exportCsvEvent = (ev, students = null) => {
     const rows = Array.isArray(students) ? students : ev.students || [];
-    const header = ["Student ID", "Student", "Course", "Major", "Year Level", "Status", "Fine PHP"];
+    const header = ["Student ID", "Student", "Department", "Course", "Major", "Year Level", "Status", "Fine PHP"];
     const body = rows.map((s) => {
       const yl = getYearLevel(s);
       return [
         `"${String(s.id || "").replace(/"/g, '""')}"`,
         `"${String(s.name).replace(/"/g, '""')}"`,
+        `"${String(getStudentDepartmentLabel(s)).replace(/"/g, '""')}"`,
         `"${String(getCourse(s)).replace(/"/g, '""')}"`,
         `"${String(getMajor(s) || "—").replace(/"/g, '""')}"`,
         yl != null ? yl : "—",
@@ -949,7 +963,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                 </div>
                 {SHOW_COLLEGE_MAJOR_FILTER_DROPDOWNS && (
                 <label className="min-w-[200px] max-w-[min(100%,320px)] shrink-0 text-xs text-[#07713c]">
-                  College
+                  Department
                   <select
                     value={studentListCollege}
                     onChange={(e) => setStudentListCollege(e.target.value)}
@@ -1024,11 +1038,12 @@ export default function Attendance({ onLogout, onNavigate }) {
                 </label>
               </div>
               <div className="mt-3 overflow-x-auto rounded-lg border border-[#07713c]/30">
-                <table className="w-full min-w-[1040px] border-collapse text-sm">
+                <table className="w-full min-w-[1180px] border-collapse text-sm">
                   <thead className="bg-[#07713c]/5 text-center text-xs font-semibold uppercase text-[#07713c]">
                     <tr>
                       <th rowSpan={2} className="border-b border-x border-[#07713c]/30 px-3 py-2 align-middle">Student ID</th>
                       <th rowSpan={2} className="border-b border-x border-[#07713c]/30 px-3 py-2 align-middle">Name</th>
+                      <th rowSpan={2} className="border-b border-x border-[#07713c]/30 px-3 py-2 align-middle">Department</th>
                       <th rowSpan={2} className="border-b border-x border-[#07713c]/30 px-3 py-2 align-middle">Year level</th>
                       <th rowSpan={2} className="border-b border-x border-[#07713c]/30 px-3 py-2 align-middle">Attendance</th>
                       {detailEventMeta.hasAmSession && detailEventMeta.hasPmSession ? (
@@ -1062,7 +1077,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                     {filteredStudentList.length === 0 ? (
                       <tr>
                         <td
-                        colSpan={5 + (detailEventMeta.hasAmSession ? 2 : 0) + (detailEventMeta.hasPmSession ? 2 : 0)}
+                        colSpan={6 + (detailEventMeta.hasAmSession ? 2 : 0) + (detailEventMeta.hasPmSession ? 2 : 0)}
                         className="border border-[#07713c]/30 px-3 py-6 text-center text-sm text-[#07713c]"
                       >
                           No students match the current filters.
@@ -1093,6 +1108,9 @@ export default function Attendance({ onLogout, onNavigate }) {
                               {String(s.id).toUpperCase()}
                             </td>
                             <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center font-medium text-[#07713c]">{s.name}</td>
+                            <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center font-medium text-[#07713c]">
+                              {getStudentDepartmentLabel(s)}
+                            </td>
                             <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center tabular-nums text-[#07713c]">
                               {rowYearLevel != null ? rowYearLevel : "—"}
                             </td>

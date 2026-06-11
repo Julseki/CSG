@@ -10,8 +10,8 @@ import { formatEventDateForDisplay } from "../hooks/useGetEvents";
 
 void ChartJS;
 
-/** College filter hidden for all roles (CSV roster has no college). */
-const SHOW_COLLEGE_MAJOR_FILTER_DROPDOWNS = false;
+/** College / course filters — shown when roster includes department data from import. */
+const SHOW_COLLEGE_MAJOR_FILTER_DROPDOWNS = true;
 
 function getActivityTier(rate) {
   if (rate >= 90) return { key: "active", label: "Active", emoji: "🟢", range: "90–100%" };
@@ -174,6 +174,17 @@ function getRosterYearLevel(student) {
   return Number.isFinite(n) ? n : null;
 }
 
+function getStudentDepartmentName(student) {
+  const fromApi = String(student?.department ?? "").trim();
+  if (fromApi) return fromApi;
+  return getRosterCourseRow(student?.course)?.college ?? "";
+}
+
+function getStudentDepartmentLabel(student) {
+  const name = getStudentDepartmentName(student);
+  return name || "—";
+}
+
 function downloadTextFile(filename, text, mime = "text/csv;charset=utf-8") {
   const blob = new Blob([text], { type: mime });
   const url = URL.createObjectURL(blob);
@@ -217,6 +228,7 @@ function rosterCourseMatchesSearchQuery(student, qLower) {
   if (student.name.toLowerCase().includes(qLower)) return true;
   if (student.id.toLowerCase().includes(qLower)) return true;
   if (String(student.course ?? "").toLowerCase().includes(qLower)) return true;
+  if (getStudentDepartmentName(student).toLowerCase().includes(qLower)) return true;
   const yl = getRosterYearLevel(student);
   if (yl != null && String(yl).includes(qLower)) return true;
   const row = getRosterCourseRow(student.course);
@@ -456,7 +468,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
   const filteredRoster = useMemo(() => {
     const q = search.toLowerCase().trim();
     return rosterList.filter((s) => {
-      const college = getRosterCourseRow(s.course)?.college ?? "";
+      const college = getStudentDepartmentName(s);
       if (isGovernor && governorCollegeNames?.length) {
         if (!governorCollegeNames.includes(college)) return false;
       }
@@ -581,7 +593,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
   const exportFilteredRoster = useMemo(() => {
     const q = exportSearch.toLowerCase().trim();
     return rosterList.filter((s) => {
-      const college = getRosterCourseRow(s.course)?.college ?? "";
+      const college = getStudentDepartmentName(s);
       if (isGovernor && governorCollegeNames?.length) {
         if (!governorCollegeNames.includes(college)) return false;
       }
@@ -612,7 +624,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
     const header = [
       "Student ID",
       "Student Name",
-      "College",
+      "Department",
       "Course",
       "Year Level",
       "Attendance Rate",
@@ -625,7 +637,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
       return [
         `"${s.id}"`,
         `"${String(s.name ?? "").replace(/"/g, '""')}"`,
-        `"${String(courseRow?.college ?? "—").replace(/"/g, '""')}"`,
+        `"${String(getStudentDepartmentLabel(s)).replace(/"/g, '""')}"`,
         `"${String(getRosterCourseDisplayLabel(s.course)).replace(/"/g, '""')}"`,
         yl != null ? String(yl) : "—",
         `"${s.attendanceRate}%"`,
@@ -880,6 +892,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
               <tr>
                 <th className="px-3 py-2.5 text-left align-middle">Student ID</th>
                 <th className="px-3 py-2.5 text-left align-middle">Name</th>
+                <th className="min-w-[10rem] px-3 py-2.5 text-left align-middle">Department</th>
                 <th className="min-w-[5rem] whitespace-nowrap px-3 py-2.5 text-center align-middle tabular-nums">Year level</th>
                 <th className="min-w-[5.5rem] whitespace-nowrap px-3 py-2.5 text-center align-middle tabular-nums">Attendance</th>
                 <th className="px-3 py-2.5 text-left align-middle">Status</th>
@@ -909,6 +922,9 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                   >
                     <td className="px-3 py-1.5 text-left font-medium leading-snug text-[#07713c]">{s.id}</td>
                     <td className="px-3 py-1.5 text-left font-medium leading-snug text-[#07713c]">{s.name}</td>
+                    <td className="px-3 py-1.5 text-left font-medium leading-snug text-[#07713c]">
+                      {getStudentDepartmentLabel(s)}
+                    </td>
                     <td className="px-3 py-1.5 text-center tabular-nums leading-snug text-[#07713c]">
                       {rowYl != null ? rowYl : "—"}
                     </td>
@@ -1318,7 +1334,16 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
               <p className="text-[11px] font-semibold uppercase tracking-wide text-[#07713c]/85">Selected student</p>
               <p className="mt-1 font-semibold text-[#07713c]">{student.name}</p>
               <p className="text-xs text-[#07713c]/85">
-                {[student.id, ...(selectedStudentYearLevel != null ? [`Year ${selectedStudentYearLevel}`] : [])].join(" · ")}
+                {(() => {
+                  const dept = getStudentDepartmentLabel(student);
+                  return [
+                    student.id,
+                    dept !== "—" ? dept : null,
+                    ...(selectedStudentYearLevel != null ? [`Year ${selectedStudentYearLevel}`] : []),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ");
+                })()}
               </p>
             </div>
             {student.totalEvents > 0 ? (
