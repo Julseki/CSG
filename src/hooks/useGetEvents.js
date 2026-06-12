@@ -246,6 +246,11 @@ export function mapServerEventToDisplay(raw) {
     updated_at: raw.updated_at ?? null,
     audiences,
     source: raw.source != null && raw.source !== "" ? String(raw.source) : "api",
+    requiresPassword:
+      raw.requires_password === true ||
+      raw.requiresPassword === true ||
+      raw.has_attendance_password === true ||
+      raw.hasAttendancePassword === true,
   };
 }
 

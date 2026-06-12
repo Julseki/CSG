@@ -7,6 +7,12 @@ import csgLogo from "../assets/CSG LOGO.jpg";
 import { useGetCurrentEvent } from "../hooks/useGetCurrentEvent";
 import { formatEventDateForDisplay } from "../hooks/useGetEvents";
 import { useSubmitAttendance } from "../hooks/useSubmitAttendance";
+import { useVerifyEventPassword } from "../hooks/useVerifyEventPassword";
+import {
+  clearEventUnlockToken,
+  getEventUnlockToken,
+  setEventUnlockToken,
+} from "../utils/eventUnlockStorage";
 import toast from "react-hot-toast";
 
 const UPCOMING_EVENTS_PAGE_SIZE = 3;
@@ -25,7 +31,11 @@ const MIN_AUTO_SUBMIT_LENGTH = 6;
 
 export default function Home() {
   const [userId, setUserId] = useState("");
+  const [eventPasswordInput, setEventPasswordInput] = useState("");
+  const [showUnlockPassword, setShowUnlockPassword] = useState(false);
+  const [unlockToken, setUnlockToken] = useState(null);
   const identifierInputRef = useRef(null);
+  const eventPasswordInputRef = useRef(null);
   const autoSubmitTimerRef = useRef(null);
   const lastSubmittedIdentifierRef = useRef("");
   const [detailEvent, setDetailEvent] = useState(null);
@@ -72,6 +82,16 @@ export default function Home() {
     return ongoingEvents[start] ?? null;
   }, [ongoingEvents, safeOngoingPage]);
   const hasOngoingEvent = ongoingEvents.length > 0;
+  const requiresEventPassword = Boolean(selectedOngoingEvent?.requiresPassword);
+  const isAttendanceUnlocked = !requiresEventPassword || Boolean(unlockToken);
+
+  useEffect(() => {
+    const eventId = selectedOngoingEvent?.id;
+    setUnlockToken(eventId != null ? getEventUnlockToken(eventId) : null);
+    setEventPasswordInput("");
+    setShowUnlockPassword(false);
+  }, [selectedOngoingEvent?.id]);
+
   const displayNow = useMemo(() => {
     if (!useTestTime || !testTime) return now;
     const m = /^(\d{1,2}):(\d{2})$/.exec(testTime.trim());
@@ -193,8 +213,38 @@ export default function Home() {
   const clearIdentifierInput = useCallback(() => {
     setUserId("");
     lastSubmittedIdentifierRef.current = "";
-    identifierInputRef.current?.focus();
-  }, []);
+    if (isAttendanceUnlocked) {
+      identifierInputRef.current?.focus();
+    }
+  }, [isAttendanceUnlocked]);
+
+  const { mutate: verifyEventPassword, isPending: isVerifyingEventPassword } = useVerifyEventPassword({
+    onSuccess: (data) => {
+      const token = data?.unlockToken ?? data?.token ?? null;
+      const eventId = selectedOngoingEvent?.id;
+      if (!token || eventId == null) {
+        toast.error("Unlock failed. Please try again.");
+        return;
+      }
+      setEventUnlockToken(eventId, token);
+      setUnlockToken(String(token));
+      setEventPasswordInput("");
+      toast.success("Event unlocked. Students can now tap in or out.");
+      window.setTimeout(() => identifierInputRef.current?.focus(), 0);
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || "Incorrect event password.");
+      setEventPasswordInput("");
+      eventPasswordInputRef.current?.focus();
+    },
+  });
+
+  const handleUnlockEvent = useCallback(() => {
+    const password = eventPasswordInput.trim();
+    const eventId = selectedOngoingEvent?.id;
+    if (!password || eventId == null || isVerifyingEventPassword) return;
+    verifyEventPassword({ eventId, password });
+  }, [eventPasswordInput, isVerifyingEventPassword, selectedOngoingEvent?.id, verifyEventPassword]);
 
   const { mutate: submitAttendance, isPending: isSubmittingAttendance } = useSubmitAttendance({
     onSuccess: (data) => {
@@ -214,6 +264,13 @@ export default function Home() {
       clearIdentifierInput();
     },
     onError: (error) => {
+      const status = error?.response?.status;
+      if (status === 403 && selectedOngoingEvent?.id != null) {
+        clearEventUnlockToken(selectedOngoingEvent.id);
+        setUnlockToken(null);
+        toast.error(error?.response?.data?.message || "Event session expired. Enter the password again.");
+        return;
+      }
       toast.error(error?.response?.data?.message || "Failed to submit attendance.");
       clearIdentifierInput();
     },
@@ -222,7 +279,7 @@ export default function Home() {
   const submitIdentifier = useCallback(
     (rawIdentifier) => {
       const identifier = String(rawIdentifier ?? userId).trim();
-      if (!identifier || isSubmittingAttendance || !hasOngoingEvent) return;
+      if (!identifier || isSubmittingAttendance || !hasOngoingEvent || !isAttendanceUnlocked) return;
       if (identifier === lastSubmittedIdentifierRef.current) return;
 
       lastSubmittedIdentifierRef.current = identifier;
@@ -230,6 +287,7 @@ export default function Home() {
         identifier,
         attendanceKind,
         ...(selectedOngoingEvent?.id != null ? { eventId: selectedOngoingEvent.id } : {}),
+        ...(unlockToken ? { eventUnlockToken: unlockToken } : {}),
         ...(useTestTime && (testTime || testDate)
           ? {
               ...(testTime ? { simulatedTapTime: testTime } : {}),
@@ -242,12 +300,14 @@ export default function Home() {
     [
       attendanceKind,
       hasOngoingEvent,
+      isAttendanceUnlocked,
       isSubmittingAttendance,
       now,
       selectedOngoingEvent?.id,
       submitAttendance,
       testDate,
       testTime,
+      unlockToken,
       useTestTime,
       userId,
     ],
@@ -255,12 +315,16 @@ export default function Home() {
 
   useEffect(() => {
     if (!hasOngoingEvent || detailEvent || showUpcomingModal) return;
+    if (requiresEventPassword && !isAttendanceUnlocked) {
+      eventPasswordInputRef.current?.focus();
+      return;
+    }
     identifierInputRef.current?.focus();
-  }, [detailEvent, hasOngoingEvent, showUpcomingModal]);
+  }, [detailEvent, hasOngoingEvent, isAttendanceUnlocked, requiresEventPassword, showUpcomingModal]);
 
   useEffect(() => {
     const identifier = userId.trim();
-    if (!identifier || !hasOngoingEvent || isSubmittingAttendance) return;
+    if (!identifier || !hasOngoingEvent || !isAttendanceUnlocked || isSubmittingAttendance) return;
     if (!/^\d+$/.test(identifier) || identifier.length < MIN_AUTO_SUBMIT_LENGTH) return;
 
     if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current);
@@ -274,7 +338,7 @@ export default function Home() {
         autoSubmitTimerRef.current = null;
       }
     };
-  }, [hasOngoingEvent, isSubmittingAttendance, submitIdentifier, userId]);
+  }, [hasOngoingEvent, isAttendanceUnlocked, isSubmittingAttendance, submitIdentifier, userId]);
 
   return (
     <main className="relative flex min-h-screen items-center justify-center bg-[#07713c]/[0.04] px-4 py-24 sm:px-8 lg:px-12 [&_button]:cursor-pointer">
@@ -329,7 +393,52 @@ export default function Home() {
             </div>
           )}
         </div>
-        {hasOngoingEvent && (
+        {hasOngoingEvent && requiresEventPassword && !isAttendanceUnlocked && (
+          <div className="mt-6 flex justify-center">
+            <div className="w-full max-w-md text-left">
+              <p className="mb-2 text-sm font-medium text-[#07713c]">Event password required</p>
+              <p className="mb-3 text-xs text-[#07713c]/80">
+                Enter the password set for this event before students can tap in or out.
+              </p>
+              <div className="flex flex-col gap-2">
+                <div className="relative">
+                  <input
+                    ref={eventPasswordInputRef}
+                    id="event-unlock-password"
+                    type={showUnlockPassword ? "text" : "password"}
+                    value={eventPasswordInput}
+                    onChange={(e) => setEventPasswordInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      e.preventDefault();
+                      handleUnlockEvent();
+                    }}
+                    placeholder="Enter event password"
+                    autoComplete="off"
+                    className="block w-full appearance-none rounded-lg border-[1.5px] border-[#07713c] bg-white px-3 py-2 pr-14 text-sm text-[#07713c] outline-none focus:border-[#07713c] focus:ring-1 focus:ring-[#07713c]/30"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowUnlockPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-3 text-[11px] text-[#07713c] hover:text-[#055a2e]"
+                  >
+                    {showUnlockPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleUnlockEvent}
+                  disabled={!eventPasswordInput.trim() || isVerifyingEventPassword}
+                  className="rounded-lg bg-[#07713c] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#055c30] disabled:opacity-60"
+                >
+                  {isVerifyingEventPassword ? "Unlocking..." : "Unlock attendance"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {hasOngoingEvent && isAttendanceUnlocked && (
           <div className="mt-6 flex justify-center">
             <div className="w-full max-w-md text-left">
               <div className="mb-2 flex items-center justify-between gap-2">

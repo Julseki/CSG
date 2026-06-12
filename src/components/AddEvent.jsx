@@ -23,6 +23,8 @@ const STEPS = [
   { id: 3, label: "Confirm" },
 ];
 
+const MIN_EVENT_PASSWORD_LENGTH = 6;
+
 export default function AddEvent({ onBack, onNext }) {
   const { role, isGovernor, governorScope } = useGovernorScope();
   const isCsgRole = isCsgPresident(role);
@@ -48,6 +50,10 @@ export default function AddEvent({ onBack, onNext }) {
   const [audienceNotes, setAudienceNotes] = useState("");
   const [useAmHalf, setUseAmHalf] = useState(true);
   const [usePmHalf, setUsePmHalf] = useState(false);
+  const [eventPassword, setEventPassword] = useState("");
+  const [confirmEventPassword, setConfirmEventPassword] = useState("");
+  const [showEventPassword, setShowEventPassword] = useState(false);
+  const [showConfirmEventPassword, setShowConfirmEventPassword] = useState(false);
   const addEvent = useAddevent();
   const isCeasOrCbaGovernor = role === "ceas_governor" || role === "cba_governor";
   const shouldShowMajorSelection = false;
@@ -140,6 +146,24 @@ export default function AddEvent({ onBack, onNext }) {
     return Object.keys(e).length === 0;
   };
 
+  const validateEventPassword = () => {
+    const e = {};
+    const pwd = eventPassword.trim();
+    const confirm = confirmEventPassword.trim();
+    if (!pwd) {
+      e.eventPassword = "Event password is required.";
+    } else if (pwd.length < MIN_EVENT_PASSWORD_LENGTH) {
+      e.eventPassword = `Password must be at least ${MIN_EVENT_PASSWORD_LENGTH} characters.`;
+    }
+    if (!confirm) {
+      e.confirmEventPassword = "Please confirm the password.";
+    } else if (pwd !== confirm) {
+      e.confirmEventPassword = "Passwords do not match.";
+    }
+    setErrors((prev) => ({ ...prev, ...e }));
+    return Object.keys(e).length === 0;
+  };
+
   const buildEventPayload = () => {
     const durationLabel =
       duration === "whole"
@@ -184,6 +208,8 @@ export default function AddEvent({ onBack, onNext }) {
     if (step === 1 && !validateBasicInfo()) return;
 
     if (step === 3) {
+      if (!validateEventPassword()) return;
+
       const payload = buildEventPayload();
       const backendPayload = {
         name: payload.name,
@@ -221,13 +247,16 @@ export default function AddEvent({ onBack, onNext }) {
         pmTimeIn: pmTimeIn || "",
         pmTimeOut: pmTimeOut || "",
         fineAmount: Number(fineAmount),
+        attendancePassword: eventPassword.trim(),
       };
 
-      // Send to backend via React Query + axios (without icon)
-      console.warn("[AddEvent] About to call addEvent.mutate with:", backendPayload);
       addEvent.mutate(backendPayload, {
-        onSuccess: (data) => {
-          console.log("[AddEvent] mutate success:", data);
+        onSuccess: () => {
+          setEventPassword("");
+          setConfirmEventPassword("");
+          setShowEventPassword(false);
+          setShowConfirmEventPassword(false);
+          onBack?.();
         },
         onError: (err) => {
           console.error("[AddEvent] mutate error:", {
@@ -237,8 +266,6 @@ export default function AddEvent({ onBack, onNext }) {
           });
         },
       });
-
-      if (onBack) onBack(); // go back to Events page
       return;
     }
 
@@ -762,6 +789,71 @@ export default function AddEvent({ onBack, onNext }) {
         {audienceNotes && <p>Notes: {audienceNotes}</p>}
       </div>
     </div>
+
+    <div className="space-y-3 rounded-lg border border-[#07713c]/25 bg-white p-4 shadow-sm">
+      <div>
+        <h3 className="text-sm font-semibold text-[#07713c]">Event password</h3>
+        <p className="mt-1 text-xs text-[#07713c]/80">
+          Required. Staff will enter this on the homepage before students can tap in or out.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[#07713c]">Password</label>
+          <div className="relative">
+            <input
+              type={showEventPassword ? "text" : "password"}
+              value={eventPassword}
+              onChange={(e) => {
+                setEventPassword(e.target.value);
+                setErrors((prev) => ({ ...prev, eventPassword: null, confirmEventPassword: null }));
+              }}
+              className={`w-full rounded-lg border bg-white px-3 py-2 pr-14 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 ${
+                errors.eventPassword ? "border-red-500" : "border-[#07713c]/40"
+              }`}
+              placeholder="Enter event password"
+              autoComplete="new-password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowEventPassword((prev) => !prev)}
+              className="absolute inset-y-0 right-3 text-[11px] text-[#07713c] hover:text-[#055a2e]"
+            >
+              {showEventPassword ? "Hide" : "Show"}
+            </button>
+          </div>
+          {errors.eventPassword && <p className="mt-1 text-xs text-red-600">{errors.eventPassword}</p>}
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[#07713c]">Confirm password</label>
+          <div className="relative">
+            <input
+              type={showConfirmEventPassword ? "text" : "password"}
+              value={confirmEventPassword}
+              onChange={(e) => {
+                setConfirmEventPassword(e.target.value);
+                setErrors((prev) => ({ ...prev, confirmEventPassword: null }));
+              }}
+              className={`w-full rounded-lg border bg-white px-3 py-2 pr-14 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 ${
+                errors.confirmEventPassword ? "border-red-500" : "border-[#07713c]/40"
+              }`}
+              placeholder="Confirm event password"
+              autoComplete="new-password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmEventPassword((prev) => !prev)}
+              className="absolute inset-y-0 right-3 text-[11px] text-[#07713c] hover:text-[#055a2e]"
+            >
+              {showConfirmEventPassword ? "Hide" : "Show"}
+            </button>
+          </div>
+          {errors.confirmEventPassword && (
+            <p className="mt-1 text-xs text-red-600">{errors.confirmEventPassword}</p>
+          )}
+        </div>
+      </div>
+    </div>
   </div>
 )}
 
@@ -781,10 +873,11 @@ export default function AddEvent({ onBack, onNext }) {
           <button
             type="button"
             onClick={handleNext}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#07713c] px-6 py-3 font-medium text-white transition-colors hover:brightness-95"
+            disabled={step === 3 && addEvent.isPending}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#07713c] px-6 py-3 font-medium text-white transition-colors hover:brightness-95 disabled:opacity-60"
           >
-            Next
-            <span>→</span>
+            {step === 3 ? (addEvent.isPending ? "Creating..." : "Create Event") : "Next"}
+            {step < 3 && <span>→</span>}
           </button>
         </div>
         </main>

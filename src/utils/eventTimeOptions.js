@@ -9,13 +9,13 @@ export function formatTime12FromTotalMinutes(totalMinutes) {
   return `${hour12}:${String(minute).padStart(2, "0")} ${period}`;
 }
 
-/** Minute-of-day marks for AM session dropdown (6:00 AM … 11:59 AM). */
+/** Minute-of-day marks for AM session dropdown (5:00 AM … 12:00 PM). */
 export const AM_SESSION_MINUTE_MARKS = (() => {
   const marks = [];
-  for (let m = 6 * 60; m <= 11 * 60 + 45; m += 15) {
+  for (let m = 5 * 60; m <= 11 * 60 + 45; m += 15) {
     marks.push(m);
   }
-  for (const m of [11 * 60 + 50, 11 * 60 + 55, 11 * 60 + 59]) {
+  for (const m of [11 * 60 + 50, 11 * 60 + 55, 11 * 60 + 59, 12 * 60]) {
     marks.push(m);
   }
   return marks;
@@ -27,9 +27,10 @@ export const AM_SESSION_TIME_OPTIONS = AM_SESSION_MINUTE_MARKS.map((m) =>
 
 export const PM_SESSION_TIME_OPTIONS = (() => {
   const options = [];
-  for (let m = 12 * 60; m <= 18 * 60; m += 15) {
+  for (let m = 12 * 60; m < 24 * 60; m += 15) {
     options.push(formatTime12FromTotalMinutes(m));
   }
+  options.push("12:00 AM");
   return options;
 })();
 
@@ -51,12 +52,13 @@ function parseSqlToMinutes(sql) {
  * Backend SQL time → dropdown value (AM: snap to nearest allowed mark up to 11:59 AM; PM: 15 min steps).
  */
 export function sqlTimeToSessionSelectValue(sql, session) {
-  const minM = session === "am" ? 6 * 60 : 12 * 60;
-  const maxM = session === "am" ? 11 * 60 + 59 : 18 * 60;
   const mins = parseSqlToMinutes(sql);
   if (mins == null) return "";
-  let clamped = Math.max(minM, Math.min(maxM, mins));
+
   if (session === "am") {
+    const minM = 5 * 60;
+    const maxM = 12 * 60;
+    const clamped = Math.max(minM, Math.min(maxM, mins));
     let nearest = AM_SESSION_MINUTE_MARKS[0];
     let best = Infinity;
     for (const mark of AM_SESSION_MINUTE_MARKS) {
@@ -68,8 +70,14 @@ export function sqlTimeToSessionSelectValue(sql, session) {
     }
     return formatTime12FromTotalMinutes(nearest);
   }
+
+  if (mins === 0) return "12:00 AM";
+
+  const minM = 12 * 60;
+  const maxM = 24 * 60;
+  let clamped = Math.max(minM, Math.min(maxM, mins));
   clamped = Math.round(clamped / 15) * 15;
-  clamped = Math.max(minM, Math.min(maxM, clamped));
+  if (clamped >= maxM) return "12:00 AM";
   return formatTime12FromTotalMinutes(clamped);
 }
 
