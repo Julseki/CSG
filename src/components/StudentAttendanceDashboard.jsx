@@ -13,6 +13,10 @@ void ChartJS;
 /** College / course filters — shown when roster includes department data from import. */
 const SHOW_COLLEGE_MAJOR_FILTER_DROPDOWNS = true;
 
+/** Students page main content text (sidebar nav excluded in page shell). */
+const STUDENTS_PAGE_TEXT = "text-black";
+const STUDENTS_TH_TEXT = "font-bold text-black";
+
 function getActivityTier(rate) {
   if (rate >= 90) return { key: "active", label: "Active", emoji: "🟢", range: "90–100%" };
   if (rate >= 70) return { key: "moderate", label: "Moderate", emoji: "🟡", range: "70–89%" };
@@ -296,9 +300,9 @@ function getEventFinePhp(ev) {
 
 function TimeSlot({ value }) {
   const v = String(value ?? "").trim();
-  if (v) return <span className="text-xs text-[#07713c]">{v}</span>;
+  if (v) return <span className="text-xs text-black">{v}</span>;
   return (
-    <span className="text-xs font-medium text-amber-800">
+    <span className="text-xs font-medium text-black">
       No record
     </span>
   );
@@ -773,7 +777,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
 
   if (rosterLoading) {
     return (
-      <div className="rounded-xl border border-[#07713c]/30 bg-white p-8 text-center text-sm text-[#07713c]">
+      <div className="rounded-xl border border-[#07713c]/30 bg-white p-8 text-center text-sm text-black">
         Loading students…
       </div>
     );
@@ -781,7 +785,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
 
   if (rosterError) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-center text-sm text-red-800">
+      <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-center text-sm text-black">
         Could not load student roster. Check that you are signed in and the API is running.
       </div>
     );
@@ -789,7 +793,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
 
   if (!rosterList.length) {
     return (
-      <div className="rounded-xl border border-[#07713c]/30 bg-white p-8 text-center text-sm text-[#07713c]">
+      <div className="rounded-xl border border-[#07713c]/30 bg-white p-8 text-center text-sm text-black">
         No students found for your account scope.
       </div>
     );
@@ -797,7 +801,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
 
   if (!student) {
     return (
-      <div className="rounded-xl border border-[#07713c]/30 bg-white p-8 text-center text-sm text-[#07713c]">
+      <div className="rounded-xl border border-[#07713c]/30 bg-white p-8 text-center text-sm text-black">
         Select a student to view the dashboard.
       </div>
     );
@@ -809,24 +813,24 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
       <section className="rounded-xl border border-[#07713c]/30 bg-white p-4 shadow-sm">
         <div className="mb-3">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h3 className="text-lg font-bold text-[#07713c]">All students</h3>
+            <h3 className="text-lg font-bold text-black">All students</h3>
           </div>
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-3">
               <div className="relative min-w-0 w-full max-w-md sm:min-w-[240px] sm:flex-1">
-                <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#07713c]" />
+                <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
                 <input
                   type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search name, ID, or year level"
-                  className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
+                  className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-black placeholder:text-black/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
                   aria-label="Search students by name, ID, or year level"
                 />
                 {search.trim() !== "" && (
                   <button
                     type="button"
                     onClick={() => setSearch("")}
-                    className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-[#07713c]/85 hover:bg-gray-100 hover:text-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
+                    className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-black/85 hover:bg-gray-100 hover:text-black focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
                     aria-label="Clear student search"
                   >
                     ×
@@ -834,7 +838,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                 )}
               </div>
               {showCollegeFilterSelect && (
-                <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
+                <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-black">
                   Colleges
                   <select
                     value={rosterCollegeFilter}
@@ -850,7 +854,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                   </select>
                 </label>
               )}
-              <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
+              <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-black">
                 Year level
                 <select
                   value={rosterYearLevelFilter}
@@ -866,7 +870,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                   ))}
                 </select>
               </label>
-              <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
+              <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-black">
                 Rows per page
                 <select
                   value={rosterPageSize}
@@ -888,7 +892,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
         </div>
         <div className="overflow-x-auto rounded-lg border border-[#07713c]/20">
           <table className="w-full min-w-[600px] text-sm">
-            <thead className="border-b border-[#07713c]/30 bg-[#07713c] text-xs font-semibold uppercase tracking-wide text-white">
+            <thead className={`border-b border-[#07713c]/30 bg-[#07713c]/10 text-xs uppercase tracking-wide ${STUDENTS_TH_TEXT}`}>
               <tr>
                 <th className="px-3 py-2.5 text-left align-middle">Student ID</th>
                 <th className="px-3 py-2.5 text-left align-middle">Name</th>
@@ -920,21 +924,21 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                     aria-selected={s.id === selectedId}
                     title="Click row to view this student"
                   >
-                    <td className="px-3 py-1.5 text-left font-medium leading-snug text-[#07713c]">{s.id}</td>
-                    <td className="px-3 py-1.5 text-left font-medium leading-snug text-[#07713c]">{s.name}</td>
-                    <td className="px-3 py-1.5 text-left font-medium leading-snug text-[#07713c]">
+                    <td className="px-3 py-1.5 text-left font-medium leading-snug text-black">{s.id}</td>
+                    <td className="px-3 py-1.5 text-left font-medium leading-snug text-black">{s.name}</td>
+                    <td className="px-3 py-1.5 text-left font-medium leading-snug text-black">
                       {getStudentDepartmentLabel(s)}
                     </td>
-                    <td className="px-3 py-1.5 text-center tabular-nums leading-snug text-[#07713c]">
+                    <td className="px-3 py-1.5 text-center tabular-nums leading-snug text-black">
                       {rowYl != null ? rowYl : "—"}
                     </td>
-                    <td className="px-3 py-1.5 text-center tabular-nums font-semibold leading-snug text-[#07713c] whitespace-nowrap">
+                    <td className="px-3 py-1.5 text-center tabular-nums font-semibold leading-snug text-black whitespace-nowrap">
                       {s.attendanceRate}%
                     </td>
                     <td className="px-3 py-1.5 text-left">
                       <span className="inline-flex items-center gap-1 text-xs">
                         <span>{t.emoji}</span>
-                        <span className="text-[#07713c]">{t.label}</span>
+                        <span className="text-black">{t.label}</span>
                       </span>
                     </td>
                     <td className="px-3 py-1.5 text-center">
@@ -946,8 +950,8 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                         }}
                         className={`rounded-md px-3 py-1 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-[#07713c]/30 ${
                           s.id === selectedId
-                            ? "bg-[#07713c] text-white"
-                            : "border border-[#07713c]/40 bg-white text-[#07713c] hover:bg-[#07713c]/10"
+                            ? "border border-[#07713c] bg-[#07713c]/15 text-black"
+                            : "border border-[#07713c]/40 bg-white text-black hover:bg-[#07713c]/10"
                         }`}
                         aria-label={`Select ${s.name} for event history`}
                       >
@@ -961,7 +965,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
           </table>
         </div>
         {filteredRoster.length === 0 && (
-          <p className="py-4 text-center text-sm text-[#07713c]/85">No students match this search.</p>
+          <p className="py-4 text-center text-sm text-black/85">No students match this search.</p>
         )}
         <PaginationBar
           totalCount={rosterTotal}
@@ -970,6 +974,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
           onPageChange={setRosterPage}
           emptyLabel="No students to show."
           itemLabel="students"
+          className="!text-black"
         />
       </section>
 
@@ -979,16 +984,16 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
           {!isStudentDetailModalOpen && (
           <section className="rounded-xl border border-[#07713c]/30 bg-white shadow-sm overflow-hidden">
             <div className="border-b border-[#07713c]/30 px-5 py-3">
-              <h3 className="text-lg font-bold text-[#07713c]">Event history</h3>
+              <h3 className="text-lg font-bold text-black">Event history</h3>
               <div className="mt-3 flex flex-wrap items-end gap-x-4 gap-y-2">
                 <div className="relative min-w-0 w-full max-w-md sm:min-w-[240px] sm:flex-1">
-                  <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#07713c]" />
+                  <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
                   <input
                     type="search"
                     value={historyEventSearch}
                     onChange={(e) => setHistoryEventSearch(e.target.value)}
                     placeholder="Search by event name or date"
-                    className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
+                    className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-black placeholder:text-black/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
                     aria-label="Search events by name or date"
                   />
                   {historyEventSearch.trim() !== "" && (
@@ -998,14 +1003,14 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                         setHistoryEventSearch("");
                         setDebouncedEventSearch("");
                       }}
-                      className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-[#07713c]/85 hover:bg-gray-100 hover:text-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
+                      className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-black/85 hover:bg-gray-100 hover:text-black focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
                       aria-label="Clear event search"
                     >
                       ×
                     </button>
                   )}
                 </div>
-                <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
+                <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-black">
                   <span className="whitespace-nowrap">Session</span>
                   <select
                     value={historySessionFilter}
@@ -1018,7 +1023,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                     <option value="PM Session">PM Session</option>
                   </select>
                 </label>
-                <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c] whitespace-nowrap">
+                <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-black whitespace-nowrap">
                   Events per page
                   <select
                     value={historyPageSize}
@@ -1041,7 +1046,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
               <table
                 className={`w-full text-sm ${narrowTimeColumns ? "min-w-[720px]" : "min-w-[960px]"}`}
               >
-                <thead className="border-b border-[#07713c]/20 bg-gray-50 text-center text-xs font-medium text-[#07713c]">
+                <thead className={`border-b border-[#07713c]/20 bg-[#07713c]/10 text-center text-xs uppercase ${STUDENTS_TH_TEXT}`}>
                   <tr>
                     <th className="border-r border-[#07713c]/20 px-4 py-2 align-bottom" rowSpan={2}>
                       Event name
@@ -1092,13 +1097,13 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                 <tbody>
                   {sortedEventHistory.length === 0 ? (
                     <tr>
-                      <td colSpan={historyTableColCount} className="px-4 py-10 text-center text-sm text-[#07713c]/85">
+                      <td colSpan={historyTableColCount} className="px-4 py-10 text-center text-sm text-black/85">
                         No event records in history.
                       </td>
                     </tr>
                   ) : filteredEventHistory.length === 0 ? (
                     <tr>
-                      <td colSpan={historyTableColCount} className="px-4 py-10 text-center text-sm text-[#07713c]/85">
+                      <td colSpan={historyTableColCount} className="px-4 py-10 text-center text-sm text-black/85">
                         No events match the current filters.
                       </td>
                     </tr>
@@ -1109,17 +1114,17 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                     const isHalf = row.sessionType !== "Whole day";
                     const sessionLabel = getHistorySessionLabel(ev, row);
                     const halfDayPeriod = isHalf ? getHalfDayAmPm(ev) : null;
-                    const emptyTimeCell = <span className="font-medium text-[#07713c]">—</span>;
+                    const emptyTimeCell = <span className="font-medium text-black">—</span>;
                     const rowIndex = (historyPageSafe - 1) * historyPageSize + i;
                     return (
                       <tr key={`${ev.name}-${ev.date}-${rowIndex}`} className="border-t border-[#07713c]/20">
-                        <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center font-medium text-[#07713c]">{ev.name}</td>
-                        <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center whitespace-nowrap text-[#07713c]">{formatEventDateForDisplay(ev.date)}</td>
-                        <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center whitespace-nowrap text-[#07713c]">{sessionLabel}</td>
+                        <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center font-medium text-black">{ev.name}</td>
+                        <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center whitespace-nowrap text-black">{formatEventDateForDisplay(ev.date)}</td>
+                        <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center whitespace-nowrap text-black">{sessionLabel}</td>
                         <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center">
                           <span
                             className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                              ev.attended ? "bg-[#07713c]/10 text-[#07713c]" : "bg-red-100 text-red-800"
+                              ev.attended ? "bg-[#07713c]/10 text-black" : "bg-red-100 text-black"
                             }`}
                           >
                             {ev.attended ? "Attended" : "Absent"}
@@ -1187,9 +1192,9 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                         )}
                         <td className="border-l border-[#07713c]/30 px-4 py-2.5 text-center tabular-nums">
                           {fine > 0 ? (
-                            <span className="font-semibold text-red-700">₱{fine.toLocaleString("en-PH")}</span>
+                            <span className="font-semibold text-black">₱{fine.toLocaleString("en-PH")}</span>
                           ) : (
-                            <span className="text-red-700">—</span>
+                            <span className="text-black">—</span>
                           )}
                         </td>
                       </tr>
@@ -1201,11 +1206,11 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                   <tr className="border-t border-[#07713c]/30 bg-gray-50">
                     <td
                       colSpan={historyTableColCount - 1}
-                      className="px-4 py-3 text-right text-xs font-semibold text-[#07713c]"
+                      className="px-4 py-3 text-right text-xs font-semibold text-black"
                     >
                       {historyFiltersActive ? "Total penalties (matching filters)" : "Total penalties (event history)"}
                     </td>
-                    <td className="border-l border-[#07713c]/30 px-4 py-3 text-right text-sm font-bold tabular-nums text-red-800">
+                    <td className="border-l border-[#07713c]/30 px-4 py-3 text-right text-sm font-bold tabular-nums text-black">
                       ₱{totalEventHistoryFinesPhp.toLocaleString("en-PH")}
                     </td>
                   </tr>
@@ -1225,25 +1230,26 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                     : "No event records to show."
               }
               itemLabel="events"
+              className="!text-black"
             />
           </section>
           )}
 
           {/* 3. Status indicator */}
           <section className="rounded-xl border border-[#07713c]/30 bg-white p-5 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-[#07713c]">Status indicator</h3>
+            <h3 className="mb-3 text-sm font-semibold text-black">Status indicator</h3>
             <div className="flex flex-wrap items-center gap-3 text-sm">
               <span className="text-lg">{tier.emoji}</span>
-              <span className="font-semibold text-[#07713c]">{tier.label}</span>
-              <span className="text-[#07713c]/85">({tier.range})</span>
+              <span className="font-semibold text-black">{tier.label}</span>
+              <span className="text-black/85">({tier.range})</span>
             </div>
-            <ul className="mt-3 space-y-1 text-xs text-[#07713c]">
+            <ul className="mt-3 space-y-1 text-xs text-black">
               <li>🟢 Active (90–100%)</li>
               <li>🟡 Moderate (70–89%)</li>
               <li>🔴 Inactive (&lt;70%)</li>
             </ul>
             {showLowMsg && (
-              <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-black">
                 ⚠️ Low participation in events
               </p>
             )}
@@ -1251,53 +1257,53 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
 
           {/* 4. Participation insights */}
           <section className="rounded-xl border border-[#07713c]/30 bg-white p-5 shadow-sm">
-            <h3 className="mb-4 text-sm font-semibold text-[#07713c]">Participation insights</h3>
+            <h3 className="mb-4 text-sm font-semibold text-black">Participation insights</h3>
             <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-lg bg-gray-50 px-3 py-2">
-                <dt className="text-xs text-[#07713c]/85">Current attendance streak</dt>
-                <dd className="text-sm font-semibold text-[#07713c]">
+                <dt className="text-xs text-black/85">Current attendance streak</dt>
+                <dd className="text-sm font-semibold text-black">
                   {(student.streak ?? 0) > 0
                     ? `Attended ${student.streak} event${student.streak === 1 ? "" : "s"} in a row`
                     : "No active streak"}
                 </dd>
               </div>
               <div className="rounded-lg bg-gray-50 px-3 py-2">
-                <dt className="text-xs text-[#07713c]/85">Participation trend</dt>
+                <dt className="text-xs text-black/85">Participation trend</dt>
                 <dd
                   className={`text-sm font-semibold ${
-                    student.participationTrend === "Increasing" ? "text-[#07713c]" : "text-amber-700"
+                    student.participationTrend === "Increasing" ? "text-black" : "text-black"
                   }`}
                 >
                   {student.participationTrend === "Increasing" ? "📈 Increasing" : "📉 Decreasing"}
                 </dd>
               </div>
               <div className="rounded-lg bg-gray-50 px-3 py-2">
-                <dt className="text-xs text-[#07713c]/85">Last attended event</dt>
-                <dd className="text-sm font-medium text-[#07713c]">
+                <dt className="text-xs text-black/85">Last attended event</dt>
+                <dd className="text-sm font-medium text-black">
                   {student.lastAttendedEvent ? (
                     <>
                       {student.lastAttendedEvent.name}{" "}
-                      <span className="text-[#07713c]/85">
+                      <span className="text-black/85">
                         ({formatEventDateForDisplay(student.lastAttendedEvent.date)})
                       </span>
                     </>
                   ) : (
-                    <span className="text-[#07713c]/85">—</span>
+                    <span className="text-black/85">—</span>
                   )}
                 </dd>
               </div>
               <div className="rounded-lg bg-gray-50 px-3 py-2">
-                <dt className="text-xs text-[#07713c]/85">Last missed event</dt>
-                <dd className="text-sm font-medium text-[#07713c]">
+                <dt className="text-xs text-black/85">Last missed event</dt>
+                <dd className="text-sm font-medium text-black">
                   {student.lastMissedEvent ? (
                     <>
                       {student.lastMissedEvent.name}{" "}
-                      <span className="text-[#07713c]/85">
+                      <span className="text-black/85">
                         ({formatEventDateForDisplay(student.lastMissedEvent.date)})
                       </span>
                     </>
                   ) : (
-                    <span className="text-[#07713c]/85">—</span>
+                    <span className="text-black/85">—</span>
                   )}
                 </dd>
               </div>
@@ -1307,17 +1313,17 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
           {/* 7. Alerts */}
           {(student.alerts ?? []).length > 0 && (
             <section className="rounded-xl border border-[#07713c]/30 bg-white p-5 shadow-sm">
-              <h3 className="mb-3 text-sm font-semibold text-[#07713c]">7. Alerts &amp; notifications</h3>
+              <h3 className="mb-3 text-sm font-semibold text-black">7. Alerts &amp; notifications</h3>
               <ul className="space-y-2">
                 {(student.alerts ?? []).map((a, i) => (
                   <li
                     key={i}
                     className={`rounded-lg px-3 py-2 text-sm ${
                       a.tone === "success"
-                        ? "border border-[#07713c]/25 bg-[#07713c]/5 text-[#07713c]"
+                        ? "border border-[#07713c]/25 bg-[#07713c]/5 text-black"
                         : a.tone === "danger"
-                          ? "border border-red-200 bg-red-50 text-red-900"
-                          : "border border-amber-200 bg-amber-50 text-amber-900"
+                          ? "border border-red-200 bg-red-50 text-black"
+                          : "border border-amber-200 bg-amber-50 text-black"
                     }`}
                   >
                     {a.text}
@@ -1331,9 +1337,9 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
         <aside className="space-y-4">
           <section className="rounded-xl border border-[#07713c]/30 bg-white p-4 shadow-sm">
             <div className="mb-4 rounded-lg border border-[#07713c]/20 bg-gray-50/80 px-3 py-2.5">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#07713c]/85">Selected student</p>
-              <p className="mt-1 font-semibold text-[#07713c]">{student.name}</p>
-              <p className="text-xs text-[#07713c]/85">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-black/85">Selected student</p>
+              <p className="mt-1 font-semibold text-black">{student.name}</p>
+              <p className="text-xs text-black/85">
                 {(() => {
                   const dept = getStudentDepartmentLabel(student);
                   return [
@@ -1351,12 +1357,12 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                 {pieData && <Pie data={pieData} options={pieOptions} />}
               </div>
             ) : (
-              <p className="mb-4 text-center text-xs text-[#07713c]/85">No events to show.</p>
+              <p className="mb-4 text-center text-xs text-black/85">No events to show.</p>
             )}
             <div>
-              <div className="mb-1 flex justify-between text-xs text-[#07713c]">
+              <div className="mb-1 flex justify-between text-xs text-black">
                 <span>Progress</span>
-                <span className="tabular-nums font-medium text-[#07713c]">{student.attendanceRate}%</span>
+                <span className="tabular-nums font-medium text-black">{student.attendanceRate}%</span>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
                 <div
@@ -1381,11 +1387,11 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
             className="flex max-h-[90vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between bg-[#07713c] px-5 py-3">
+            <div className="flex items-center justify-between border-b border-[#07713c]/30 bg-[#07713c]/10 px-5 py-3">
               <div>
-                <p className="text-xs uppercase tracking-wide text-white/80">Student details</p>
-                <h3 className="text-sm font-semibold text-white sm:text-base">{student.name}</h3>
-                <p className="mt-1 text-xs text-white/85">
+                <p className="text-xs uppercase tracking-wide text-black">Student details</p>
+                <h3 className="text-sm font-semibold text-black sm:text-base">{student.name}</h3>
+                <p className="mt-1 text-xs text-black">
                   {student.id}
                   {selectedStudentYearLevel != null ? ` · Year ${selectedStudentYearLevel}` : ""}
                 </p>
@@ -1393,7 +1399,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
               <button
                 type="button"
                 onClick={() => setIsStudentDetailModalOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-[#07713c] transition-colors hover:bg-yellow-300"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-black transition-colors hover:bg-yellow-300"
                 aria-label="Close student modal"
               >
                 <span className="text-lg font-bold">×</span>
@@ -1403,24 +1409,24 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
               <section className="rounded-xl border border-[#07713c]/30 bg-white p-4 shadow-sm">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="rounded-lg border-2 border-[#07713c]/30 bg-[#07713c]/10 p-3 text-center">
-                    <p className="text-xs font-medium uppercase tracking-wide text-[#07713c]">Attendance rate ⭐</p>
-                    <p className="mt-1 text-3xl font-extrabold tabular-nums text-[#07713c]">{student.attendanceRate}%</p>
+                    <p className="text-xs font-medium uppercase tracking-wide text-black">Attendance rate ⭐</p>
+                    <p className="mt-1 text-3xl font-extrabold tabular-nums text-black">{student.attendanceRate}%</p>
                   </div>
                   <div className="rounded-lg border border-[#07713c]/30 bg-gray-50/80 p-3">
-                    <p className="text-xs font-medium text-[#07713c]/85">Total events</p>
-                    <p className="mt-1 text-xl font-bold tabular-nums text-[#07713c]">{student.totalEvents}</p>
+                    <p className="text-xs font-medium text-black/85">Total events</p>
+                    <p className="mt-1 text-xl font-bold tabular-nums text-black">{student.totalEvents}</p>
                   </div>
                   <div className="rounded-lg border border-[#07713c]/30 bg-gray-50/80 p-3">
-                    <p className="text-xs font-medium text-[#07713c]/85">Events attended</p>
-                    <p className="mt-1 text-xl font-bold tabular-nums text-[#07713c]">{student.eventsAttended}</p>
+                    <p className="text-xs font-medium text-black/85">Events attended</p>
+                    <p className="mt-1 text-xl font-bold tabular-nums text-black">{student.eventsAttended}</p>
                   </div>
                   <div className="rounded-lg border border-[#07713c]/30 bg-gray-50/80 p-3">
-                    <p className="text-xs font-medium text-[#07713c]/85">Events missed</p>
-                    <p className="mt-1 text-xl font-bold tabular-nums text-red-600">{student.eventsMissed}</p>
+                    <p className="text-xs font-medium text-black/85">Events missed</p>
+                    <p className="mt-1 text-xl font-bold tabular-nums text-black">{student.eventsMissed}</p>
                   </div>
                 </div>
                 <div className="mt-4">
-                  <div className="mb-1 flex justify-between text-xs text-[#07713c]">
+                  <div className="mb-1 flex justify-between text-xs text-black">
                     <span>Progress</span>
                     <span className="tabular-nums font-medium">{student.attendanceRate}%</span>
                   </div>
@@ -1435,16 +1441,16 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
 
               <section className="rounded-xl border border-[#07713c]/30 bg-white shadow-sm overflow-hidden">
                 <div className="border-b border-[#07713c]/30 px-5 py-3">
-                  <h3 className="text-lg font-bold text-[#07713c]">Event history</h3>
+                  <h3 className="text-lg font-bold text-black">Event history</h3>
                   <div className="mt-3 flex flex-wrap items-end gap-x-4 gap-y-2">
                     <div className="relative min-w-0 w-full max-w-md sm:min-w-[240px] sm:flex-1">
-                      <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#07713c]" />
+                      <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
                       <input
                         type="search"
                         value={historyEventSearch}
                         onChange={(e) => setHistoryEventSearch(e.target.value)}
                         placeholder="Search by event name or date"
-                        className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
+                        className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-black placeholder:text-black/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
                         aria-label="Search events by name or date"
                       />
                       {historyEventSearch.trim() !== "" && (
@@ -1454,14 +1460,14 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                             setHistoryEventSearch("");
                             setDebouncedEventSearch("");
                           }}
-                          className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-[#07713c]/85 hover:bg-gray-100 hover:text-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
+                          className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-black/85 hover:bg-gray-100 hover:text-black focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
                           aria-label="Clear event search"
                         >
                           ×
                         </button>
                       )}
                     </div>
-                    <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c]">
+                    <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-black">
                       <span className="whitespace-nowrap">Session</span>
                       <select
                         value={historySessionFilter}
@@ -1474,7 +1480,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                         <option value="PM Session">PM Session</option>
                       </select>
                     </label>
-                    <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-[#07713c] whitespace-nowrap">
+                    <label className="flex shrink-0 flex-col items-start gap-1 text-xs text-black whitespace-nowrap">
                       Events per page
                       <select
                         value={historyPageSize}
@@ -1497,7 +1503,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                   <table
                     className={`w-full text-sm ${narrowTimeColumns ? "min-w-[720px]" : "min-w-[960px]"}`}
                   >
-                    <thead className="border-b border-[#07713c]/20 bg-gray-50 text-center text-xs font-medium text-[#07713c]">
+                    <thead className={`border-b border-[#07713c]/20 bg-[#07713c]/10 text-center text-xs uppercase ${STUDENTS_TH_TEXT}`}>
                       <tr>
                         <th className="border-r border-[#07713c]/20 px-4 py-2 align-bottom" rowSpan={2}>
                           Event name
@@ -1548,13 +1554,13 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                     <tbody>
                       {sortedEventHistory.length === 0 ? (
                         <tr>
-                          <td colSpan={historyTableColCount} className="px-4 py-10 text-center text-sm text-[#07713c]/85">
+                          <td colSpan={historyTableColCount} className="px-4 py-10 text-center text-sm text-black/85">
                             No event records in history.
                           </td>
                         </tr>
                       ) : filteredEventHistory.length === 0 ? (
                         <tr>
-                          <td colSpan={historyTableColCount} className="px-4 py-10 text-center text-sm text-[#07713c]/85">
+                          <td colSpan={historyTableColCount} className="px-4 py-10 text-center text-sm text-black/85">
                             No events match the current filters.
                           </td>
                         </tr>
@@ -1565,17 +1571,17 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                         const isHalf = row.sessionType !== "Whole day";
                         const sessionLabel = getHistorySessionLabel(ev, row);
                         const halfDayPeriod = isHalf ? getHalfDayAmPm(ev) : null;
-                        const emptyTimeCell = <span className="font-medium text-[#07713c]">—</span>;
+                        const emptyTimeCell = <span className="font-medium text-black">—</span>;
                         const rowIndex = (historyPageSafe - 1) * historyPageSize + i;
                         return (
                           <tr key={`${ev.name}-${ev.date}-${rowIndex}`} className="border-t border-[#07713c]/20">
-                            <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center font-medium text-[#07713c]">{ev.name}</td>
-                            <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center whitespace-nowrap text-[#07713c]">{formatEventDateForDisplay(ev.date)}</td>
-                            <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center whitespace-nowrap text-[#07713c]">{sessionLabel}</td>
+                            <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center font-medium text-black">{ev.name}</td>
+                            <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center whitespace-nowrap text-black">{formatEventDateForDisplay(ev.date)}</td>
+                            <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center whitespace-nowrap text-black">{sessionLabel}</td>
                             <td className="border-r border-[#07713c]/20 px-4 py-2.5 text-center">
                               <span
                                 className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                  ev.attended ? "bg-[#07713c]/10 text-[#07713c]" : "bg-red-100 text-red-800"
+                                  ev.attended ? "bg-[#07713c]/10 text-black" : "bg-red-100 text-black"
                                 }`}
                               >
                                 {ev.attended ? "Attended" : "Absent"}
@@ -1643,9 +1649,9 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                             )}
                             <td className="border-l border-[#07713c]/30 px-4 py-2.5 text-center tabular-nums">
                               {fine > 0 ? (
-                                <span className="font-semibold text-red-700">₱{fine.toLocaleString("en-PH")}</span>
+                                <span className="font-semibold text-black">₱{fine.toLocaleString("en-PH")}</span>
                               ) : (
-                                <span className="text-red-700">—</span>
+                                <span className="text-black">—</span>
                               )}
                             </td>
                           </tr>
@@ -1657,11 +1663,11 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                       <tr className="border-t border-[#07713c]/30 bg-gray-50">
                         <td
                           colSpan={historyTableColCount - 1}
-                          className="px-4 py-3 text-right text-xs font-semibold text-[#07713c]"
+                          className="px-4 py-3 text-right text-xs font-semibold text-black"
                         >
                           {historyFiltersActive ? "Total penalties (matching filters)" : "Total penalties (event history)"}
                         </td>
-                        <td className="border-l border-[#07713c]/30 px-4 py-3 text-right text-sm font-bold tabular-nums text-red-800">
+                        <td className="border-l border-[#07713c]/30 px-4 py-3 text-right text-sm font-bold tabular-nums text-black">
                           ₱{totalEventHistoryFinesPhp.toLocaleString("en-PH")}
                         </td>
                       </tr>
@@ -1681,57 +1687,58 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                         : "No event records to show."
                   }
                   itemLabel="events"
+                  className="!text-black"
                 />
               </section>
 
               <section className="rounded-xl border border-[#07713c]/30 bg-white p-4 shadow-sm">
-                <h3 className="mb-3 text-sm font-semibold text-[#07713c]">Participation insights</h3>
+                <h3 className="mb-3 text-sm font-semibold text-black">Participation insights</h3>
                 <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="rounded-lg bg-gray-50 px-3 py-2">
-                    <dt className="text-xs text-[#07713c]/85">Current attendance streak</dt>
-                    <dd className="text-sm font-semibold text-[#07713c]">
+                    <dt className="text-xs text-black/85">Current attendance streak</dt>
+                    <dd className="text-sm font-semibold text-black">
                       {(student.streak ?? 0) > 0
                         ? `Attended ${student.streak} event${student.streak === 1 ? "" : "s"} in a row`
                         : "No active streak"}
                     </dd>
                   </div>
                   <div className="rounded-lg bg-gray-50 px-3 py-2">
-                    <dt className="text-xs text-[#07713c]/85">Participation trend</dt>
+                    <dt className="text-xs text-black/85">Participation trend</dt>
                     <dd
                       className={`text-sm font-semibold ${
-                        student.participationTrend === "Increasing" ? "text-[#07713c]" : "text-amber-700"
+                        student.participationTrend === "Increasing" ? "text-black" : "text-black"
                       }`}
                     >
                       {student.participationTrend === "Increasing" ? "📈 Increasing" : "📉 Decreasing"}
                     </dd>
                   </div>
                   <div className="rounded-lg bg-gray-50 px-3 py-2">
-                    <dt className="text-xs text-[#07713c]/85">Last attended event</dt>
-                    <dd className="text-sm font-medium text-[#07713c]">
+                    <dt className="text-xs text-black/85">Last attended event</dt>
+                    <dd className="text-sm font-medium text-black">
                       {student.lastAttendedEvent ? (
                         <>
                           {student.lastAttendedEvent.name}{" "}
-                          <span className="text-[#07713c]/85">
+                          <span className="text-black/85">
                             ({formatEventDateForDisplay(student.lastAttendedEvent.date)})
                           </span>
                         </>
                       ) : (
-                        <span className="text-[#07713c]/85">—</span>
+                        <span className="text-black/85">—</span>
                       )}
                     </dd>
                   </div>
                   <div className="rounded-lg bg-gray-50 px-3 py-2">
-                    <dt className="text-xs text-[#07713c]/85">Last missed event</dt>
-                    <dd className="text-sm font-medium text-[#07713c]">
+                    <dt className="text-xs text-black/85">Last missed event</dt>
+                    <dd className="text-sm font-medium text-black">
                       {student.lastMissedEvent ? (
                         <>
                           {student.lastMissedEvent.name}{" "}
-                          <span className="text-[#07713c]/85">
+                          <span className="text-black/85">
                             ({formatEventDateForDisplay(student.lastMissedEvent.date)})
                           </span>
                         </>
                       ) : (
-                        <span className="text-[#07713c]/85">—</span>
+                        <span className="text-black/85">—</span>
                       )}
                     </dd>
                   </div>
@@ -1744,25 +1751,25 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
       {exportOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
-            <h3 className="text-lg font-semibold text-[#07713c]">Export / reports</h3>
-            <p className="mt-2 text-sm text-[#07713c]">Apply filters below for student export.</p>
+            <h3 className="text-lg font-semibold text-black">Export / reports</h3>
+            <p className="mt-2 text-sm text-black">Apply filters below for student export.</p>
             <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-              <label className="flex flex-col gap-1 text-xs text-[#07713c] sm:col-span-2">
+              <label className="flex flex-col gap-1 text-xs text-black sm:col-span-2">
                 Search
                 <div className="relative">
-                  <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#07713c]" />
+                  <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
                   <input
                     type="search"
                     value={exportSearch}
                     onChange={(e) => setExportSearch(e.target.value)}
                     placeholder="Search name, ID, or year level"
-                    className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
+                    className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-black placeholder:text-black/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
                   />
                   {exportSearch.trim() !== "" && (
                     <button
                       type="button"
                       onClick={() => setExportSearch("")}
-                      className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-[#07713c]/85 hover:bg-gray-100 hover:text-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
+                      className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-black/85 hover:bg-gray-100 hover:text-black focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
                       aria-label="Clear export student search"
                     >
                       ×
@@ -1771,7 +1778,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                 </div>
               </label>
               {showCollegeFilterSelect && (
-                <label className="flex flex-col gap-1 text-xs text-[#07713c]">
+                <label className="flex flex-col gap-1 text-xs text-black">
                   College
                   <select
                     value={exportCollegeFilter}
@@ -1786,7 +1793,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                   </select>
                 </label>
               )}
-              <label className="flex flex-col gap-1 text-xs text-[#07713c] sm:col-span-2">
+              <label className="flex flex-col gap-1 text-xs text-black sm:col-span-2">
                 Year level
                 <select
                   value={exportYearLevelFilter}
@@ -1801,7 +1808,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                   ))}
                 </select>
               </label>
-              <label className="flex flex-col gap-1 text-xs text-[#07713c]">
+              <label className="flex flex-col gap-1 text-xs text-black">
                 Activity status
                 <select
                   value={exportStatusFilter}
@@ -1815,7 +1822,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                 </select>
               </label>
             </div>
-            <p className="mt-3 text-xs text-[#07713c]/85">
+            <p className="mt-3 text-xs text-black/85">
               {exportFilteredRoster.length} student record(s) will be exported.
             </p>
             <div className="mt-4 space-y-2">
@@ -1825,7 +1832,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                   exportRosterCsv();
                   setExportOpen(false);
                 }}
-                className="w-full rounded-lg bg-[#07713c] px-4 py-2.5 text-sm font-medium text-white hover:brightness-95"
+                className="w-full rounded-lg border border-[#07713c] bg-[#07713c]/10 px-4 py-2.5 text-sm font-medium text-black hover:bg-[#07713c]/15"
               >
                 Export CSV - filtered students
               </button>
@@ -1838,7 +1845,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
                   setExportYearLevelFilter(rosterYearLevelFilter);
                   setExportStatusFilter("all");
                 }}
-                className="w-full rounded-lg border border-[#07713c]/30 px-4 py-2 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/8"
+                className="w-full rounded-lg border border-[#07713c]/30 px-4 py-2 text-sm font-medium text-black hover:bg-[#07713c]/8"
               >
                 Reset export filters
               </button>
@@ -1846,7 +1853,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
             <button
               type="button"
               onClick={() => setExportOpen(false)}
-              className="mt-4 w-full rounded-lg border border-[#07713c]/30 py-2 text-sm text-[#07713c] hover:bg-[#07713c]/10"
+              className="mt-4 w-full rounded-lg border border-[#07713c]/30 py-2 text-sm text-black hover:bg-[#07713c]/10"
             >
               Close
             </button>

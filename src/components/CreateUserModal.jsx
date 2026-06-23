@@ -3,6 +3,9 @@ import { useMutation } from "@tanstack/react-query";
 import api from "../api/axiosInstance";
 import { useAuthSession } from "../hooks/auth";
 
+/** Create User modal content text. */
+const CREATE_USER_TEXT = "text-black";
+
 function useCreateUserDebugMutation() {
   return useMutation({
     mutationFn: async ({
@@ -252,10 +255,11 @@ export default function CreateUserModal({ open, onClose }) {
       }}
     >
       <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden">
-        <div className="bg-[#07713c] px-5 py-3">
-          <h3 className="text-white font-semibold">Create User</h3>
+        <div className="border-b border-[#07713c]/30 bg-[#07713c]/10 px-5 py-3">
+          <h3 className="font-semibold text-black">Create User</h3>
         </div>
         <form
+          className={CREATE_USER_TEXT}
           onSubmit={(e) => {
             e.preventDefault();
             setCreateUserError("");
@@ -333,14 +337,14 @@ export default function CreateUserModal({ open, onClose }) {
           className="p-5 space-y-4 text-sm"
         >
           {createUserError && (
-            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-xs text-red-700">
+            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-xs text-black">
               {createUserError}
             </div>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
+              <label className="block text-xs font-medium text-black mb-1">
                 Account Type
               </label>
               <select
@@ -356,7 +360,7 @@ export default function CreateUserModal({ open, onClose }) {
                       : null),
                   }));
                 }}
-                className="w-full rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] disabled:bg-gray-100"
+                className="w-full rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] disabled:bg-gray-100"
               >
                 <option value="department">Department User</option>
                 <option value="csg_president">CSG President</option>
@@ -366,11 +370,11 @@ export default function CreateUserModal({ open, onClose }) {
             {createUserForm.accountType !== "csg_president" && (
               <>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                  <label className="block text-xs font-medium text-black mb-1">
                     Department
                   </label>
                   {isGovernorLoggedIn ? (
-                    <div className="w-full rounded-lg border border-[#07713c]/30 bg-gray-100 px-3 py-2 text-sm text-[#07713c]/70">
+                    <div className="w-full rounded-lg border border-[#07713c]/30 bg-gray-100 px-3 py-2 text-sm text-black/70">
                       {governorDepartmentFromRole}
                     </div>
                   ) : (
@@ -383,7 +387,7 @@ export default function CreateUserModal({ open, onClose }) {
                           major: "",
                         }))
                       }
-                      className="w-full rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]"
+                      className="w-full rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]"
                     >
                       <option value="">Select Department</option>
                       {DEPARTMENT_OPTIONS.map((option) => (
@@ -397,7 +401,7 @@ export default function CreateUserModal({ open, onClose }) {
 
                 {isGovernorLoggedIn && (
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                    <label className="block text-xs font-medium text-black mb-1">
                       Major
                     </label>
                     <select
@@ -411,7 +415,7 @@ export default function CreateUserModal({ open, onClose }) {
                       disabled={
                         !createUserForm.department || majorOptions.length === 0
                       }
-                      className="w-full rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] disabled:bg-gray-100"
+                      className="w-full rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] disabled:bg-gray-100"
                     >
                       <option value="">
                         {createUserForm.department && majorOptions.length === 0
@@ -432,7 +436,7 @@ export default function CreateUserModal({ open, onClose }) {
             )}
 
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
+              <label className="block text-xs font-medium text-black mb-1">
                 Password
               </label>
               <div className="relative">
@@ -445,7 +449,7 @@ export default function CreateUserModal({ open, onClose }) {
                       password: e.target.value,
                     }))
                   }
-                  className={`w-full rounded-lg border px-3 py-2 pr-14 text-sm text-[#07713c] placeholder:text-[#07713c]/45 bg-white focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] ${
+                  className={`w-full rounded-lg border px-3 py-2 pr-14 text-sm text-black placeholder:text-black/45 bg-white focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] ${
                     !createUserForm.password
                       ? "border-[#07713c]/40"
                       : isPasswordValid
@@ -457,20 +461,20 @@ export default function CreateUserModal({ open, onClose }) {
                 <button
                   type="button"
                   onClick={() => setShowCreatePassword((prev) => !prev)}
-                  className="absolute inset-y-0 right-3 text-[11px] text-[#07713c] hover:text-[#055a2e]"
+                  className="absolute inset-y-0 right-3 text-[11px] text-black hover:text-black/70"
                 >
                   {showCreatePassword ? "Hide" : "Show"}
                 </button>
               </div>
               {createUserForm.password && !isPasswordValid && (
-                <p className="text-[11px] text-red-600 mt-1">
+                <p className="text-[11px] text-black mt-1">
                   Password must be at least 6 characters.
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
+              <label className="block text-xs font-medium text-black mb-1">
                 Confirm Password
               </label>
               <div className="relative">
@@ -483,7 +487,7 @@ export default function CreateUserModal({ open, onClose }) {
                       confirmPassword: e.target.value,
                     }))
                   }
-                  className={`w-full rounded-lg border px-3 py-2 pr-14 text-sm text-[#07713c] placeholder:text-[#07713c]/45 bg-white focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] ${
+                  className={`w-full rounded-lg border px-3 py-2 pr-14 text-sm text-black placeholder:text-black/45 bg-white focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] ${
                     !createUserForm.confirmPassword
                       ? "border-[#07713c]/40"
                       : doPasswordsMatch
@@ -495,13 +499,13 @@ export default function CreateUserModal({ open, onClose }) {
                 <button
                   type="button"
                   onClick={() => setShowCreateConfirmPassword((prev) => !prev)}
-                  className="absolute inset-y-0 right-3 text-[11px] text-[#07713c] hover:text-[#055a2e]"
+                  className="absolute inset-y-0 right-3 text-[11px] text-black hover:text-black/70"
                 >
                   {showCreateConfirmPassword ? "Hide" : "Show"}
                 </button>
               </div>
               {createUserForm.confirmPassword && !doPasswordsMatch && (
-                <p className="text-[11px] text-red-600 mt-1">
+                <p className="text-[11px] text-black mt-1">
                   Passwords do not match.
                 </p>
               )}
@@ -510,7 +514,7 @@ export default function CreateUserModal({ open, onClose }) {
 
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
+              <label className="block text-xs font-medium text-black mb-1">
                 Username
               </label>
               <input
@@ -522,24 +526,24 @@ export default function CreateUserModal({ open, onClose }) {
                     username: e.target.value,
                   }))
                 }
-                className="w-full rounded-lg border border-[#07713c]/40 px-3 py-2 text-sm text-[#07713c] placeholder:text-[#07713c]/45 bg-white focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]"
+                className="w-full rounded-lg border border-[#07713c]/40 px-3 py-2 text-sm text-black placeholder:text-black/45 bg-white focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]"
                 placeholder="Enter username"
               />
             </div>
             {!createUserForm.username.trim() &&
             createUserError?.toLowerCase().includes("username") ? (
-              <p className="text-[11px] text-red-600">Username is required.</p>
+              <p className="text-[11px] text-black">Username is required.</p>
             ) : null}
           </div>
 
           {createdAccount && (
             <div className="rounded-lg border border-[#07713c]/30 bg-[#07713c]/10 p-3 space-y-1">
-              <p className="text-xs font-semibold text-[#07713c]">
+              <p className="text-xs font-semibold text-black">
                 {createdAccount.role === "csg_president"
                   ? "CSG President created successfully."
                   : "User created successfully."}
               </p>
-              <p className="text-xs text-[#07713c]">
+              <p className="text-xs text-black">
                 Username: {createdAccount.username}
               </p>
             </div>
@@ -553,14 +557,14 @@ export default function CreateUserModal({ open, onClose }) {
                 onClose?.();
               }}
               disabled={isCreatingUser}
-              className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700"
+              className="px-4 py-2 rounded-lg border border-gray-300 text-black"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isCreateDisabled}
-              className="px-4 py-2 rounded-lg bg-[#07713c] text-white disabled:opacity-70 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-lg border border-[#07713c] bg-[#07713c]/10 font-medium text-black hover:bg-[#07713c]/15 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isCreatingUser ? "Creating..." : "Create User"}
             </button>

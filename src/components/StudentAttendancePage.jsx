@@ -7,6 +7,9 @@ import { getAppNavItems } from "../utils/appNav";
 import { getDashboardRoleLabel } from "../utils/roles";
 import StudentAttendanceDashboard from "./StudentAttendanceDashboard";
 
+/** Students page main content text (sidebar nav excluded). */
+const STUDENTS_PAGE_TEXT = "text-black";
+
 /** Shell for the Students (per-student attendance) view at `/students`. */
 export default function StudentAttendancePage({ onLogout, onNavigate }) {
   const navigate = useNavigate();
@@ -41,10 +44,10 @@ export default function StudentAttendancePage({ onLogout, onNavigate }) {
 
   return (
     <div className="flex min-h-screen bg-gray-50 [&_button]:cursor-pointer">
-      <aside className="sticky top-0 h-screen max-h-screen w-64 shrink-0 self-start overflow-y-auto bg-[#07713C] text-white flex flex-col">
+      <aside className="sticky top-0 h-screen max-h-screen w-64 shrink-0 self-start overflow-y-auto bg-[#07713C] text-white flex flex-col [&_p]:text-white">
         <div className="p-6 space-y-4">
           <img src="/logo.png" alt="NMCI" className="w-16 h-16 rounded-full bg-white/10 object-contain mx-auto" />
-          <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif]">
+          <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif] text-white">
             Northern Mindanao Colleges, Inc.
           </p>
         </div>
@@ -105,7 +108,7 @@ export default function StudentAttendancePage({ onLogout, onNavigate }) {
           </div>
         </header>
 
-        <main className="flex-1 p-6 overflow-auto">
+        <main className={`flex-1 p-6 overflow-auto ${STUDENTS_PAGE_TEXT} [&_th]:font-bold [&_th]:text-black`}>
           <StudentAttendanceDashboard onRegisterExportOpen={setOpenStudentsExport} />
         </main>
       </div>

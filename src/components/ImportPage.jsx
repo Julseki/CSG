@@ -57,6 +57,10 @@ function parseCsvPreview(text) {
   return { headers, rows };
 }
 
+/** Import page main content text (sidebar + top header excluded). */
+const IMPORT_PAGE_TEXT = "text-black";
+const IMPORT_TH_TEXT = "font-bold text-black";
+
 export default function ImportPage({ onNavigate, onLogout }) {
   const { role, isGovernor, governorScope } = useGovernorScope();
   const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
@@ -181,10 +185,10 @@ export default function ImportPage({ onNavigate, onLogout }) {
 
   return (
     <div className="flex min-h-screen bg-gray-50 [&_button]:cursor-pointer">
-      <aside className="sticky top-0 h-screen max-h-screen w-64 shrink-0 self-start overflow-y-auto bg-[#07713C] text-white flex flex-col">
+      <aside className="sticky top-0 h-screen max-h-screen w-64 shrink-0 self-start overflow-y-auto bg-[#07713C] text-white flex flex-col [&_p]:text-white">
         <div className="p-6 space-y-4">
           <img src="/logo.png" alt="NMCI" className="w-16 h-16 rounded-full bg-white/10 object-contain mx-auto" />
-          <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif]">
+          <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif] text-white">
             Northern Mindanao Colleges, Inc.
           </p>
         </div>
@@ -238,32 +242,32 @@ export default function ImportPage({ onNavigate, onLogout }) {
           </div>
         </header>
 
-        <main className="flex-1 p-6 overflow-auto">
+        <main className={`flex-1 p-6 overflow-auto ${IMPORT_PAGE_TEXT} [&_th]:font-bold [&_th]:!text-black`}>
           <div className="space-y-6">
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4">
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-black">
                 Upload a student CSV (export from Excel as CSV UTF-8). Use the 5-column format below to link each
                 student to a college department.
               </p>
-              <div className="rounded-lg border border-green-100 bg-green-50/60 px-3 py-2 text-xs text-gray-700 space-y-1">
+              <div className="rounded-lg border border-green-100 bg-green-50/60 px-3 py-2 text-xs text-black space-y-1">
                 <p>
-                  <span className="font-semibold text-[#07713c]">Imports all rows</span> — duplicates are updated, and
+                  <span className="font-semibold text-black">Imports all rows</span> — duplicates are updated, and
                   missing fields are left empty when not provided.
                 </p>
                 <p>
-                  <span className="font-semibold text-gray-600">Typical columns:</span>{" "}
+                  <span className="font-semibold text-black">Typical columns:</span>{" "}
                   <code className="text-[11px]">id_number</code>, <code className="text-[11px]">rfid</code>,{" "}
                   <code className="text-[11px]">full_name</code>, <code className="text-[11px]">level</code>,{" "}
                   <code className="text-[11px]">department</code>
                 </p>
               </div>
               {preview.headers.length > 0 && headerValidation.valid && (
-                <p className="text-xs text-green-700">
+                <p className="text-xs text-black">
                   Ready to import {preview.rows.length} row(s) ({detectedFormat} mapping).
                 </p>
               )}
               {preview.headers.length > 0 && !headerValidation.valid && (
-                <p className="text-xs text-red-600">{headerValidation.message}</p>
+                <p className="text-xs text-black">{headerValidation.message}</p>
               )}
               <input
                 ref={fileInputRef}
@@ -277,30 +281,30 @@ export default function ImportPage({ onNavigate, onLogout }) {
                   type="button"
                   onClick={onImport}
                   disabled={importMutation.isPending}
-                  className="rounded-lg bg-[#07713c] text-white px-4 py-2 text-sm font-medium disabled:opacity-60"
+                  className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-4 py-2 text-sm font-medium text-black disabled:opacity-60 hover:bg-[#07713c]/15"
                 >
                   {importMutation.isPending ? "Importing..." : "Start Import"}
                 </button>
                 {selectedFile && (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-black/75">
                     Selected: <span className="font-medium">{selectedFile.name}</span>
                   </p>
                 )}
               </div>
-              {error && <p className="text-sm text-red-600">{error}</p>}
-              <p className="text-xs text-gray-500">Role: {roleLabel}</p>
+              {error && <p className="text-sm text-black">{error}</p>}
+              <p className="text-xs text-black/75">Role: {roleLabel}</p>
             </div>
 
             {preview.headers.length > 0 && (
               <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-                <h3 className="text-sm font-semibold text-gray-800 mb-3">CSV Preview</h3>
-                <p className="mb-3 text-xs text-gray-600">Total students in CSV: {preview.rows.length}</p>
+                <h3 className="text-sm font-semibold text-black mb-3">CSV Preview</h3>
+                <p className="mb-3 text-xs text-black">Total students in CSV: {preview.rows.length}</p>
                 <div className="overflow-auto">
                   <table className="min-w-full text-xs border-collapse">
-                    <thead>
+                    <thead className={`bg-[#07713c]/10 ${IMPORT_TH_TEXT}`}>
                       <tr>
                         {preview.headers.map((header, idx) => (
-                          <th key={`${header}-${idx}`} className="border px-2 py-1 text-left bg-gray-50">
+                          <th key={`${header}-${idx}`} className="border border-[#07713c]/20 px-2 py-1 text-left">
                             {header}
                           </th>
                         ))}
@@ -325,17 +329,17 @@ export default function ImportPage({ onNavigate, onLogout }) {
             {isAdmin && (
               <div className="rounded-xl border border-red-300 bg-red-50/40 p-5 shadow-sm space-y-4">
                 <div>
-                  <h3 className="text-sm font-semibold text-red-800">Reset all data</h3>
-                  <p className="mt-1 text-xs text-red-900/90">
+                  <h3 className="text-sm font-semibold text-black">Reset all data</h3>
+                  <p className="mt-1 text-xs text-black">
                     Deletes all students, colleges, courses, events, attendance, fines, payments, and
                     non-admin users. <span className="font-semibold">Admin account(s) are kept.</span> This
                     cannot be undone.
                   </p>
                 </div>
-                <div className="rounded-lg border border-red-200 bg-white p-3 text-xs text-gray-800">
-                  <p className="mb-2 font-semibold text-red-800">Records that will be removed</p>
+                <div className="rounded-lg border border-red-200 bg-white p-3 text-xs text-black">
+                  <p className="mb-2 font-semibold text-black">Records that will be removed</p>
                   {isResetPreviewLoading && !resetPreview ? (
-                    <p className="text-gray-500">Loading counts…</p>
+                    <p className="text-black/75">Loading counts…</p>
                   ) : resetPreview ? (
                     <ul className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
                       <li>Students: {resetPreview.students}</li>
@@ -349,10 +353,10 @@ export default function ImportPage({ onNavigate, onLogout }) {
                       <li>Non-admin users: {resetPreview.nonAdminUsers}</li>
                     </ul>
                   ) : (
-                    <p className="text-gray-500">Could not load preview.</p>
+                    <p className="text-black/75">Could not load preview.</p>
                   )}
                   {resetPreview && (
-                    <p className="mt-2 text-[11px] text-gray-600">
+                    <p className="mt-2 text-[11px] text-black">
                       Admin accounts kept: {resetPreview.adminUsers}
                     </p>
                   )}
@@ -360,12 +364,12 @@ export default function ImportPage({ onNavigate, onLogout }) {
                     type="button"
                     onClick={() => refetchResetPreview()}
                     disabled={isResetPreviewLoading}
-                    className="mt-2 text-[11px] font-medium text-[#07713c] underline disabled:opacity-60"
+                    className="mt-2 text-[11px] font-medium text-black underline disabled:opacity-60"
                   >
                     Refresh counts
                   </button>
                 </div>
-                <label className="flex items-start gap-2 text-xs text-red-900">
+                <label className="flex items-start gap-2 text-xs text-black">
                   <input
                     type="checkbox"
                     checked={resetAcknowledged}
@@ -375,7 +379,7 @@ export default function ImportPage({ onNavigate, onLogout }) {
                   <span>I understand all data above will be permanently deleted (admin kept).</span>
                 </label>
                 <div>
-                  <label htmlFor="reset-confirmation" className="block text-xs font-medium text-red-800 mb-1">
+                  <label htmlFor="reset-confirmation" className="block text-xs font-medium text-black mb-1">
                     Type <code className="text-[11px]">{DATA_RESET_CONFIRMATION_PHRASE}</code> to confirm
                   </label>
                   <input
@@ -384,7 +388,7 @@ export default function ImportPage({ onNavigate, onLogout }) {
                     value={resetConfirmation}
                     onChange={(e) => setResetConfirmation(e.target.value)}
                     placeholder={DATA_RESET_CONFIRMATION_PHRASE}
-                    className="block w-full max-w-md appearance-none rounded-lg border-[1.5px] border-red-600 bg-white px-3 py-2 text-sm text-gray-900 shadow-none outline-none [box-shadow:none] hover:border-red-700 focus:border-red-700 focus:outline-none focus:ring-0 focus-visible:border-red-700 focus-visible:outline-none focus-visible:ring-0 focus-visible:[box-shadow:none]"
+                    className="block w-full max-w-md appearance-none rounded-lg border-[1.5px] border-red-600 bg-white px-3 py-2 text-sm text-black shadow-none outline-none [box-shadow:none] hover:border-red-700 focus:border-red-700 focus:outline-none focus:ring-0 focus-visible:border-red-700 focus-visible:outline-none focus-visible:ring-0 focus-visible:[box-shadow:none]"
                     autoComplete="off"
                   />
                 </div>
@@ -396,25 +400,25 @@ export default function ImportPage({ onNavigate, onLogout }) {
                 >
                   {resetMutation.isPending ? "Resetting…" : "Reset all data"}
                 </button>
-                {resetError && <p className="text-sm text-red-700">{resetError}</p>}
-                {resetMessage && <p className="text-sm font-medium text-green-800">{resetMessage}</p>}
+                {resetError && <p className="text-sm text-black">{resetError}</p>}
+                {resetMessage && <p className="text-sm font-medium text-black">{resetMessage}</p>}
               </div>
             )}
 
             {result && (
-              <div className="rounded-xl border border-green-200 bg-green-50 p-5">
-                <h3 className="text-sm font-semibold text-green-800 mb-2">Import Summary</h3>
-                <p className="text-sm text-green-900">Processed: {result.processedRows}</p>
-                <p className="text-sm text-green-900">Imported: {result.importedRows}</p>
-                <p className="text-sm text-green-900">Skipped: {result.skippedRows}</p>
-                <p className="text-sm text-green-900">
+              <div className="rounded-xl border border-green-200 bg-green-50 p-5 text-black">
+                <h3 className="text-sm font-semibold text-black mb-2">Import Summary</h3>
+                <p className="text-sm text-black">Processed: {result.processedRows}</p>
+                <p className="text-sm text-black">Imported: {result.importedRows}</p>
+                <p className="text-sm text-black">Skipped: {result.skippedRows}</p>
+                <p className="text-sm text-black">
                   Inserted - Departments: {result.inserted?.departments ?? 0}, Programs: {result.inserted?.programs ?? 0}, Students:{" "}
                   {result.inserted?.students ?? 0}, Enrollments: {result.inserted?.enrollments ?? 0}
                 </p>
                 {(result.errors?.length ?? 0) > 0 && (
                   <div className="mt-2">
-                    <p className="text-xs font-semibold text-red-700">Row Errors</p>
-                    <ul className="text-xs text-red-700 list-disc pl-5">
+                    <p className="text-xs font-semibold text-black">Row Errors</p>
+                    <ul className="text-xs text-black list-disc pl-5">
                       {result.errors.slice(0, 15).map((item, idx) => (
                         <li key={`${item.row}-${idx}`}>Row {item.row}: {item.message}</li>
                       ))}
@@ -423,43 +427,43 @@ export default function ImportPage({ onNavigate, onLogout }) {
                 )}
                 {(result.skipped?.length ?? 0) > 0 && (
                   <div className="mt-3">
-                    <p className="text-xs font-semibold text-amber-700">Skipped Rows and Reasons</p>
-                    <ul className="text-xs text-amber-700 list-disc pl-5">
+                    <p className="text-xs font-semibold text-black">Skipped Rows and Reasons</p>
+                    <ul className="text-xs text-black list-disc pl-5">
                       {result.skipped.slice(0, 50).map((item, idx) => (
                         <li key={`skip-${item.row}-${idx}`}>Row {item.row}: {item.reason}</li>
                       ))}
                     </ul>
                     {result.skipped.length > 50 && (
-                      <p className="mt-1 text-[11px] text-amber-700">Showing first 50 skipped rows.</p>
+                      <p className="mt-1 text-[11px] text-black">Showing first 50 skipped rows.</p>
                     )}
                   </div>
                 )}
                 {(result.existingStudents?.length ?? 0) > 0 && (
                   <div className="mt-3">
-                    <p className="text-xs font-semibold text-blue-700">Updated Existing Students (still imported)</p>
-                    <div className="mt-2 overflow-auto rounded-lg border border-blue-200 bg-white">
-                      <table className="min-w-full border-collapse text-[11px] text-blue-900">
-                        <thead className="bg-blue-50">
+                    <p className="text-xs font-semibold text-black">Updated Existing Students (still imported)</p>
+                    <div className="mt-2 overflow-auto rounded-lg border border-[#07713c]/20 bg-white">
+                      <table className="min-w-full border-collapse text-[11px] text-black">
+                        <thead className={`bg-[#07713c]/10 ${IMPORT_TH_TEXT}`}>
                           <tr>
-                            <th className="border border-blue-200 px-2 py-1 text-left font-semibold">Row</th>
-                            <th className="border border-blue-200 px-2 py-1 text-left font-semibold">Student ID</th>
-                            <th className="border border-blue-200 px-2 py-1 text-left font-semibold">Full Name</th>
-                            <th className="border border-blue-200 px-2 py-1 text-left font-semibold">RFID</th>
-                            <th className="border border-blue-200 px-2 py-1 text-left font-semibold">Level</th>
-                            <th className="border border-blue-200 px-2 py-1 text-left font-semibold">Department(s)</th>
-                            <th className="border border-blue-200 px-2 py-1 text-left font-semibold">Major(s)</th>
+                            <th className="border border-[#07713c]/20 px-2 py-1 text-left">Row</th>
+                            <th className="border border-[#07713c]/20 px-2 py-1 text-left">Student ID</th>
+                            <th className="border border-[#07713c]/20 px-2 py-1 text-left">Full Name</th>
+                            <th className="border border-[#07713c]/20 px-2 py-1 text-left">RFID</th>
+                            <th className="border border-[#07713c]/20 px-2 py-1 text-left">Level</th>
+                            <th className="border border-[#07713c]/20 px-2 py-1 text-left">Department(s)</th>
+                            <th className="border border-[#07713c]/20 px-2 py-1 text-left">Major(s)</th>
                           </tr>
                         </thead>
                         <tbody>
                           {paginatedExistingStudents.map((item, idx) => (
-                            <tr key={`existing-${item.row}-${item.studentId}-${idx}`} className="odd:bg-white even:bg-blue-50/30">
-                              <td className="border border-blue-100 px-2 py-1 align-top">{item.row}</td>
-                              <td className="border border-blue-100 px-2 py-1 align-top font-medium">{item.studentId}</td>
-                              <td className="border border-blue-100 px-2 py-1 align-top">{item.fullName}</td>
-                              <td className="border border-blue-100 px-2 py-1 align-top">{item.rfid || "—"}</td>
-                              <td className="border border-blue-100 px-2 py-1 align-top">{item.yearLevelLabel || item.yearLevel || "—"}</td>
-                              <td className="border border-blue-100 px-2 py-1 align-top">{item.departments || "N/A"}</td>
-                              <td className="border border-blue-100 px-2 py-1 align-top">{item.majors || "No major"}</td>
+                            <tr key={`existing-${item.row}-${item.studentId}-${idx}`} className="odd:bg-white even:bg-[#07713c]/[0.04]">
+                              <td className="border border-[#07713c]/15 px-2 py-1 align-top">{item.row}</td>
+                              <td className="border border-[#07713c]/15 px-2 py-1 align-top font-medium">{item.studentId}</td>
+                              <td className="border border-[#07713c]/15 px-2 py-1 align-top">{item.fullName}</td>
+                              <td className="border border-[#07713c]/15 px-2 py-1 align-top">{item.rfid || "—"}</td>
+                              <td className="border border-[#07713c]/15 px-2 py-1 align-top">{item.yearLevelLabel || item.yearLevel || "—"}</td>
+                              <td className="border border-[#07713c]/15 px-2 py-1 align-top">{item.departments || "N/A"}</td>
+                              <td className="border border-[#07713c]/15 px-2 py-1 align-top">{item.majors || "No major"}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -471,7 +475,7 @@ export default function ImportPage({ onNavigate, onLogout }) {
                       pageSize={EXISTING_STUDENTS_PAGE_SIZE}
                       onPageChange={setExistingStudentsPage}
                       itemLabel="existing students"
-                      className="border-blue-200 text-blue-800"
+                      className="!text-black border-[#07713c]/20"
                     />
                   </div>
                 )}
@@ -484,8 +488,8 @@ export default function ImportPage({ onNavigate, onLogout }) {
       {showReportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl overflow-hidden">
-            <div className="bg-[#07713c] px-5 py-3">
-              <h3 className="text-white font-semibold">
+            <div className="border-b border-[#07713c]/30 bg-[#07713c]/10 px-5 py-3">
+              <h3 className="font-semibold text-black">
                 {reportMode === "settings"
                   ? `${roleLabel} Settings`
                   : reportMode === "import"
@@ -494,7 +498,7 @@ export default function ImportPage({ onNavigate, onLogout }) {
               </h3>
             </div>
             <div className="p-5 space-y-4 text-sm">
-              <p className="text-gray-600">
+              <p className="text-black">
                 {reportMode === "settings"
                   ? "Settings are not implemented yet (this is a placeholder)."
                   : reportMode === "import"
@@ -505,7 +509,7 @@ export default function ImportPage({ onNavigate, onLogout }) {
                 <button
                   type="button"
                   onClick={() => setShowReportModal(false)}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
+                  className="rounded-lg border border-[#07713c]/30 px-4 py-2 text-sm text-black hover:bg-[#07713c]/10"
                 >
                   Close
                 </button>

@@ -22,6 +22,9 @@ void ChartJS;
 /** Default rows per page for the event list table */
 const DEFAULT_EVENT_LIST_PAGE_SIZE = 10;
 const EVENT_LIST_ROWS_PER_PAGE_OPTIONS = [5, 10, 15, 20, 50];
+/** Attendance page content text (excludes green sidebar nav). */
+const ATTENDANCE_TEXT = "text-black";
+const ATTENDANCE_TH_TEXT = "font-bold text-black";
 const ATTENDANCE_MAJOR_OPTIONS_BY_COURSE = {
   BSED: ["English", "Math", "Filipino"],
   BSBA: ["Financial Management", "Human Resource Development Management", "Marketing Management"],
@@ -922,18 +925,18 @@ export default function Attendance({ onLogout, onNavigate }) {
   };
 
   const statusBadgeClass = (st) => {
-    if (st === "completed") return "bg-emerald-100 text-[#07713c]";
-    if (st === "ongoing") return "bg-amber-100 text-amber-900";
-    if (st === "upcoming") return "bg-sky-100 text-sky-900";
-    return "bg-[#07713c]/10 text-[#07713c]";
+    if (st === "completed") return "bg-emerald-100 text-black";
+    if (st === "ongoing") return "bg-amber-100 text-black";
+    if (st === "upcoming") return "bg-sky-100 text-black";
+    return "bg-[#07713c]/10 text-black";
   };
 
   return (
     <div className="flex min-h-screen bg-[#07713c]/[0.04] [&_button]:cursor-pointer">
-      <aside className="sticky top-0 flex h-screen max-h-screen w-64 shrink-0 flex-col self-start overflow-y-auto bg-[#07713c] text-white">
+      <aside className="sticky top-0 flex h-screen max-h-screen w-64 shrink-0 flex-col self-start overflow-y-auto bg-[#07713c] text-white [&_p]:text-white">
         <div className="space-y-4 p-6">
           <img src="/logo.png" alt="NMCI" className="mx-auto h-16 w-16 rounded-full bg-white/10 object-contain" />
-          <p className="text-center text-xs font-medium uppercase tracking-wider font-[Inter,sans-serif]">
+          <p className="text-center text-xs font-medium uppercase tracking-wider font-[Inter,sans-serif] text-white">
             Northern Mindanao Colleges, Inc.
           </p>
         </div>
@@ -996,16 +999,16 @@ export default function Attendance({ onLogout, onNavigate }) {
           </div>
         </header>
 
-        <main className="flex-1 space-y-6 overflow-auto p-6">
+        <main className={`flex-1 space-y-6 overflow-auto p-6 ${ATTENDANCE_TEXT} [&_th]:font-bold [&_th]:text-black`}>
           {isPageError && (
             <div
-              className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+              className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-black"
               role="alert"
             >
               Could not load attendance data.{" "}
               <button
                 type="button"
-                className="font-semibold text-red-900 underline"
+                className="font-semibold text-black underline"
                 onClick={() => refetchAttendancePage()}
               >
                 Retry
@@ -1013,35 +1016,35 @@ export default function Attendance({ onLogout, onNavigate }) {
             </div>
           )}
           {isPageLoading && events.length === 0 && !isPageError && (
-            <p className="text-sm font-medium text-[#07713c]">Loading events…</p>
+            <p className="text-sm font-medium text-black">Loading events…</p>
           )}
           {detailEvent && isStudentListPath ? (
             <section className="rounded-xl border border-[#07713c]/30 bg-white p-5 shadow-sm">
               <button
                 type="button"
                 onClick={() => openEventDetails(detailEvent.id)}
-                className="mb-3 rounded-lg border border-[#07713c]/40 bg-white px-3 py-1.5 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/10"
+                className="mb-3 rounded-lg border border-[#07713c]/40 bg-white px-3 py-1.5 text-sm font-medium text-black hover:bg-[#07713c]/10"
               >
                 ← Back to event details
               </button>
-              <h3 className="text-2xl font-semibold text-[#07713c]">{detailEvent.name}</h3>
-              <p className="text-lg font-bold text-[#07713c]">Students list</p>
-              <p className="mt-1 text-sm font-medium text-red-600">Total fines: {formatPhp(studentListTotalFine)}</p>
+              <h3 className="text-2xl font-semibold text-black">{detailEvent.name}</h3>
+              <p className="text-lg font-bold text-black">Students list</p>
+              <p className="mt-1 text-sm font-medium text-black">Total fines: {formatPhp(studentListTotalFine)}</p>
               <div className="mt-3 flex flex-wrap items-end gap-3 rounded-lg border border-[#07713c]/30 bg-[#07713c]/[0.06] p-3">
                 <div className="relative min-w-[220px] flex-1">
-                  <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#07713c]" />
+                  <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
                   <input
                     type="search"
                     value={studentListSearch}
                     onChange={(e) => setStudentListSearch(e.target.value)}
                     placeholder="Search name, ID, or year level"
-                    className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
+                    className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-black placeholder:text-black/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
                   />
                   {studentListSearch.trim() !== "" && (
                     <button
                       type="button"
                       onClick={() => setStudentListSearch("")}
-                      className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-[#07713c]/85 hover:bg-gray-100 hover:text-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
+                      className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-black/85 hover:bg-gray-100 hover:text-black focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
                       aria-label="Clear students list search"
                     >
                       ×
@@ -1049,12 +1052,12 @@ export default function Attendance({ onLogout, onNavigate }) {
                   )}
                 </div>
                 {SHOW_COLLEGE_MAJOR_FILTER_DROPDOWNS && (
-                <label className="min-w-[200px] max-w-[min(100%,320px)] shrink-0 text-xs text-[#07713c]">
+                <label className="min-w-[200px] max-w-[min(100%,320px)] shrink-0 text-xs text-black">
                   Department
                   <select
                     value={studentListCollege}
                     onChange={(e) => setStudentListCollege(e.target.value)}
-                    className="mt-1 block w-full rounded-lg border border-[#07713c]/40 bg-white px-2 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                    className="mt-1 block w-full rounded-lg border border-[#07713c]/40 bg-white px-2 py-2 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                   >
                     <option value="all">All colleges</option>
                     {studentListCollegeOptions.map((col) => (
@@ -1066,12 +1069,12 @@ export default function Attendance({ onLogout, onNavigate }) {
                 </label>
                 )}
                 {showStudentListMajorFilter && (
-                  <label className="w-[260px] text-xs text-[#07713c]">
+                  <label className="w-[260px] text-xs text-black">
                     Major
                     <select
                       value={studentListMajor}
                       onChange={(e) => setStudentListMajor(e.target.value)}
-                      className="mt-1 block w-full rounded-lg border border-[#07713c]/40 bg-white px-2 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                      className="mt-1 block w-full rounded-lg border border-[#07713c]/40 bg-white px-2 py-2 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                     >
                       <option value="all">All majors</option>
                       {studentListMajorOptions.map((m) => (
@@ -1082,12 +1085,12 @@ export default function Attendance({ onLogout, onNavigate }) {
                     </select>
                   </label>
                 )}
-                <label className="text-xs text-[#07713c]">
+                <label className="text-xs text-black">
                   Year level
                   <select
                     value={studentListYearLevel}
                     onChange={(e) => setStudentListYearLevel(e.target.value)}
-                    className="mt-1 block w-full rounded-lg border border-[#07713c]/40 bg-white px-2 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                    className="mt-1 block w-full rounded-lg border border-[#07713c]/40 bg-white px-2 py-2 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                   >
                     <option value="all">All year levels</option>
                     {studentListYearLevelOptions.map((yl) => (
@@ -1097,24 +1100,24 @@ export default function Attendance({ onLogout, onNavigate }) {
                     ))}
                   </select>
                 </label>
-                <label className="text-xs text-[#07713c]">
+                <label className="text-xs text-black">
                   Status
                   <select
                     value={studentListAttendance}
                     onChange={(e) => setStudentListAttendance(e.target.value)}
-                    className="mt-1 block w-full rounded-lg border border-[#07713c]/40 bg-white px-2 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                    className="mt-1 block w-full rounded-lg border border-[#07713c]/40 bg-white px-2 py-2 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                   >
                     <option value="all">All statuses</option>
                     <option value="attended">Attended</option>
                     <option value="absent">Absent</option>
                   </select>
                 </label>
-                <label className="ml-auto text-xs text-[#07713c]">
+                <label className="ml-auto text-xs text-black">
                   Rows per page
                   <select
                     value={studentListPageSize}
                     onChange={(e) => setStudentListPageSize(Number(e.target.value))}
-                    className="mt-1 block w-full rounded-lg border border-[#07713c]/40 bg-white px-2 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                    className="mt-1 block w-full rounded-lg border border-[#07713c]/40 bg-white px-2 py-2 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                   >
                     {[5, 10, 20, 50, 100].map((n) => (
                       <option key={n} value={n}>
@@ -1126,7 +1129,7 @@ export default function Attendance({ onLogout, onNavigate }) {
               </div>
               <div className="mt-3 overflow-x-auto rounded-lg border border-[#07713c]/30">
                 <table className="w-full min-w-[1180px] border-collapse text-sm">
-                  <thead className="bg-[#07713c]/5 text-center text-xs font-semibold uppercase text-[#07713c]">
+                  <thead className={`bg-[#07713c]/5 text-center text-xs uppercase ${ATTENDANCE_TH_TEXT}`}>
                     <tr>
                       <th rowSpan={2} className="border-b border-x border-[#07713c]/30 px-3 py-2 align-middle">Student ID</th>
                       <th rowSpan={2} className="border-b border-x border-[#07713c]/30 px-3 py-2 align-middle">Name</th>
@@ -1143,7 +1146,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                       ) : (
                         <th colSpan={2} className="border-b border-l border-r border-[#07713c]/30 px-3 py-2 text-center">PM</th>
                       )}
-                      <th rowSpan={2} className="border-b border-l border-r border-[#07713c]/30 px-3 py-2 text-center align-middle text-red-600">Fines / penalty</th>
+                      <th rowSpan={2} className={`border-b border-l border-r border-[#07713c]/30 px-3 py-2 text-center align-middle ${ATTENDANCE_TH_TEXT}`}>Fines / penalty</th>
                     </tr>
                     <tr>
                       {detailEventMeta.hasAmSession && (
@@ -1165,7 +1168,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                       <tr>
                         <td
                         colSpan={6 + (detailEventMeta.hasAmSession ? 2 : 0) + (detailEventMeta.hasPmSession ? 2 : 0)}
-                        className="border border-[#07713c]/30 px-3 py-6 text-center text-sm text-[#07713c]"
+                        className="border border-[#07713c]/30 px-3 py-6 text-center text-sm text-black"
                       >
                           No students match the current filters.
                         </td>
@@ -1191,24 +1194,24 @@ export default function Attendance({ onLogout, onNavigate }) {
                             }}
                             className={`cursor-pointer transition-colors ${rowSelected ? "bg-[#07713c]/12" : ""}`}
                           >
-                            <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center font-medium text-[#07713c]">
+                            <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center font-medium text-black">
                               {String(s.id).toUpperCase()}
                             </td>
-                            <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center font-medium text-[#07713c]">{s.name}</td>
-                            <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center font-medium text-[#07713c]">
+                            <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center font-medium text-black">{s.name}</td>
+                            <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center font-medium text-black">
                               {getStudentDepartmentLabel(s)}
                             </td>
-                            <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center tabular-nums text-[#07713c]">
+                            <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center tabular-nums text-black">
                               {rowYearLevel != null ? rowYearLevel : "—"}
                             </td>
                             <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center">
                               <span
                                 className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                                   isNoRecordAttendance
-                                    ? "text-amber-800"
+                                    ? "bg-amber-100 text-black"
                                     : isAttended
-                                      ? "bg-green-100 text-green-700"
-                                      : "bg-red-100 text-red-700"
+                                      ? "bg-green-100 text-black"
+                                      : "bg-red-100 text-black"
                                 }`}
                               >
                                 {isNoRecordAttendance ? "No record" : isAttended ? "Attended" : "Absent"}
@@ -1217,48 +1220,48 @@ export default function Attendance({ onLogout, onNavigate }) {
                             {detailEventMeta.hasAmSession && (
                               <td className="border-b border-l border-[#07713c]/30 px-3 py-1.5 text-center text-xs">
                                 {rec.amIn === "No record" ? (
-                                  <span className="text-xs font-medium text-amber-800">
+                                  <span className="text-xs font-medium text-black">
                                     No record
                                   </span>
                                 ) : (
-                                  <span className="text-[#07713c]">{rec.amIn}</span>
+                                  <span className="text-black">{rec.amIn}</span>
                                 )}
                               </td>
                             )}
                             {detailEventMeta.hasAmSession && (
                               <td className="border-b border-r border-[#07713c]/30 px-3 py-1.5 text-center text-xs">
                                 {rec.amOut === "No record" ? (
-                                  <span className="text-xs font-medium text-amber-800">
+                                  <span className="text-xs font-medium text-black">
                                     No record
                                   </span>
                                 ) : (
-                                  <span className="text-[#07713c]">{rec.amOut}</span>
+                                  <span className="text-black">{rec.amOut}</span>
                                 )}
                               </td>
                             )}
                             {detailEventMeta.hasPmSession && (
                               <td className="border-b border-l border-[#07713c]/30 px-3 py-1.5 text-center text-xs">
                                 {rec.pmIn === "No record" ? (
-                                  <span className="text-xs font-medium text-amber-800">
+                                  <span className="text-xs font-medium text-black">
                                     No record
                                   </span>
                                 ) : (
-                                  <span className="text-[#07713c]">{rec.pmIn}</span>
+                                  <span className="text-black">{rec.pmIn}</span>
                                 )}
                               </td>
                             )}
                             {detailEventMeta.hasPmSession && (
                               <td className="border-b border-r border-[#07713c]/30 px-3 py-1.5 text-center text-xs">
                                 {rec.pmOut === "No record" ? (
-                                  <span className="text-xs font-medium text-amber-800">
+                                  <span className="text-xs font-medium text-black">
                                     No record
                                   </span>
                                 ) : (
-                                  <span className="text-[#07713c]">{rec.pmOut}</span>
+                                  <span className="text-black">{rec.pmOut}</span>
                                 )}
                               </td>
                             )}
-                            <td className="border-b border-l border-r border-[#07713c]/30 px-3 py-1.5 text-center tabular-nums text-red-600">
+                            <td className="border-b border-l border-r border-[#07713c]/30 px-3 py-1.5 text-center tabular-nums text-black">
                               {Number(rec.penalty) ? formatPhp(Number(rec.penalty) || 0) : "—"}
                             </td>
                           </tr>
@@ -1275,6 +1278,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                 onPageChange={setStudentListPage}
                 emptyLabel="No students to show."
                 itemLabel="students"
+                className="!text-black"
               />
             </section>
           ) : detailEvent ? (
@@ -1282,22 +1286,22 @@ export default function Attendance({ onLogout, onNavigate }) {
               <button
                 type="button"
                 onClick={closeEventDetails}
-                className="mb-3 rounded-lg border border-[#07713c]/40 bg-white px-3 py-1.5 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/10"
+                className="mb-3 rounded-lg border border-[#07713c]/40 bg-white px-3 py-1.5 text-sm font-medium text-black hover:bg-[#07713c]/10"
               >
                 ← Back to event list
               </button>
 
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-4xl font-semibold text-[#07713c]">{detailEvent.name}</h3>
+                  <h3 className="text-4xl font-semibold text-black">{detailEvent.name}</h3>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
                     <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(detailEvent.status)}`}>
                       {detailEvent.status === "ongoing" ? "Ongoing" : detailEvent.status === "completed" ? "Completed" : "Upcoming"}
                     </span>
-                    <span className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                    <span className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-black">
                       {detailEventMeta.type}
                     </span>
-                    <span className="inline-flex rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
+                    <span className="inline-flex rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-black">
                       Fines: {formatPhp(detailEvent.finePerAbsence ?? MOCK_FINE_PER_ABSENCE_PHP)} per absence
                     </span>
                   </div>
@@ -1306,24 +1310,24 @@ export default function Attendance({ onLogout, onNavigate }) {
 
               <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-xl border border-[#07713c]/30 bg-white p-4">
-                  <p className="text-xs uppercase tracking-wide text-[#07713c]">Students</p>
-                  <p className="mt-1 text-4xl font-semibold text-[#07713c]">{detailEvent.totalStudents}</p>
-                  <p className="mt-1 text-sm text-[#07713c]">{detailEventMeta.audience}</p>
+                  <p className="text-xs uppercase tracking-wide text-black">Students</p>
+                  <p className="mt-1 text-4xl font-semibold text-black">{detailEvent.totalStudents}</p>
+                  <p className="mt-1 text-sm text-black">{detailEventMeta.audience}</p>
                 </div>
                 <div className="rounded-xl border border-[#07713c]/30 bg-white p-4">
-                  <p className="text-xs uppercase tracking-wide text-[#07713c]">Attended</p>
-                  <p className="mt-1 text-4xl font-semibold text-[#07713c]">{detailEvent.attended}</p>
-                  <p className="mt-1 text-sm text-[#07713c]">{ratePct(detailEvent.attended, detailEvent.totalStudents)}% attendance</p>
+                  <p className="text-xs uppercase tracking-wide text-black">Attended</p>
+                  <p className="mt-1 text-4xl font-semibold text-black">{detailEvent.attended}</p>
+                  <p className="mt-1 text-sm text-black">{ratePct(detailEvent.attended, detailEvent.totalStudents)}% attendance</p>
                 </div>
                 <div className="rounded-xl border border-[#07713c]/30 bg-white p-4">
-                  <p className="text-xs uppercase tracking-wide text-[#07713c]">Absent</p>
-                  <p className="mt-1 text-4xl font-semibold text-red-500">{detailEvent.absent}</p>
-                  <p className="mt-1 text-sm text-[#07713c]">{ratePct(detailEvent.absent, detailEvent.totalStudents)}% of students</p>
+                  <p className="text-xs uppercase tracking-wide text-black">Absent</p>
+                  <p className="mt-1 text-4xl font-semibold text-black">{detailEvent.absent}</p>
+                  <p className="mt-1 text-sm text-black">{ratePct(detailEvent.absent, detailEvent.totalStudents)}% of students</p>
                 </div>
                 <div className="rounded-xl border border-[#07713c]/30 bg-white p-4">
-                  <p className="text-xs uppercase tracking-wide text-red-600">Total fines</p>
-                  <p className="mt-1 text-4xl font-semibold text-red-600">{formatPhp(eventTotalFine(detailEvent))}</p>
-                  <p className="mt-1 text-sm text-red-600">
+                  <p className="text-xs uppercase tracking-wide text-black">Total fines</p>
+                  <p className="mt-1 text-4xl font-semibold text-black">{formatPhp(eventTotalFine(detailEvent))}</p>
+                  <p className="mt-1 text-sm text-black">
                     {formatPhp(detailEvent.finePerAbsence ?? MOCK_FINE_PER_ABSENCE_PHP)} per absence
                   </p>
                 </div>
@@ -1331,17 +1335,17 @@ export default function Attendance({ onLogout, onNavigate }) {
 
               <div className="mt-5 grid grid-cols-1 gap-3 xl:grid-cols-2">
                 <div className="rounded-xl border border-[#07713c]/30 bg-white p-5">
-                  <h4 className="text-lg font-semibold text-[#07713c]">Schedule</h4>
+                  <h4 className="text-lg font-semibold text-black">Schedule</h4>
                   <div className="mt-3 rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.06] px-3 py-2.5">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-[#07713c]/75">Event date</p>
-                    <p className="mt-0.5 text-base font-semibold text-[#07713c]">{formatEventDateForDisplay(detailEvent.date)}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-black/75">Event date</p>
+                    <p className="mt-0.5 text-base font-semibold text-black">{formatEventDateForDisplay(detailEvent.date)}</p>
                   </div>
                   <div className="mt-4 space-y-4 text-sm">
                     {detailEventMeta.scheduleAmRange && (
                       <div className="rounded-lg border border-[#07713c]/20 bg-[#07713c]/5 p-3">
-                        <p className="font-semibold text-[#07713c]">AM Session</p>
-                        <p className="mt-1 text-[#07713c]">{detailEventMeta.scheduleAmRange}</p>
-                        <p className="mt-1 text-xs text-[#07713c]">
+                        <p className="font-semibold text-black">AM Session</p>
+                        <p className="mt-1 text-black">{detailEventMeta.scheduleAmRange}</p>
+                        <p className="mt-1 text-xs text-black">
                           Late in:{" "}
                           {detailEventMeta.lateAmIn != null
                             ? formatGraceDurationLabel(detailEventMeta.lateAmIn)
@@ -1351,9 +1355,9 @@ export default function Attendance({ onLogout, onNavigate }) {
                     )}
                     {detailEventMeta.schedulePmRange && (
                       <div className="rounded-lg border border-[#07713c]/20 bg-[#07713c]/5 p-3">
-                        <p className="font-semibold text-[#07713c]">PM Session</p>
-                        <p className="mt-1 text-[#07713c]">{detailEventMeta.schedulePmRange}</p>
-                        <p className="mt-1 text-xs text-[#07713c]">
+                        <p className="font-semibold text-black">PM Session</p>
+                        <p className="mt-1 text-black">{detailEventMeta.schedulePmRange}</p>
+                        <p className="mt-1 text-xs text-black">
                           Late in:{" "}
                           {detailEventMeta.latePmIn != null
                             ? formatGraceDurationLabel(detailEventMeta.latePmIn)
@@ -1366,21 +1370,21 @@ export default function Attendance({ onLogout, onNavigate }) {
                     <button
                       type="button"
                       onClick={() => openEventStudents(detailEvent.id)}
-                      className="rounded-lg bg-[#07713c] px-3 py-2 text-sm font-medium text-white hover:brightness-95"
+                      className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-black hover:bg-[#07713c]/15"
                     >
                       Students list
                     </button>
                     <button
                       type="button"
                       onClick={() => exportCsvEvent(detailEvent)}
-                      className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/15"
+                      className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-black hover:bg-[#07713c]/15"
                     >
                       Export Excel (CSV) — this event
                     </button>
                     <button
                       type="button"
                       onClick={() => exportPdfEvent(detailEvent)}
-                      className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/15"
+                      className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-black hover:bg-[#07713c]/15"
                     >
                       Export PDF — this event
                     </button>
@@ -1388,20 +1392,20 @@ export default function Attendance({ onLogout, onNavigate }) {
                 </div>
 
                 <div className="rounded-xl border border-[#07713c]/30 bg-white p-5">
-                  <h4 className="text-lg font-semibold text-[#07713c]">Late thresholds</h4>
+                  <h4 className="text-lg font-semibold text-black">Late thresholds</h4>
                   <div className="mt-4 grid grid-cols-2 gap-3">
                     {detailEventMeta.lateAmIn != null && (
                       <div>
-                        <p className="text-sm text-[#07713c]">AM late in</p>
-                        <p className="text-2xl font-semibold leading-tight text-[#07713c] sm:text-3xl">
+                        <p className="text-sm text-black">AM late in</p>
+                        <p className="text-2xl font-semibold leading-tight text-black sm:text-3xl">
                           {formatGraceDurationLabel(detailEventMeta.lateAmIn)}
                         </p>
                       </div>
                     )}
                     {detailEventMeta.latePmIn != null && (
                       <div>
-                        <p className="text-sm text-[#07713c]">PM late in</p>
-                        <p className="text-2xl font-semibold leading-tight text-[#07713c] sm:text-3xl">
+                        <p className="text-sm text-black">PM late in</p>
+                        <p className="text-2xl font-semibold leading-tight text-black sm:text-3xl">
                           {formatGraceDurationLabel(detailEventMeta.latePmIn)}
                         </p>
                       </div>
@@ -1409,12 +1413,12 @@ export default function Attendance({ onLogout, onNavigate }) {
                   </div>
                   <div className="mt-4 grid grid-cols-1 gap-3 border-t border-[#07713c]/20 pt-4 sm:grid-cols-2">
                     <div>
-                      <p className="text-sm text-[#07713c]">Audience</p>
-                      <p className="text-2xl font-semibold text-[#07713c]">{detailEventMeta.audience}</p>
+                      <p className="text-sm text-black">Audience</p>
+                      <p className="text-2xl font-semibold text-black">{detailEventMeta.audience}</p>
                     </div>
                     <div className="sm:col-span-2">
-                      <p className="text-sm text-[#07713c]">Notes</p>
-                      <p className="whitespace-pre-wrap text-xl font-semibold text-[#07713c]">{detailEventMeta.notes}</p>
+                      <p className="text-sm text-black">Notes</p>
+                      <p className="whitespace-pre-wrap text-xl font-semibold text-black">{detailEventMeta.notes}</p>
                     </div>
                   </div>
                 </div>
@@ -1426,7 +1430,7 @@ export default function Attendance({ onLogout, onNavigate }) {
               )}
 
               {detailEvent.status === "upcoming" && (
-                <p className="mt-4 text-sm text-[#07713c]">No attendance recorded yet for this event.</p>
+                <p className="mt-4 text-sm text-black">No attendance recorded yet for this event.</p>
               )}
 
             </section>
@@ -1435,30 +1439,30 @@ export default function Attendance({ onLogout, onNavigate }) {
           {/* Search + event list */}
           <section className="overflow-hidden rounded-xl border border-[#07713c]/30 bg-white shadow-sm">
             <div className="border-b border-[#07713c]/20 px-4 py-3">
-              <h2 className="text-sm font-semibold text-[#07713c]">Event list</h2>
+              <h2 className="text-sm font-semibold text-black">Event list</h2>
             </div>
             <div className="border-b border-[#07713c]/20 p-4">
               <div className="flex flex-wrap items-end gap-4">
                 <div className="w-96 max-w-full shrink-0 sm:w-[28rem]">
-                  <label className="mb-1 block text-xs font-medium text-[#07713c]">Search event</label>
+                  <label className="mb-1 block text-xs font-medium text-black">Search event</label>
                   <div className="relative">
-                    <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#07713c]" />
+                    <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
                     <input
                       type="text"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       placeholder="Filter by event name…"
-                      className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-4 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]"
+                      className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-4 text-sm text-black placeholder:text-black/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]"
                     />
                   </div>
                 </div>
                 <div className="flex flex-wrap items-end gap-4">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-[#07713c]">Status</label>
+                    <label className="mb-1 block text-xs font-medium text-black">Status</label>
                     <select
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value)}
-                      className="rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                      className="rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                     >
                       <option value="all">All</option>
                       <option value="upcoming">Upcoming</option>
@@ -1467,14 +1471,14 @@ export default function Attendance({ onLogout, onNavigate }) {
                     </select>
                   </div>
                   <label className="flex shrink-0 flex-col">
-                    <span className="mb-1 block text-xs font-medium text-[#07713c]">Rows per page</span>
+                    <span className="mb-1 block text-xs font-medium text-black">Rows per page</span>
                     <select
                       value={eventListPageSize}
                       onChange={(e) => {
                         setEventListPageSize(Number(e.target.value));
                         setEventListPage(1);
                       }}
-                      className="rounded-lg border border-[#07713c]/40 bg-white px-2 py-2 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                      className="rounded-lg border border-[#07713c]/40 bg-white px-2 py-2 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                       aria-label="Rows per page for event list"
                     >
                       {EVENT_LIST_ROWS_PER_PAGE_OPTIONS.map((n) => (
@@ -1492,7 +1496,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                       setEventListPageSize(DEFAULT_EVENT_LIST_PAGE_SIZE);
                       setEventListPage(1);
                     }}
-                    className="rounded-lg border border-[#07713c]/40 px-3 py-2 text-sm text-[#07713c] hover:bg-[#07713c]/10 focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                    className="rounded-lg border border-[#07713c]/40 px-3 py-2 text-sm text-black hover:bg-[#07713c]/10 focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                   >
                     Clear
                   </button>
@@ -1501,7 +1505,7 @@ export default function Attendance({ onLogout, onNavigate }) {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1040px] text-sm">
-                <thead className="border-b border-[#07713c]/30 bg-[#07713c] text-left text-xs font-semibold uppercase tracking-wide text-white">
+                <thead className={`border-b border-[#07713c]/30 bg-[#07713c]/10 text-left text-xs uppercase tracking-wide ${ATTENDANCE_TH_TEXT}`}>
                   <tr>
                     <th className="px-4 py-2.5 align-middle">Event name</th>
                     <th className="px-4 py-2.5 align-middle">Date</th>
@@ -1516,7 +1520,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                 <tbody>
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-4 py-8 text-center text-sm text-[#07713c]">
+                      <td colSpan={8} className="px-4 py-8 text-center text-sm text-black">
                         No events match the current filters.
                       </td>
                     </tr>
@@ -1535,11 +1539,11 @@ export default function Attendance({ onLogout, onNavigate }) {
                       }}
                       className="cursor-pointer border-t border-[#07713c]/20 hover:bg-[#07713c]/10"
                     >
-                      <td className="px-4 py-2.5 font-medium text-[#07713c]">{ev.name}</td>
-                      <td className="px-4 py-2.5 font-medium text-[#07713c]">
+                      <td className="px-4 py-2.5 font-medium text-black">{ev.name}</td>
+                      <td className="px-4 py-2.5 font-medium text-black">
                         {formatEventDateForDisplay(ev.date)}
                       </td>
-                      <td className="px-4 py-2.5 font-medium text-[#07713c]">
+                      <td className="px-4 py-2.5 font-medium text-black">
                         {formatDurationForEventsListWithSessionHint(ev)}
                       </td>
                       <td className="px-4 py-2.5">
@@ -1547,12 +1551,12 @@ export default function Attendance({ onLogout, onNavigate }) {
                           {ev.status}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-[#07713c]">{ev.attended}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-[#07713c]">{ev.absent}</td>
-                      <td className="px-4 py-2.5 text-right font-medium tabular-nums text-[#07713c]">
+                      <td className="px-4 py-2.5 text-right tabular-nums text-black">{ev.attended}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-black">{ev.absent}</td>
+                      <td className="px-4 py-2.5 text-right font-medium tabular-nums text-black">
                         {ev.status === "upcoming" ? "—" : `${ratePct(ev.attended, ev.totalStudents)}%`}
                       </td>
-                      <td className="px-4 py-2.5 text-right font-medium text-red-600">
+                      <td className="px-4 py-2.5 text-right font-medium text-black">
                         {formatPhp(ev.finePerAbsence ?? MOCK_FINE_PER_ABSENCE_PHP)}
                       </td>
                     </tr>
@@ -1567,6 +1571,7 @@ export default function Attendance({ onLogout, onNavigate }) {
               onPageChange={setEventListPage}
               emptyLabel="No events to show."
               itemLabel="events"
+              className="!text-black"
             />
           </section>
           </>
@@ -1584,15 +1589,15 @@ export default function Attendance({ onLogout, onNavigate }) {
           <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white p-5 shadow-xl">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
-                <h3 className="text-lg font-semibold text-[#07713c]">{detailEvent.name}</h3>
-                <p className="text-sm text-[#07713c]">
+                <h3 className="text-lg font-semibold text-black">{detailEvent.name}</h3>
+                <p className="text-sm text-black">
                   {formatEventDateForDisplay(detailEvent.date)} · <span className="capitalize">{detailEvent.status}</span>
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setDetailEventId(null)}
-                className="rounded-lg px-2 py-1 text-sm text-[#07713c] hover:bg-[#07713c]/12"
+                className="rounded-lg px-2 py-1 text-sm text-black hover:bg-[#07713c]/12"
               >
                 Close
               </button>
@@ -1600,62 +1605,62 @@ export default function Attendance({ onLogout, onNavigate }) {
 
             <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 text-sm">
               <div className="rounded-lg bg-[#07713c]/5 p-2">
-                <span className="text-xs text-[#07713c]">Students</span>
+                <span className="text-xs text-black">Students</span>
                 <p className="font-semibold">{detailEvent.totalStudents}</p>
               </div>
               <div className="rounded-lg bg-[#07713c]/10 p-2">
-                <span className="text-xs text-[#07713c]">Attended</span>
+                <span className="text-xs text-black">Attended</span>
                 <p className="font-semibold">{detailEvent.attended}</p>
               </div>
               <div className="rounded-lg bg-red-50 p-2">
-                <span className="text-xs text-[#07713c]">Absent</span>
+                <span className="text-xs text-black">Absent</span>
                 <p className="font-semibold">{detailEvent.absent}</p>
               </div>
               <div className="rounded-lg bg-red-50 p-2">
-                <span className="text-xs text-[#07713c]">Total fines</span>
-                <p className="font-semibold text-red-600">{formatPhp(eventTotalFine(detailEvent))}</p>
+                <span className="text-xs text-black">Total fines</span>
+                <p className="font-semibold text-black">{formatPhp(eventTotalFine(detailEvent))}</p>
               </div>
             </div>
-            <p className="mt-2 text-xs text-[#07713c]">
+            <p className="mt-2 text-xs text-black">
               Fine rule: {detailEvent.absent} absences × {formatPhp(detailEvent.finePerAbsence ?? MOCK_FINE_PER_ABSENCE_PHP)} ={" "}
               {formatPhp(eventTotalFine(detailEvent))}
             </p>
 
             <div className="mt-4 rounded-lg border border-[#07713c]/30 bg-[#07713c]/[0.08] p-3 text-sm">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 capitalize">
+                <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-black capitalize">
                   {detailEvent.status}
                 </span>
-                <span className="rounded-full bg-[#07713c]/10 px-2 py-0.5 text-xs text-[#07713c]">{detailEventMeta.type}</span>
-                <span className="rounded-full bg-[#07713c]/10 px-2 py-0.5 text-xs text-[#07713c]">
+                <span className="rounded-full bg-[#07713c]/10 px-2 py-0.5 text-xs text-black">{detailEventMeta.type}</span>
+                <span className="rounded-full bg-[#07713c]/10 px-2 py-0.5 text-xs text-black">
                   Registration: {detailEventMeta.requiresRegistration}
                 </span>
-                <span className="rounded-full bg-[#07713c]/10 px-2 py-0.5 text-xs text-[#07713c]">{detailEventMeta.audience}</span>
-                <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-700">
+                <span className="rounded-full bg-[#07713c]/10 px-2 py-0.5 text-xs text-black">{detailEventMeta.audience}</span>
+                <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs text-black">
                   Fines: {formatPhp(eventTotalFine(detailEvent))}
                 </span>
               </div>
             </div>
 
             <div className="mt-3 rounded-lg border border-[#07713c]/30 p-3">
-              <h4 className="text-sm font-semibold text-[#07713c]">Schedule &amp; details</h4>
+              <h4 className="text-sm font-semibold text-black">Schedule &amp; details</h4>
               <div className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                 <div className="rounded-lg bg-[#07713c]/5 p-2">
-                  <p className="text-xs text-[#07713c]">Session</p>
+                  <p className="text-xs text-black">Session</p>
                   <p className="font-medium">{detailEventMeta.duration}</p>
                 </div>
                 <div className="rounded-lg bg-[#07713c]/5 p-2">
-                  <p className="text-xs text-[#07713c]">Schedule</p>
+                  <p className="text-xs text-black">Schedule</p>
                   {detailEventMeta.hasAmSession && (
                     <>
                       <p className="font-medium">AM</p>
-                      <p className="text-xs text-[#07713c]">{detailEventMeta.scheduleAm ?? "—"}</p>
+                      <p className="text-xs text-black">{detailEventMeta.scheduleAm ?? "—"}</p>
                     </>
                   )}
                   {detailEventMeta.hasPmSession && (
                     <>
                       <p className={detailEventMeta.hasAmSession ? "mt-1 font-medium" : "font-medium"}>PM</p>
-                      <p className="text-xs text-[#07713c]">{detailEventMeta.schedulePm ?? "—"}</p>
+                      <p className="text-xs text-black">{detailEventMeta.schedulePm ?? "—"}</p>
                     </>
                   )}
                 </div>
@@ -1663,10 +1668,10 @@ export default function Attendance({ onLogout, onNavigate }) {
             </div>
 
             <div className="mt-3 rounded-lg border border-[#07713c]/30 p-3">
-              <h4 className="text-sm font-semibold text-[#07713c]">Late (time in)</h4>
+              <h4 className="text-sm font-semibold text-black">Late (time in)</h4>
               <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                 <div className="rounded-lg bg-[#07713c]/5 p-2">
-                  <p className="text-xs text-[#07713c]">AM late in</p>
+                  <p className="text-xs text-black">AM late in</p>
                   <p className="font-medium">
                     {detailEventMeta.lateAmIn != null
                       ? formatGraceDurationLabel(detailEventMeta.lateAmIn)
@@ -1674,7 +1679,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                   </p>
                 </div>
                 <div className="rounded-lg bg-[#07713c]/5 p-2">
-                  <p className="text-xs text-[#07713c]">PM late in</p>
+                  <p className="text-xs text-black">PM late in</p>
                   <p className="font-medium">
                     {detailEventMeta.latePmIn != null
                       ? formatGraceDurationLabel(detailEventMeta.latePmIn)
@@ -1685,14 +1690,14 @@ export default function Attendance({ onLogout, onNavigate }) {
             </div>
 
             <div className="mt-3 rounded-lg border border-[#07713c]/30 p-3">
-              <h4 className="text-sm font-semibold text-[#07713c]">Audience &amp; notes</h4>
+              <h4 className="text-sm font-semibold text-black">Audience &amp; notes</h4>
               <div className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                 <div className="rounded-lg bg-[#07713c]/5 p-2">
-                  <p className="text-xs text-[#07713c]">Audience</p>
+                  <p className="text-xs text-black">Audience</p>
                   <p className="font-medium">{detailEventMeta.audience}</p>
                 </div>
                 <div className="rounded-lg bg-[#07713c]/5 p-2">
-                  <p className="text-xs text-[#07713c]">Notes</p>
+                  <p className="text-xs text-black">Notes</p>
                   <p className="whitespace-pre-wrap font-medium">{detailEventMeta.notes}</p>
                 </div>
               </div>
@@ -1715,10 +1720,10 @@ export default function Attendance({ onLogout, onNavigate }) {
                   />
                 </div>
 
-                <h4 className="mt-4 text-sm font-semibold text-[#07713c]">Student list</h4>
+                <h4 className="mt-4 text-sm font-semibold text-black">Student list</h4>
                 <div className="mt-2 overflow-x-auto rounded-lg border border-[#07713c]/30">
                   <table className="w-full min-w-[420px] text-sm">
-                    <thead className="bg-[#07713c]/5 text-left text-xs font-semibold uppercase text-[#07713c]">
+                    <thead className="bg-[#07713c]/5 text-left text-xs font-semibold uppercase text-black">
                       <tr>
                         <th className="px-3 py-2">Name</th>
                         <th className="px-3 py-2">Status</th>
@@ -1728,8 +1733,8 @@ export default function Attendance({ onLogout, onNavigate }) {
                     <tbody>
                       {(detailEvent.students || []).map((s) => (
                         <tr key={s.id} className="border-t border-[#07713c]/20">
-                          <td className="px-3 py-1.5 font-medium text-[#07713c]">{s.name}</td>
-                          <td className="px-3 py-1.5 capitalize text-[#07713c]">{s.status}</td>
+                          <td className="px-3 py-1.5 font-medium text-black">{s.name}</td>
+                          <td className="px-3 py-1.5 capitalize text-black">{s.status}</td>
                           <td className="px-3 py-1.5 text-right tabular-nums">{s.finePhp ? formatPhp(s.finePhp) : "—"}</td>
                         </tr>
                       ))}
@@ -1740,7 +1745,7 @@ export default function Attendance({ onLogout, onNavigate }) {
             )}
 
             {detailEvent.status === "upcoming" && (
-              <p className="mt-4 text-sm text-[#07713c]">No attendance recorded yet for this event.</p>
+              <p className="mt-4 text-sm text-black">No attendance recorded yet for this event.</p>
             )}
 
             <div className="mt-4 flex flex-wrap gap-2 border-t border-[#07713c]/20 pt-4">
@@ -1778,20 +1783,20 @@ export default function Attendance({ onLogout, onNavigate }) {
       {/* Export panel */}
       {exportOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
-            <h3 className="text-lg font-semibold text-[#07713c]">Export / reports</h3>
-            <p className="mt-2 text-sm text-[#07713c]">
+          <div className={`w-full max-w-md rounded-xl bg-white p-5 shadow-xl ${ATTENDANCE_TEXT}`}>
+            <h3 className="text-lg font-semibold text-black">Export / reports</h3>
+            <p className="mt-2 text-sm text-black">
               Download attendance data as CSV (Excel) or PDF. Filters below apply to both formats.
             </p>
             <div className="mt-3 rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#07713c]">
+              <p className="text-xs font-semibold uppercase tracking-wide text-black">
                 All-events student export filters
               </p>
               <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <select
                   value={exportAllEventId}
                   onChange={(e) => setExportAllEventId(e.target.value)}
-                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 sm:col-span-2"
+                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 sm:col-span-2"
                 >
                   <option value="all">All events</option>
                   {exportCompletedEventOptions.map((ev) => (
@@ -1803,7 +1808,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                 <select
                   value={exportAllEventStatus}
                   onChange={(e) => setExportAllEventStatus(e.target.value)}
-                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                 >
                   <option value="all">All event statuses</option>
                   <option value="completed">Completed</option>
@@ -1814,7 +1819,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                 <select
                   value={exportAllCollege}
                   onChange={(e) => setExportAllCollege(e.target.value)}
-                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                 >
                   <option value="all">All colleges</option>
                   {exportAllCollegeOptions.map((college) => (
@@ -1827,7 +1832,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                 <select
                   value={exportAllCourse}
                   onChange={(e) => setExportAllCourse(e.target.value)}
-                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                 >
                   <option value="all">All courses</option>
                   {exportAllCourseOptions.map((course) => (
@@ -1837,13 +1842,13 @@ export default function Attendance({ onLogout, onNavigate }) {
                   ))}
                 </select>
               </div>
-              <p className="mt-2 text-xs text-[#07713c]/80">
+              <p className="mt-2 text-xs text-black/80">
                 {exportAllFilteredRows.length} student record(s) match these filters.
               </p>
             </div>
             {detailEvent ? (
               <div className="mt-3 rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#07713c]">
+                <p className="text-xs font-semibold uppercase tracking-wide text-black">
                   Current event filters - {detailEvent.name}
                 </p>
                 <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1852,13 +1857,13 @@ export default function Attendance({ onLogout, onNavigate }) {
                     value={exportEventSearch}
                     onChange={(e) => setExportEventSearch(e.target.value)}
                     placeholder="Search name, ID, or year level"
-                    className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 sm:col-span-2"
+                    className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-black placeholder:text-black/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 sm:col-span-2"
                   />
                   {SHOW_COLLEGE_MAJOR_FILTER_DROPDOWNS && (
                   <select
                     value={exportEventCollege}
                     onChange={(e) => setExportEventCollege(e.target.value)}
-                    className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 sm:col-span-2"
+                    className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 sm:col-span-2"
                   >
                     <option value="all">All colleges</option>
                     {studentListCollegeOptions.map((col) => (
@@ -1871,7 +1876,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                   <select
                     value={exportEventCourse}
                     onChange={(e) => setExportEventCourse(e.target.value)}
-                    className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                    className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                   >
                     <option value="all">All courses</option>
                     {exportEventCourses.map((c) => (
@@ -1884,7 +1889,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                   <select
                     value={exportEventMajor}
                     onChange={(e) => setExportEventMajor(e.target.value)}
-                    className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                    className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                   >
                     <option value="all">All majors</option>
                     {exportEventMajorOptions.map((m) => (
@@ -1897,7 +1902,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                   <select
                     value={exportEventYearLevel}
                     onChange={(e) => setExportEventYearLevel(e.target.value)}
-                    className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 sm:col-span-2"
+                    className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 sm:col-span-2"
                   >
                     <option value="all">All year levels</option>
                     {studentListYearLevelOptions.map((yl) => (
@@ -1909,7 +1914,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                   <select
                     value={exportEventAttendance}
                     onChange={(e) => setExportEventAttendance(e.target.value)}
-                    className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                    className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                   >
                     <option value="all">All statuses</option>
                     <option value="attended">Attended</option>
@@ -1917,7 +1922,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                     {detailEvent.status === "upcoming" ? <option value="no_record">No record</option> : null}
                   </select>
                 </div>
-                <p className="mt-2 text-xs text-[#07713c]/80">
+                <p className="mt-2 text-xs text-black/80">
                   {exportFilteredEventStudents.length} student(s) match these filters.
                 </p>
               </div>
@@ -1929,7 +1934,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                   exportCsvAll();
                   setExportOpen(false);
                 }}
-                className="w-full rounded-lg bg-[#07713c] px-4 py-2.5 text-sm font-medium text-white hover:brightness-95"
+                className="w-full rounded-lg border border-[#07713c] bg-[#07713c]/10 px-4 py-2.5 text-sm font-medium text-black hover:bg-[#07713c]/15"
               >
                 Download CSV — all events (students)
               </button>
@@ -1939,7 +1944,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                   exportPdfAll();
                   setExportOpen(false);
                 }}
-                className="w-full rounded-lg border border-[#07713c]/40 px-4 py-2.5 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/10"
+                className="w-full rounded-lg border border-[#07713c]/40 px-4 py-2.5 text-sm font-medium text-black hover:bg-[#07713c]/10"
               >
                 Download PDF — all events (students)
               </button>
@@ -1953,8 +1958,8 @@ export default function Attendance({ onLogout, onNavigate }) {
                 }}
                 className={`w-full rounded-lg border px-4 py-2.5 text-sm font-medium ${
                   detailEvent
-                    ? "border-[#07713c]/40 text-[#07713c] hover:bg-[#07713c]/10"
-                    : "border-[#07713c]/20 text-[#07713c]/50"
+                    ? "border-[#07713c]/40 text-black hover:bg-[#07713c]/10"
+                    : "border-[#07713c]/20 text-black/50"
                 }`}
               >
                 Download CSV — current event (filtered students)
@@ -1969,8 +1974,8 @@ export default function Attendance({ onLogout, onNavigate }) {
                 }}
                 className={`w-full rounded-lg border px-4 py-2.5 text-sm font-medium ${
                   detailEvent
-                    ? "border-[#07713c]/40 text-[#07713c] hover:bg-[#07713c]/10"
-                    : "border-[#07713c]/20 text-[#07713c]/50"
+                    ? "border-[#07713c]/40 text-black hover:bg-[#07713c]/10"
+                    : "border-[#07713c]/20 text-black/50"
                 }`}
               >
                 Download PDF — current event (filtered students)
@@ -1979,7 +1984,7 @@ export default function Attendance({ onLogout, onNavigate }) {
             <button
               type="button"
               onClick={() => setExportOpen(false)}
-              className="mt-4 w-full rounded-lg border border-[#07713c]/30 py-2 text-sm text-[#07713c] hover:bg-[#07713c]/10"
+              className="mt-4 w-full rounded-lg border border-[#07713c]/30 py-2 text-sm text-black hover:bg-[#07713c]/10"
             >
               Close
             </button>

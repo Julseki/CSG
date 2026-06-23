@@ -1,75 +1,56 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Chart as ChartJS } from "chart.js/auto";
-import { Line } from "react-chartjs-2";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SidebarNavIcon from "./SidebarNavIcon";
 import UserCircleIcon from "./UserCircleIcon";
+import PaginationBar from "./PaginationBar";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { getDashboardRoleLabel } from "../utils/roles";
-import { formatDateTimeShort, formatEventDateForDisplay, formatSqlTimeForDisplay } from "../hooks/useGetEvents";
-import PaginationBar from "./PaginationBar";
-import SearchMagnifierIcon from "./SearchMagnifierIcon";
-import { mergePaymentStudentRow, useGetPaymentStudent, useGetPayments } from "../hooks/useGetPayments";
+import { formatDateTimeShort, formatEventDateForDisplay } from "../hooks/useGetEvents";
+import { lookupPaymentStudent, useGetPaymentStudent, useGetPaymentSummary, useGetPayments, useGetPaymentTransactions } from "../hooks/useGetPayments";
 import { useRecordPayment } from "../hooks/useRecordPayment";
-import { useUpdateFineAmount } from "../hooks/useUpdateFineAmount";
-import { useSetStudentBalance } from "../hooks/useSetStudentBalance";
 import { getAppNavItems } from "../utils/appNav";
 import { formatCourseWithMajor } from "../utils/courseMajorDisplay";
 import { downloadPdfTable } from "../utils/downloadPdfTable";
 
-void ChartJS;
-
+/** Payments page main content text (sidebar nav excluded). */
+const PAYMENTS_PAGE_TEXT = "text-black";
+const PAYMENTS_TH_TEXT = "font-bold text-black";
+const TRANSACTIONS_PAGE_SIZE = 15;
+/** Wait for RFID wedge / typing to finish before auto-submit (same as Home attendance). */
+const AUTO_SUBMIT_DEBOUNCE_MS = 500;
+const MIN_AUTO_SUBMIT_LENGTH = 6;
 
 function formatPhp(n) {
   const v = Math.max(0, Number(n) || 0);
   return `₱${v.toLocaleString("en-PH")}`;
 }
 
-function badgeClass(status) {
-  if (status === "Paid") return "bg-[#07713c]/10 text-[#07713c]";
-  if (status === "Waived") return "bg-gray-200 text-gray-700";
-  if (status === "Partial") return "bg-orange-100 text-orange-800";
-  return "bg-red-100 text-red-800";
+function formatPhpMaybeHidden(visible, n) {
+  return visible ? formatPhp(n) : "₱••••••";
 }
 
-function hasRecordedTime(value) {
-  const v = String(value ?? "").trim().toLowerCase();
-  return v !== "" && v !== "no record";
+function EyeOpenIcon({ className = "h-4 w-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
 }
 
-function getEventAttendanceStatus(event) {
-  const kind = String(event?.sessionKind ?? "whole").toLowerCase();
-  if (kind === "am") {
-    return hasRecordedTime(event?.amIn) || hasRecordedTime(event?.amOut) ? "Attended" : "Absent";
-  }
-  if (kind === "pm") {
-    return hasRecordedTime(event?.pmIn) || hasRecordedTime(event?.pmOut) ? "Attended" : "Absent";
-  }
-  const attended =
-    hasRecordedTime(event?.amIn) ||
-    hasRecordedTime(event?.amOut) ||
-    hasRecordedTime(event?.pmIn) ||
-    hasRecordedTime(event?.pmOut);
-  return attended ? "Attended" : "Absent";
+function EyeOffIcon({ className = "h-4 w-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M3 3l18 18" />
+      <path d="M10.58 10.58a2 2 0 0 0 2.84 2.84" />
+      <path d="M9.88 5.09A10.94 10.94 0 0 1 12 5c7 0 10 7 10 7a17.52 17.52 0 0 1-4.06 5.94" />
+      <path d="M6.12 6.12A17.52 17.52 0 0 0 2 12s3 7 10 7a10.94 10.94 0 0 0 2.12-.21" />
+    </svg>
+  );
 }
 
-function ModalTimeSlot({ value }) {
-  const v = String(value ?? "").trim();
-  if (!v || v.toLowerCase() === "no record") {
-    return (
-      <span className="text-xs font-medium text-amber-800">
-        No record
-      </span>
-    );
-  }
-  const display = formatSqlTimeForDisplay(v) ?? v;
-  return <span className="text-xs text-[#07713c]">{display}</span>;
-}
-
-function ModalPeriodSlot({ event, period, value }) {
-  const kind = String(event?.sessionKind ?? "whole").toLowerCase();
-  const isNotApplicable = (kind === "am" && period === "pm") || (kind === "pm" && period === "am");
-  if (isNotApplicable) return <span className="font-medium text-[#07713c]">—</span>;
-  return <ModalTimeSlot value={value} />;
+function transactionStatusClass(status) {
+  if (status === "Paid") return "bg-[#07713c]/10 text-black";
+  return "bg-orange-100 text-black";
 }
 
 function sessionLabel(kindRaw) {
@@ -93,6 +74,35 @@ function inferCollegeFromCourse(courseRaw) {
   if (course.startsWith("BSHM")) return "College of Hospitality Management";
   if (course.startsWith("BSBA")) return "College of Business Administration";
   return "Unassigned";
+}
+
+function enrichPaymentStudent(student) {
+  if (!student) return null;
+  const totalFine = Math.max(0, Number(student.totalFine) || 0);
+  const paidAmount = Math.max(0, Number(student.paidAmount) || 0);
+  const waivedAmount = Math.max(0, Number(student.waivedAmount) || 0);
+  const remaining = Math.max(0, totalFine - paidAmount - waivedAmount);
+  const payableBalance = Math.max(0, totalFine - waivedAmount);
+  let status = "Unpaid";
+  const hasProgress = paidAmount > 0 || waivedAmount > 0;
+  if (totalFine <= 0 && remaining <= 0) {
+    status = "Paid";
+  } else if (payableBalance <= 0 && totalFine > 0) {
+    status = "Waived";
+  } else if (hasProgress && remaining > 0) {
+    status = "Partial";
+  } else if (remaining <= 0 && totalFine > 0) {
+    status = "Paid";
+  }
+  const courseDisplay = formatCourseWithMajor(student.course, student.major ?? null);
+  const inferredDepartment = inferCollegeFromCourse(student.course);
+  const departmentDisplay =
+    student.department && student.department !== "—"
+      ? student.department
+      : inferredDepartment !== "Unassigned"
+        ? inferredDepartment
+        : "—";
+  return { ...student, totalFine, paidAmount, waivedAmount, remaining, status, courseDisplay, departmentDisplay };
 }
 
 function makeReceiptNumber() {
@@ -122,7 +132,7 @@ function buildReceiptHtml(receipt, logoUrl) {
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Receipt ${receipt.receiptNo}</title>
+    <title>Receipt ${receipt.transactionCode || receipt.receiptNo}</title>
     <style>
       body { font-family: Arial, sans-serif; margin: 0; color: #16331f; }
       .page { max-width: 760px; margin: 24px auto; border: 1px solid #d1d5db; border-radius: 12px; overflow: hidden; }
@@ -153,11 +163,11 @@ function buildReceiptHtml(receipt, logoUrl) {
       </div>
       <div class="content">
         <div class="grid">
-          <div><span class="label">Receipt No:</span> <span class="value">${receipt.receiptNo}</span></div>
+          <div><span class="label">Transaction Code:</span> <span class="value">${receipt.transactionCode || receipt.receiptNo}</span></div>
           <div><span class="label">Date:</span> <span class="value">${formatDateTimeShort(receipt.createdAt)}</span></div>
           <div><span class="label">Student ID:</span> <span class="value">${receipt.studentId}</span></div>
           <div><span class="label">Student Name:</span> <span class="value">${receipt.studentName}</span></div>
-          <div><span class="label">Course / Year:</span> <span class="value">${receipt.course} · ${receipt.year}</span></div>
+          <div><span class="label">Department / Year:</span> <span class="value">${receipt.department} · ${receipt.year}</span></div>
           <div><span class="label">Encoded By:</span> <span class="value">${receipt.encodedBy}</span></div>
         </div>
         <div class="summary">
@@ -172,34 +182,57 @@ function buildReceiptHtml(receipt, logoUrl) {
 </html>`;
 }
 
+function transactionToReceipt(tx) {
+  const amountPaid = Number(tx.amountPaid) || 0;
+  const previousBalance =
+    tx.previousBalance != null
+      ? tx.previousBalance
+      : tx.balanceAfter != null
+        ? amountPaid + tx.balanceAfter
+        : amountPaid;
+  const newBalance =
+    tx.balanceAfter != null ? tx.balanceAfter : tx.status === "Paid" ? 0 : Math.max(0, previousBalance - amountPaid);
+
+  return {
+    transactionCode: tx.transactionCode,
+    receiptNo: tx.transactionCode,
+    createdAt: tx.paidAt,
+    encodedBy: tx.encodedBy || "—",
+    studentId: tx.studentId,
+    studentName: tx.studentName,
+    department: tx.department || "—",
+    year: tx.year || "—",
+    previousBalance,
+    amountPaid,
+    newBalance,
+    note: tx.remarks || "",
+  };
+}
+
 export default function Payments({ onNavigate, onLogout }) {
   const { role, isGovernor, governorScope } = useGovernorScope();
   const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
   const isAdmin = String(role || "").toLowerCase().trim() === "admin";
   const navItems = getAppNavItems({ isAdmin });
-  const { data: paymentRowsFromApi = [], isLoading: isPaymentsLoading, isError: isPaymentsError } = useGetPayments();
+  const { data: paymentSummary } = useGetPaymentSummary();
+  const { data: paymentTransactions = [], isLoading: isTransactionsLoading, isError: isTransactionsError } = useGetPaymentTransactions();
   const recordPaymentMutation = useRecordPayment();
-  const updateFineAmountMutation = useUpdateFineAmount();
-  const setStudentBalanceMutation = useSetStudentBalance();
 
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [studentsPage, setStudentsPage] = useState(1);
-  const [studentsPageSize, setStudentsPageSize] = useState(10);
-  const [selectedStudentId, setSelectedStudentId] = useState("");
-  const [modalStudentId, setModalStudentId] = useState("");
-  const [selectedEventRowId, setSelectedEventRowId] = useState("");
-  const [modalSessionFilter, setModalSessionFilter] = useState("all");
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [isPaymentEditMode, setIsPaymentEditMode] = useState(false);
+  const [showPayStudentModal, setShowPayStudentModal] = useState(false);
+  const [payFlowStep, setPayFlowStep] = useState("search");
+  const [payFlowStudentId, setPayFlowStudentId] = useState("");
+  const [addStudentIdentifier, setAddStudentIdentifier] = useState("");
+  const [addStudentError, setAddStudentError] = useState("");
+  const [isAddingStudent, setIsAddingStudent] = useState(false);
+  const [transactionSearch, setTransactionSearch] = useState("");
+  const [transactionsPage, setTransactionsPage] = useState(1);
+  const [summaryAmountsVisible, setSummaryAmountsVisible] = useState(true);
+  const addStudentInputRef = useRef(null);
+  const addStudentAutoSubmitTimerRef = useRef(null);
   const [paymentAmountInput, setPaymentAmountInput] = useState("");
-  const [remainingBalanceInput, setRemainingBalanceInput] = useState("");
   const [paymentError, setPaymentError] = useState("");
-  const [editingFine, setEditingFine] = useState(null);
-  const [editFineAmountInput, setEditFineAmountInput] = useState("");
-  const [editFineError, setEditFineError] = useState("");
   const [lastReceipt, setLastReceipt] = useState(null);
-  const [isGraphModalOpen, setIsGraphModalOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [exportSearch, setExportSearch] = useState("");
   const [exportStatusFilter, setExportStatusFilter] = useState("All");
@@ -208,86 +241,79 @@ export default function Payments({ onNavigate, onLogout }) {
   const [exportYearFilter, setExportYearFilter] = useState("all");
   const [exportBalanceFilter, setExportBalanceFilter] = useState("all");
   const [showLogout, setShowLogout] = useState(false);
-  const [hoverCard, setHoverCard] = useState(null);
-  const hideTimerRef = useRef(null);
-  const showTimerRef = useRef(null);
-  const isHoveringCardRef = useRef(false);
 
-  const { data: modalDetail, isLoading: isModalDetailLoading } = useGetPaymentStudent(modalStudentId);
-  const graphDetailStudentId =
-    isGraphModalOpen && selectedStudentId && selectedStudentId !== modalStudentId
-      ? selectedStudentId
-      : "";
-  const { data: graphDetail, isLoading: isGraphDetailLoading } = useGetPaymentStudent(graphDetailStudentId);
+  const { data: paymentRowsFromApi = [], isLoading: isExportListLoading } = useGetPayments({
+    enabled: exportOpen,
+  });
 
-  const cancelHide = () => {
-    if (hideTimerRef.current) {
-      window.clearTimeout(hideTimerRef.current);
-      hideTimerRef.current = null;
-    }
-  };
+  const {
+    data: payFlowStudentRaw,
+    isLoading: isPayFlowStudentLoading,
+    isError: isPayFlowStudentError,
+  } = useGetPaymentStudent(payFlowStudentId, {
+    enabled: showPayStudentModal && payFlowStep === "review" && Boolean(payFlowStudentId),
+  });
 
-  const cancelShow = () => {
-    if (showTimerRef.current) {
-      window.clearTimeout(showTimerRef.current);
-      showTimerRef.current = null;
-    }
-  };
+  const payFlowStudent = useMemo(() => enrichPaymentStudent(payFlowStudentRaw), [payFlowStudentRaw]);
+  const selectedRow = payFlowStudent;
 
-  const scheduleShow = (studentId, x, y) => {
-    cancelShow();
-    const id = window.setTimeout(() => {
-      setHoverCard({ studentId, x, y });
-      showTimerRef.current = null;
-    }, 1000);
-    showTimerRef.current = id;
-  };
-
-  const scheduleHide = () => {
-    cancelShow();
-    cancelHide();
-    const id = window.setTimeout(() => {
-      if (isHoveringCardRef.current) return;
-      setHoverCard(null);
-      hideTimerRef.current = null;
-    }, 260);
-    hideTimerRef.current = id;
-  };
-
-  useEffect(() => {
-    return () => {
-      if (showTimerRef.current) window.clearTimeout(showTimerRef.current);
-      if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!selectedStudentId && paymentRowsFromApi.length > 0) {
-      setSelectedStudentId(paymentRowsFromApi[0].studentId);
-    }
-  }, [paymentRowsFromApi, selectedStudentId]);
-
-  const studentRows = useMemo(() => {
-    return paymentRowsFromApi.map((student) => {
-      const totalFine = Math.max(0, Number(student.totalFine) || 0);
-      const paidAmount = Math.max(0, Number(student.paidAmount) || 0);
-      const waivedAmount = Math.max(0, Number(student.waivedAmount) || 0);
-      const remaining = Math.max(0, totalFine - paidAmount - waivedAmount);
-      const payableBalance = Math.max(0, totalFine - waivedAmount);
-      let status = "Unpaid";
-      const hasProgress = paidAmount > 0 || waivedAmount > 0;
-      if (totalFine <= 0 && remaining <= 0) {
-        status = "Paid";
-      } else if (payableBalance <= 0 && totalFine > 0) {
-        status = "Waived";
-      } else if (hasProgress && remaining > 0) {
-        status = "Partial";
-      } else if (remaining <= 0 && totalFine > 0) {
-        status = "Paid";
-      }
-      const courseDisplay = formatCourseWithMajor(student.course, student.major ?? null);
-      return { ...student, totalFine, paidAmount, waivedAmount, remaining, status, courseDisplay };
+  const filteredTransactions = useMemo(() => {
+    const q = transactionSearch.trim().toLowerCase();
+    if (!q) return paymentTransactions;
+    return paymentTransactions.filter((row) => {
+      return (
+        row.transactionCode.toLowerCase().includes(q) ||
+        row.studentId.toLowerCase().includes(q) ||
+        row.studentName.toLowerCase().includes(q) ||
+        row.encodedBy.toLowerCase().includes(q)
+      );
     });
+  }, [paymentTransactions, transactionSearch]);
+
+  const transactionsTotal = filteredTransactions.length;
+  const transactionsTotalPages = Math.max(1, Math.ceil(transactionsTotal / TRANSACTIONS_PAGE_SIZE) || 1);
+  const transactionsPageSafe = Math.min(transactionsPage, transactionsTotalPages);
+
+  const paginatedTransactions = useMemo(() => {
+    const start = (transactionsPageSafe - 1) * TRANSACTIONS_PAGE_SIZE;
+    return filteredTransactions.slice(start, start + TRANSACTIONS_PAGE_SIZE);
+  }, [filteredTransactions, transactionsPageSafe]);
+
+  useEffect(() => {
+    setTransactionsPage(1);
+  }, [transactionSearch]);
+
+  useEffect(() => {
+    setTransactionsPage((p) => Math.min(p, transactionsTotalPages));
+  }, [transactionsTotalPages]);
+
+  const deskEvents = useMemo(() => payFlowStudent?.events ?? [], [payFlowStudent]);
+
+  const deskFilteredTotalFine = useMemo(
+    () => deskEvents.reduce((sum, event) => sum + (Number(event.fine) || 0), 0),
+    [deskEvents],
+  );
+
+  const payFlowPreviewNewBalance = useMemo(() => {
+    if (!payFlowStudent) return 0;
+    const amount = parseMoneyInput(paymentAmountInput);
+    const applied = Number.isFinite(amount) ? Math.max(0, amount) : 0;
+    return Math.max(0, payFlowStudent.remaining - applied);
+  }, [payFlowStudent, paymentAmountInput]);
+
+  const totals = useMemo(
+    () => ({
+      total: paymentSummary?.ledgerTotal ?? 0,
+      paid: paymentSummary?.collected ?? 0,
+      unpaid: paymentSummary?.outstanding ?? 0,
+      waived: paymentSummary?.waived ?? 0,
+    }),
+    [paymentSummary],
+  );
+  const studentsWithBalance = paymentSummary?.studentsWithBalance ?? 0;
+
+  const exportStudentRows = useMemo(() => {
+    return paymentRowsFromApi.map((student) => enrichPaymentStudent(student)).filter(Boolean);
   }, [paymentRowsFromApi]);
 
   const applyStudentFilters = (rows, filters) => {
@@ -316,39 +342,28 @@ export default function Payments({ onNavigate, onLogout }) {
 
   const exportCollegeOptions = useMemo(
     () =>
-      Array.from(new Set(studentRows.map((row) => row.college || inferCollegeFromCourse(row.course)).filter(Boolean))).sort((a, b) =>
-        a.localeCompare(b),
-      ),
-    [studentRows],
+      Array.from(
+        new Set(exportStudentRows.map((row) => row.college || inferCollegeFromCourse(row.course)).filter(Boolean)),
+      ).sort((a, b) => a.localeCompare(b)),
+    [exportStudentRows],
   );
 
   const exportCourseOptions = useMemo(
-    () => Array.from(new Set(studentRows.map((row) => row.course).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
-    [studentRows],
+    () => Array.from(new Set(exportStudentRows.map((row) => row.course).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    [exportStudentRows],
   );
 
   const exportYearOptions = useMemo(
     () =>
-      Array.from(new Set(studentRows.map((row) => String(row.year ?? "")).filter(Boolean))).sort((a, b) =>
+      Array.from(new Set(exportStudentRows.map((row) => String(row.year ?? "")).filter(Boolean))).sort((a, b) =>
         a.localeCompare(b, undefined, { numeric: true }),
       ),
-    [studentRows],
+    [exportStudentRows],
   );
-
-  const filteredRows = useMemo(() => {
-    return applyStudentFilters(studentRows, {
-      search,
-      status: statusFilter,
-      college: "all",
-      course: "all",
-      year: "all",
-      balance: "all",
-    });
-  }, [search, statusFilter, studentRows]);
 
   const exportFilteredRows = useMemo(
     () =>
-      applyStudentFilters(studentRows, {
+      applyStudentFilters(exportStudentRows, {
         search: exportSearch,
         status: exportStatusFilter,
         college: exportCollegeFilter,
@@ -356,207 +371,97 @@ export default function Payments({ onNavigate, onLogout }) {
         year: exportYearFilter,
         balance: exportBalanceFilter,
       }),
-    [studentRows, exportSearch, exportStatusFilter, exportCollegeFilter, exportCourseFilter, exportYearFilter, exportBalanceFilter],
+    [exportStudentRows, exportSearch, exportStatusFilter, exportCollegeFilter, exportCourseFilter, exportYearFilter, exportBalanceFilter],
   );
 
-  useEffect(() => {
-    if (!exportOpen) return;
-    setExportSearch(search);
-    setExportStatusFilter(statusFilter);
-    setExportCollegeFilter("all");
-    setExportCourseFilter("all");
-    setExportYearFilter("all");
-    setExportBalanceFilter("all");
-  }, [exportOpen, search, statusFilter]);
-
-  const studentsTotal = filteredRows.length;
-  const studentsTotalPages = Math.max(1, Math.ceil(studentsTotal / studentsPageSize) || 1);
-  const studentsPageSafe = Math.min(studentsPage, studentsTotalPages);
-
-  const paginatedStudents = useMemo(() => {
-    const start = (studentsPageSafe - 1) * studentsPageSize;
-    return filteredRows.slice(start, start + studentsPageSize);
-  }, [filteredRows, studentsPageSafe, studentsPageSize]);
-
-  useEffect(() => {
-    setStudentsPage(1);
-  }, [search, statusFilter, studentsPageSize]);
-
-  useEffect(() => {
-    setStudentsPage((p) => Math.min(p, studentsTotalPages));
-  }, [studentsTotalPages]);
-
-  const selectedRow = useMemo(() => {
-    const listRow =
-      filteredRows.find((row) => row.studentId === selectedStudentId) ?? filteredRows[0] ?? null;
-    if (!listRow) return null;
-    const detail =
-      listRow.studentId === modalStudentId
-        ? modalDetail
-        : listRow.studentId === graphDetailStudentId
-          ? graphDetail
-          : null;
-    return mergePaymentStudentRow(listRow, detail);
-  }, [filteredRows, selectedStudentId, modalStudentId, modalDetail, graphDetail, graphDetailStudentId]);
-
-  const modalStudent = useMemo(() => {
-    const listRow = filteredRows.find((row) => row.studentId === modalStudentId) ?? null;
-    if (!listRow) return null;
-    return mergePaymentStudentRow(listRow, modalDetail);
-  }, [filteredRows, modalStudentId, modalDetail]);
-
-  const hoverStudent = useMemo(
-    () => (hoverCard?.studentId ? filteredRows.find((row) => row.studentId === hoverCard.studentId) ?? null : null),
-    [filteredRows, hoverCard],
-  );
-
-  const modalEvents = useMemo(() => {
-    if (!modalStudent) return [];
-    return modalStudent.events.filter((event) => {
-      const kind = String(event.sessionKind ?? "whole").toLowerCase();
-      const matchesSession =
-        modalSessionFilter === "all" ||
-        (modalSessionFilter === "whole" && kind === "whole") ||
-        (modalSessionFilter === "am" && kind === "am") ||
-        (modalSessionFilter === "pm" && kind === "pm");
-      return matchesSession;
-    });
-  }, [modalStudent, modalSessionFilter]);
-
-  const modalFilteredTotalFine = useMemo(
-    () => modalEvents.reduce((sum, event) => sum + (Number(event.fine) || 0), 0),
-    [modalEvents],
-  );
-  const showAmColumns = modalSessionFilter !== "pm";
-  const showPmColumns = modalSessionFilter !== "am";
-  const modalTableColCount = 4 + (showAmColumns ? 2 : 0) + (showPmColumns ? 2 : 0) + 1;
-  const eventNameHeaderWidthClass = showAmColumns && showPmColumns ? "w-[34%]" : "w-[44%]";
-
-  const totals = useMemo(
-    () =>
-      filteredRows.reduce(
-        (acc, row) => {
-          acc.total += row.totalFine;
-          acc.paid += row.paidAmount;
-          acc.unpaid += row.remaining;
-          acc.waived += row.waivedAmount;
-          return acc;
-        },
-        { total: 0, paid: 0, unpaid: 0, waived: 0 },
-      ),
-    [filteredRows],
-  );
-  const studentsWithBalance = useMemo(
-    () => filteredRows.filter((row) => row.remaining > 0).length,
-    [filteredRows],
-  );
-
-  const selectedStudentLineData = useMemo(() => {
-    if (!selectedRow) return null;
-    const points = selectedRow.events
-      .slice()
-      .sort((a, b) => String(a.date).localeCompare(String(b.date)))
-      .map((event) => ({
-        label: formatEventDateForDisplay(event.date),
-        fine: Number(event.fine) || 0,
-      }));
-    return {
-      labels: points.map((p) => p.label),
-      datasets: [
-        {
-          label: "Fine Amount",
-          data: points.map((p) => p.fine),
-          borderColor: "#07713c",
-          backgroundColor: "rgba(7, 113, 60, 0.15)",
-          tension: 0.25,
-          pointRadius: 2,
-          pointHoverRadius: 4,
-          fill: false,
-        },
-      ],
-    };
-  }, [selectedRow]);
-
-  const selectedStudentLineOptions = useMemo(
-    () => ({
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            callback: (value) => formatPhp(Number(value)),
-          },
-          grid: { color: "rgba(7, 113, 60, 0.12)" },
-        },
-        x: {
-          grid: { color: "rgba(7, 113, 60, 0.08)" },
-        },
-      },
-    }),
-    [],
-  );
-
-  const openRecordPaymentModal = (rowOverride = null) => {
-    const targetRow = rowOverride ?? selectedRow;
-    if (!targetRow) return;
-    if (rowOverride?.studentId) {
-      setSelectedStudentId(rowOverride.studentId);
-    }
-    setIsPaymentEditMode(false);
+  const openPayStudentModal = () => {
+    setPayFlowStep("search");
+    setPayFlowStudentId("");
+    setAddStudentIdentifier("");
+    setAddStudentError("");
     setPaymentAmountInput("");
-    setRemainingBalanceInput("");
     setPaymentError("");
-    setShowPaymentModal(true);
+    setShowPayStudentModal(true);
   };
+
+  const closePayStudentModal = () => {
+    if (addStudentAutoSubmitTimerRef.current) {
+      clearTimeout(addStudentAutoSubmitTimerRef.current);
+      addStudentAutoSubmitTimerRef.current = null;
+    }
+    setShowPayStudentModal(false);
+    setPayFlowStep("search");
+    setPayFlowStudentId("");
+    setAddStudentIdentifier("");
+    setAddStudentError("");
+    setPaymentAmountInput("");
+    setPaymentError("");
+  };
+
+  const handleAddStudent = useCallback(async (rawIdentifier) => {
+    const identifier = String(rawIdentifier ?? addStudentIdentifier ?? "").trim();
+    if (!identifier) {
+      setAddStudentError("Enter a Student ID or RFID.");
+      return;
+    }
+    setIsAddingStudent(true);
+    setAddStudentError("");
+    try {
+      const student = await lookupPaymentStudent(identifier);
+      if (!student?.studentId) {
+        setAddStudentError("Student not found or access denied.");
+        return;
+      }
+      setPayFlowStudentId(student.studentId);
+      setPayFlowStep("review");
+      setPaymentAmountInput("");
+      setPaymentError("");
+    } catch (error) {
+      setAddStudentError(error?.response?.data?.message || "Student not found or access denied.");
+    } finally {
+      setIsAddingStudent(false);
+    }
+  }, [addStudentIdentifier]);
+
+  useEffect(() => {
+    if (!showPayStudentModal || payFlowStep !== "search") return;
+    const identifier = addStudentIdentifier.trim();
+    if (!identifier || isAddingStudent) return;
+    if (!/^\d+$/.test(identifier) || identifier.length < MIN_AUTO_SUBMIT_LENGTH) return;
+
+    if (addStudentAutoSubmitTimerRef.current) clearTimeout(addStudentAutoSubmitTimerRef.current);
+    addStudentAutoSubmitTimerRef.current = setTimeout(() => {
+      handleAddStudent(identifier);
+    }, AUTO_SUBMIT_DEBOUNCE_MS);
+
+    return () => {
+      if (addStudentAutoSubmitTimerRef.current) {
+        clearTimeout(addStudentAutoSubmitTimerRef.current);
+        addStudentAutoSubmitTimerRef.current = null;
+      }
+    };
+  }, [addStudentIdentifier, handleAddStudent, isAddingStudent, payFlowStep, showPayStudentModal]);
+
+  useEffect(() => {
+    if (!showPayStudentModal || payFlowStep !== "search") return;
+    window.setTimeout(() => addStudentInputRef.current?.focus(), 0);
+  }, [payFlowStep, showPayStudentModal]);
 
   const handleSubmitPayment = async () => {
     if (!selectedRow) return;
     const maxPayable = Math.max(0, selectedRow.totalFine - selectedRow.waivedAmount);
-    const maxTotalFine = Math.max(0, selectedRow.totalFine);
     const previousBalance = selectedRow.remaining;
-    let roundedAmount = 0;
-    let newBalance = previousBalance;
-
-    if (isPaymentEditMode) {
-      const parsedBalance = parseMoneyInput(remainingBalanceInput);
-      if (!Number.isFinite(parsedBalance) || parsedBalance < 0 || parsedBalance > maxTotalFine) {
-        setPaymentError("Balance must be between 0 and Total Fine.");
-        return;
-      }
-      try {
-        const response = await setStudentBalanceMutation.mutateAsync({
-          studentId: selectedRow.studentId,
-          targetBalance: Math.round(parsedBalance * 100) / 100,
-        });
-        setLastReceipt(null);
-        setIsPaymentEditMode(false);
-        setRemainingBalanceInput("");
-        setShowPaymentModal(false);
-        setPaymentError("");
-        if (response?.newBalance != null) {
-          newBalance = Number(response.newBalance);
-        }
-      } catch (error) {
-        setPaymentError(error?.response?.data?.message || "Unable to update balance right now.");
-      }
+    const amount = parseMoneyInput(paymentAmountInput);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setPaymentError("Enter a valid amount greater than zero.");
       return;
-    } else {
-      const amount = parseMoneyInput(paymentAmountInput);
-      if (!Number.isFinite(amount) || amount <= 0) {
-        setPaymentError("Enter a valid amount greater than zero.");
-        return;
-      }
-      if (amount > selectedRow.remaining) {
-        setPaymentError("Amount cannot be greater than remaining balance.");
-        return;
-      }
-      roundedAmount = Math.round(amount * 100) / 100;
-      newBalance = Math.max(0, previousBalance - roundedAmount);
     }
+    if (amount > selectedRow.remaining) {
+      setPaymentError("Amount cannot be greater than remaining balance.");
+      return;
+    }
+    const roundedAmount = Math.round(amount * 100) / 100;
+    const newBalance = Math.max(0, previousBalance - roundedAmount);
 
     if (roundedAmount > maxPayable) {
       setPaymentError("Amount cannot be greater than total payable balance.");
@@ -571,21 +476,21 @@ export default function Payments({ onNavigate, onLogout }) {
         remarks: "",
       });
       setLastReceipt({
-        receiptNo: response?.receiptNo || makeReceiptNumber(),
+        transactionCode: response?.transactionCode || response?.receiptNo || makeReceiptNumber(),
+        receiptNo: response?.transactionCode || response?.receiptNo || makeReceiptNumber(),
         createdAt: new Date().toISOString(),
         encodedBy: roleLabel || "CSG/Governor",
         studentId: selectedRow.studentId,
         studentName: selectedRow.studentName,
-        course: formatCourseWithMajor(selectedRow.course, selectedRow.major ?? null),
+        department: payFlowStudent.departmentDisplay || payFlowStudent.department || "—",
         year: selectedRow.year,
         previousBalance: response?.previousBalance ?? previousBalance,
         amountPaid: response?.amountPaid ?? roundedAmount,
         newBalance: response?.newBalance ?? newBalance,
         note: "",
       });
-      setIsPaymentEditMode(false);
-      setRemainingBalanceInput("");
-      setShowPaymentModal(false);
+      closePayStudentModal();
+      setPaymentAmountInput("");
       setPaymentError("");
     } catch (error) {
       setPaymentError(error?.response?.data?.message || "Unable to save payment right now.");
@@ -602,36 +507,6 @@ export default function Payments({ onNavigate, onLogout }) {
     w.document.close();
     w.focus();
     window.setTimeout(() => w.print(), 250);
-  };
-
-  const createReceiptFromSelectedRow = (row) => {
-    if (!row) return null;
-    const previousBalance = Math.max(0, (Number(row.remaining) || 0) + (Number(row.paidAmount) || 0));
-    return {
-      receiptNo: makeReceiptNumber(),
-      createdAt: new Date().toISOString(),
-      encodedBy: roleLabel || "CSG/Governor",
-      studentId: row.studentId,
-      studentName: row.studentName,
-      course: formatCourseWithMajor(row.course, row.major ?? null),
-      year: row.year,
-      previousBalance,
-      amountPaid: Number(row.paidAmount) || 0,
-      newBalance: Number(row.remaining) || 0,
-      note: "",
-    };
-  };
-
-  const openEditFineModal = (event) => {
-    if (!modalStudent) return;
-    setEditingFine({
-      studentId: modalStudent.studentId,
-      eventId: event.id,
-      fineId: event.fineId ?? null,
-      eventName: event.name,
-    });
-    setEditFineAmountInput(String(Number(event.fine) || 0));
-    setEditFineError("");
   };
 
   const exportPaymentsCsv = () => {
@@ -688,33 +563,12 @@ export default function Payments({ onNavigate, onLogout }) {
     });
   };
 
-  const handleSaveFineEdit = async () => {
-    if (!editingFine) return;
-    const amount = parseMoneyInput(editFineAmountInput);
-    if (!Number.isFinite(amount) || amount < 0) {
-      setEditFineError("Fine amount must be zero or higher.");
-      return;
-    }
-    const rounded = Math.round(amount * 100) / 100;
-    if (!editingFine.fineId) {
-      setEditFineError("Fine cannot be edited because fine id is missing.");
-      return;
-    }
-    try {
-      await updateFineAmountMutation.mutateAsync({ fineId: editingFine.fineId, amount: rounded });
-      setEditingFine(null);
-      setEditFineError("");
-    } catch (error) {
-      setEditFineError(error?.response?.data?.message || "Unable to update fine amount.");
-    }
-  };
-
   return (
     <div className="flex min-h-screen bg-gray-50 [&_button]:cursor-pointer">
-      <aside className="sticky top-0 h-screen max-h-screen w-64 shrink-0 self-start overflow-y-auto bg-[#07713C] text-white flex flex-col">
+      <aside className="sticky top-0 h-screen max-h-screen w-64 shrink-0 self-start overflow-y-auto bg-[#07713C] text-white flex flex-col [&_p]:text-white">
         <div className="p-6 space-y-4">
           <img src="/logo.png" alt="NMCI" className="w-16 h-16 rounded-full bg-white/10 object-contain mx-auto" />
-          <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif]">Northern Mindanao Colleges, Inc.</p>
+          <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif] text-white">Northern Mindanao Colleges, Inc.</p>
         </div>
         <nav className="flex-1 px-4 space-y-1">
           {navItems.map((item) => (
@@ -734,593 +588,432 @@ export default function Payments({ onNavigate, onLogout }) {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-[#07713c]/30 px-6 py-4 flex items-start justify-between gap-4">
-          <div>
+        <header className="bg-white border-b border-[#07713c]/30 px-6 py-4">
+          <div className="mx-auto flex w-full max-w-7xl items-start justify-between gap-4">
             <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#07713c] leading-tight">Payments</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setExportOpen(true)}
-              className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/15"
-            >
-              Export / Reports
-            </button>
-            <div className="relative">
+            <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setShowLogout((prev) => !prev)}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-[#07713c] hover:bg-[#07713c]/10"
-                aria-label="Account menu"
-                aria-expanded={showLogout}
-                aria-haspopup="true"
-                title="Profile"
+                onClick={() => setExportOpen(true)}
+                className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/15"
               >
-                <UserCircleIcon />
+                Export / Reports
               </button>
-              {showLogout && (
-                <div className="absolute right-0 top-full mt-1 min-w-[100px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowLogout(false);
-                      onLogout?.();
-                    }}
-                    className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                  >
-                    Logout
-                  </button>
-                </div>
-              )}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowLogout((prev) => !prev)}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-[#07713c] hover:bg-[#07713c]/10"
+                  aria-label="Account menu"
+                  aria-expanded={showLogout}
+                  aria-haspopup="true"
+                  title="Profile"
+                >
+                  <UserCircleIcon />
+                </button>
+                {showLogout && (
+                  <div className="absolute right-0 top-full mt-1 min-w-[100px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowLogout(false);
+                        onLogout?.();
+                      }}
+                      className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 p-6 overflow-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white rounded-lg border border-[#07713c]/30 p-4 shadow-sm">
-              <p className="text-2xl font-bold text-[#07713c]">{formatPhp(totals.total)}</p>
-              <p className="text-sm font-medium text-[#07713c]">Ledger Total</p>
+        <main className={`flex-1 p-6 overflow-auto ${PAYMENTS_PAGE_TEXT} [&_th]:font-bold [&_th]:!text-black`}>
+          <div className="mx-auto w-full max-w-7xl space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="relative bg-white rounded-lg border border-[#07713c]/30 p-4 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setSummaryAmountsVisible((v) => !v)}
+                className="absolute top-3 right-3 rounded-md p-1 text-black/50 hover:bg-[#07713c]/10 hover:text-[#07713c]"
+                aria-label={summaryAmountsVisible ? "Hide ledger total" : "Show ledger total"}
+                title={summaryAmountsVisible ? "Hide amount" : "Show amount"}
+              >
+                {summaryAmountsVisible ? <EyeOffIcon /> : <EyeOpenIcon />}
+              </button>
+              <p className="text-2xl font-bold text-black pr-8">{formatPhpMaybeHidden(summaryAmountsVisible, totals.total)}</p>
+              <p className="text-sm font-medium text-black">Ledger Total</p>
+            </div>
+            <div className="relative bg-white rounded-lg border border-[#07713c]/30 p-4 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setSummaryAmountsVisible((v) => !v)}
+                className="absolute top-3 right-3 rounded-md p-1 text-black/50 hover:bg-[#07713c]/10 hover:text-[#07713c]"
+                aria-label={summaryAmountsVisible ? "Hide collected amount" : "Show collected amount"}
+                title={summaryAmountsVisible ? "Hide amount" : "Show amount"}
+              >
+                {summaryAmountsVisible ? <EyeOffIcon /> : <EyeOpenIcon />}
+              </button>
+              <p className="text-2xl font-bold text-black pr-8">{formatPhpMaybeHidden(summaryAmountsVisible, totals.paid)}</p>
+              <p className="text-sm font-medium text-black">Collected</p>
+            </div>
+            <div className="relative bg-white rounded-lg border border-[#07713c]/30 p-4 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setSummaryAmountsVisible((v) => !v)}
+                className="absolute top-3 right-3 rounded-md p-1 text-black/50 hover:bg-[#07713c]/10 hover:text-[#07713c]"
+                aria-label={summaryAmountsVisible ? "Hide outstanding amount" : "Show outstanding amount"}
+                title={summaryAmountsVisible ? "Hide amount" : "Show amount"}
+              >
+                {summaryAmountsVisible ? <EyeOffIcon /> : <EyeOpenIcon />}
+              </button>
+              <p className="text-2xl font-bold text-black pr-8">{formatPhpMaybeHidden(summaryAmountsVisible, totals.unpaid)}</p>
+              <p className="text-sm font-medium text-black">Outstanding</p>
             </div>
             <div className="bg-white rounded-lg border border-[#07713c]/30 p-4 shadow-sm">
-              <p className="text-2xl font-bold text-[#07713c]">{formatPhp(totals.paid)}</p>
-              <p className="text-sm font-medium text-[#07713c]">Collected</p>
-            </div>
-            <div className="bg-white rounded-lg border border-[#07713c]/30 p-4 shadow-sm">
-              <p className="text-2xl font-bold text-[#07713c]">{formatPhp(totals.unpaid)}</p>
-              <p className="text-sm font-medium text-[#07713c]">Outstanding</p>
-            </div>
-            <div className="bg-white rounded-lg border border-[#07713c]/30 p-4 shadow-sm">
-              <p className="text-2xl font-bold text-[#07713c]">{studentsWithBalance}</p>
-              <p className="text-sm font-medium text-[#07713c]">Students with Balance</p>
+              <p className="text-2xl font-bold text-black">{studentsWithBalance}</p>
+              <p className="text-sm font-medium text-black">Students with Balance</p>
             </div>
           </div>
 
-          <section className="bg-white rounded-lg border border-[#07713c]/30 shadow-sm overflow-hidden">
-              <div className="px-4 pt-4">
-                <h2 className="text-lg font-bold text-[#07713c]">Students</h2>
+          {lastReceipt ? (
+            <div className="mb-4 rounded-xl border border-[#07713c]/25 bg-[#07713c]/[0.04] p-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm text-black">
+                <p className="font-semibold">Payment saved successfully</p>
+                <p>Transaction Code: <span className="font-mono font-bold">{lastReceipt.transactionCode || lastReceipt.receiptNo}</span></p>
+                <p>{lastReceipt.studentName} · {formatPhp(lastReceipt.amountPaid)}</p>
               </div>
-              <div className="p-4 border-b border-[#07713c]/30 flex flex-wrap gap-3 items-end">
-                <div className="relative min-w-[240px] flex-1">
-                  <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#07713c]" />
-                  <input
-                    type="search"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search student, ID, or course"
-                    className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
-                  />
-                  {search.trim() !== "" && (
-                    <button
-                      type="button"
-                      onClick={() => setSearch("")}
-                      className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-[#07713c]/85 hover:bg-gray-100 hover:text-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
-                      aria-label="Clear payments search"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-                <label className="flex flex-col items-start gap-1 text-xs text-[#07713c]">
-                  Status
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-4 py-2 border border-[#07713c]/40 rounded-lg text-sm focus:outline-none focus:ring-0 focus:border-[#07713c]/40"
-                  >
-                    <option>All</option>
-                    <option>Unpaid</option>
-                    <option>Partial</option>
-                    <option>Paid</option>
-                  </select>
-                </label>
-                <label className="flex flex-col items-start gap-1 text-xs text-[#07713c] self-end">
-                  Students per page
-                  <select
-                    value={studentsPageSize}
-                    onChange={(e) => setStudentsPageSize(Number(e.target.value))}
-                    className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-4 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
-                  >
-                    {[5, 10, 15, 20, 25, 50].map((n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => printReceipt(lastReceipt)}
+                  className="rounded-lg border border-[#07713c] bg-white px-4 py-2 text-sm font-medium text-black hover:bg-[#07713c]/10"
+                >
+                  Print Receipt
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLastReceipt(null)}
+                  className="rounded-lg border border-[#07713c]/30 px-3 py-2 text-sm text-black hover:bg-gray-50"
+                >
+                  Dismiss
+                </button>
               </div>
+            </div>
+          ) : null}
 
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[1080px] table-fixed border-collapse text-sm">
-                  <thead className="border-b border-[#07713c]/30 bg-[#07713c]">
-                    <tr>
-                      <th className="w-[28%] px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Student</th>
-                      <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Year</th>
-                      <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Total Events</th>
-                      <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Total Fine</th>
-                      <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Remaining</th>
-                      <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Status</th>
-                      <th className="min-w-[104px] px-2 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Attendance</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {isPaymentsLoading ? (
-                      <tr>
-                        <td colSpan={7} className="py-8 px-4 text-center text-[#07713c]/85 text-sm">Loading payment records...</td>
-                      </tr>
-                    ) : isPaymentsError ? (
-                      <tr>
-                        <td colSpan={7} className="py-8 px-4 text-center text-red-700 text-sm">Unable to load payment records right now.</td>
-                      </tr>
-                    ) : paginatedStudents.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="py-8 px-4 text-center text-[#07713c]/85 text-sm">No payment records found for this filter.</td>
-                      </tr>
-                    ) : (
-                      paginatedStudents.map((row) => (
-                        <tr
-                          key={row.studentId}
-                          onClick={() => openRecordPaymentModal(row)}
-                          className={`cursor-pointer border-b border-[#07713c]/15 ${
-                            selectedRow?.studentId === row.studentId ? "bg-[#07713c]/10" : "hover:bg-[#07713c]/[0.04]"
-                          }`}
-                        >
-                          <td
-                            className="py-3 px-3 overflow-hidden"
-                            onMouseEnter={(e) => {
-                              cancelHide();
-                              scheduleShow(row.studentId, e.clientX + 10, e.clientY + 10);
-                            }}
-                            onMouseLeave={scheduleHide}
-                          >
-                            <p
-                              className="truncate font-medium whitespace-nowrap text-[#07713c] hover:underline underline-offset-2 decoration-[#07713c]"
-                              title={row.studentName}
-                            >
-                              {row.studentName}
-                            </p>
-                          </td>
-                          <td className="py-3 px-3 overflow-hidden">
-                            <div className="flex justify-center">
-                              <p
-                                className="min-w-0 truncate font-medium whitespace-nowrap tabular-nums text-[#07713c] hover:underline underline-offset-2 decoration-[#07713c]"
-                                title={String(row.year ?? "")}
-                              >
-                                {row.year}
-                              </p>
-                            </div>
-                          </td>
-                          <td className="py-3 px-3 overflow-hidden">
-                            <div className="flex justify-center">
-                              <p
-                                className="min-w-0 truncate font-medium whitespace-nowrap tabular-nums text-[#07713c] hover:underline underline-offset-2 decoration-[#07713c]"
-                                title={String(row.totalEvents ?? "")}
-                              >
-                                {row.totalEvents ?? 0}
-                              </p>
-                            </div>
-                          </td>
-                          <td className="py-3 px-3 text-center font-medium tabular-nums text-red-700">{formatPhp(row.totalFine)}</td>
-                          <td className="py-3 px-3 text-center font-medium tabular-nums text-red-700">{formatPhp(row.remaining)}</td>
-                          <td className="py-3 px-3 text-center">
-                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeClass(row.status)}`}>{row.status}</span>
-                          </td>
-                          <td className="py-3 px-2 text-center">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedStudentId(row.studentId);
-                                setModalStudentId(row.studentId);
-                              }}
-                              className="rounded-lg border border-[#07713c]/40 bg-white px-2.5 py-0.5 text-xs font-medium text-[#07713c] hover:bg-[#07713c]/[0.04] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]"
-                            >
-                              Select
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+          <section className="bg-white rounded-lg border border-[#07713c]/30 shadow-sm overflow-hidden">
+            <div className="px-4 pt-4 pb-3 border-b border-[#07713c]/20 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-black">Payment Transactions</h2>
+                <p className="text-sm text-black/75">Recorded payments only. Click a row to view details or print a receipt. Use Add Student to post a new transaction.</p>
               </div>
-              <PaginationBar
-                totalCount={studentsTotal}
-                page={studentsPageSafe}
-                pageSize={studentsPageSize}
-                onPageChange={setStudentsPage}
-                itemLabel="students"
-                className="border-t-0"
+              <button
+                type="button"
+                onClick={openPayStudentModal}
+                className="rounded-lg border border-[#07713c] bg-[#07713c] px-4 py-2 text-sm font-semibold text-white hover:bg-[#055a2e]"
+              >
+                Add Student
+              </button>
+            </div>
+
+            <div className="p-4 border-b border-[#07713c]/20">
+              <input
+                type="search"
+                value={transactionSearch}
+                onChange={(e) => setTransactionSearch(e.target.value)}
+                placeholder="Search transaction code, student ID, or name"
+                className="w-full max-w-md rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-black placeholder:text-black/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
               />
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-0 table-fixed text-sm">
+                <thead className={`border-b border-[#07713c]/30 bg-[#07713c]/10 text-xs uppercase tracking-wide ${PAYMENTS_TH_TEXT}`}>
+                  <tr>
+                    <th className="w-[18%] px-3 py-3 text-left">Transaction Code</th>
+                    <th className="w-[12%] px-3 py-3 text-left">Date</th>
+                    <th className="w-[12%] px-3 py-3 text-left">Student ID</th>
+                    <th className="w-[22%] px-3 py-3 text-left">Student Name</th>
+                    <th className="px-3 py-3 text-center">Amount</th>
+                    <th className="px-3 py-3 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isTransactionsLoading ? (
+                    <tr>
+                      <td colSpan={6} className="py-10 px-4 text-center text-black/85">Loading transactions...</td>
+                    </tr>
+                  ) : isTransactionsError ? (
+                    <tr>
+                      <td colSpan={6} className="py-10 px-4 text-center text-black">Unable to load transactions right now.</td>
+                    </tr>
+                  ) : filteredTransactions.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-10 px-4 text-center text-black/85">
+                        No payment transactions yet. Click <span className="font-semibold">Add Student</span> to record a payment.
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedTransactions.map((row) => (
+                      <tr
+                        key={row.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setSelectedTransaction(row)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setSelectedTransaction(row);
+                          }
+                        }}
+                        className="border-b border-[#07713c]/15 hover:bg-[#07713c]/[0.08] cursor-pointer"
+                      >
+                        <td className="px-3 py-3 font-mono text-xs font-semibold text-black">{row.transactionCode}</td>
+                        <td className="px-3 py-3 text-black whitespace-nowrap">{formatDateTimeShort(row.paidAt)}</td>
+                        <td className="px-3 py-3 text-black">{row.studentId}</td>
+                        <td className="px-3 py-3 text-black truncate" title={row.studentName}>{row.studentName}</td>
+                        <td className="px-3 py-3 text-center font-semibold tabular-nums text-black">{formatPhp(row.amountPaid)}</td>
+                        <td className="px-3 py-3 text-center">
+                          <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${transactionStatusClass(row.status)}`}>
+                            {row.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <PaginationBar
+              totalCount={transactionsTotal}
+              page={transactionsPage}
+              pageSize={TRANSACTIONS_PAGE_SIZE}
+              onPageChange={setTransactionsPage}
+              emptyLabel="No payment transactions to show."
+              itemLabel="transactions"
+              className="!text-black border-[#07713c]/20"
+            />
           </section>
+          </div>
         </main>
       </div>
 
-      {hoverCard && hoverStudent && (
-        <div
-          className="fixed z-40 w-56 rounded-lg border border-[#07713c]/30 bg-white p-2.5 text-xs shadow-lg"
-          style={{ left: `${Math.min(hoverCard.x, window.innerWidth - 240)}px`, top: `${Math.min(hoverCard.y, window.innerHeight - 180)}px` }}
-          onMouseEnter={() => {
-            isHoveringCardRef.current = true;
-            cancelHide();
-          }}
-          onMouseLeave={() => {
-            isHoveringCardRef.current = false;
-            scheduleHide();
-          }}
-        >
-          <p className="font-semibold text-[#07713c]">{hoverStudent.studentName}</p>
-          <p className="text-[#07713c]/80">Total fines: {formatPhp(hoverStudent.totalFine)}</p>
-          <p className="text-[#07713c]/80">Remaining: {formatPhp(hoverStudent.remaining)}</p>
-          <div className="mt-2 flex flex-col gap-1.5">
-            <button
-              type="button"
-              onClick={() => setModalStudentId(hoverStudent.studentId)}
-              className="w-full rounded-lg bg-[#07713c] px-3 py-2 text-xs font-medium text-white hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-[#07713c]/40"
-            >
-              View Attendance
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                openRecordPaymentModal(hoverStudent);
-                setHoverCard(null);
-              }}
-              className="w-full rounded-lg border border-[#07713c]/40 px-3 py-2 text-xs font-medium text-[#07713c] hover:bg-[#07713c]/10"
-            >
-              Select
-            </button>
-          </div>
-        </div>
-      )}
-
-      {modalStudent && (
-        <div className="fixed inset-0 z-[61] flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-[92rem] rounded-2xl bg-white shadow-2xl overflow-hidden">
-            <div className="bg-[#07713C] px-5 py-3 flex items-center justify-between">
-              <h3 className="text-white text-xl font-semibold">{modalStudent.studentName} · {modalStudent.studentId}</h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setModalStudentId("");
-                  setSelectedEventRowId("");
-                  setModalSessionFilter("all");
-                }}
-                className="w-7 h-7 rounded-full bg-yellow-300 flex items-center justify-center text-[#07713c] hover:bg-yellow-400"
-                aria-label="Close"
-                title="Close"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="max-h-[75vh] overflow-y-auto p-4 [scrollbar-width:thin] [scrollbar-color:rgba(7,113,60,0.28)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#07713c]/30 [&::-webkit-scrollbar-thumb]:hover:bg-[#07713c]/40 [&::-webkit-scrollbar-track]:bg-transparent">
-              <div className="mb-3 flex flex-wrap items-end gap-3">
-                <label className="flex flex-col gap-1 text-xs text-[#07713c]">
-                  Session
-                  <select
-                    value={modalSessionFilter}
-                    onChange={(e) => setModalSessionFilter(e.target.value)}
-                    className="h-9 min-w-[9rem] rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm focus:border-[#07713c]/40 focus:outline-none focus:ring-0"
-                  >
-                    <option value="all">All sessions</option>
-                    <option value="whole">Whole day</option>
-                    <option value="am">AM Session</option>
-                    <option value="pm">PM Session</option>
-                  </select>
-                </label>
-              </div>
-              <div className="overflow-x-auto [scrollbar-width:thin] [scrollbar-color:rgba(7,113,60,0.28)_transparent] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#07713c]/30 [&::-webkit-scrollbar-thumb]:hover:bg-[#07713c]/40 [&::-webkit-scrollbar-track]:bg-transparent">
-                <div className="rounded-lg border border-[#07713c]/30 overflow-hidden">
-                  <table className="w-full min-w-[980px] table-fixed text-sm">
-                    <thead className="border-b border-[#07713c]/30 bg-gray-50 text-center text-xs font-medium text-[#07713c]">
-                    <tr>
-                      <th className={`border-r border-[#07713c]/30 px-4 py-2 align-bottom whitespace-nowrap text-left ${eventNameHeaderWidthClass}`}>Event name</th>
-                      <th className="border-r border-[#07713c]/30 pl-4 pr-6 py-2 align-bottom whitespace-nowrap">Date</th>
-                      <th className="border-r border-[#07713c]/30 px-4 py-2 align-bottom whitespace-nowrap">Session</th>
-                      <th className="border-r border-[#07713c]/30 px-3 py-2 align-bottom text-center whitespace-nowrap">Status</th>
-                      {showAmColumns && (
-                        <>
-                          <th className="border-r border-[#07713c]/30 px-4 py-2 align-bottom whitespace-nowrap">AM In</th>
-                          <th className="border-r border-[#07713c]/30 px-4 py-2 align-bottom whitespace-nowrap">AM Out</th>
-                        </>
-                      )}
-                      {showPmColumns && (
-                        <>
-                          <th className="border-r border-[#07713c]/30 px-4 py-2 align-bottom whitespace-nowrap">PM In</th>
-                          <th className="border-r border-[#07713c]/30 px-4 py-2 align-bottom whitespace-nowrap">PM Out</th>
-                        </>
-                      )}
-                      <th className="w-[10%] px-3 py-2 align-bottom text-right whitespace-nowrap">FINES</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                      {isModalDetailLoading ? (
-                        <tr className="border-t border-[#07713c]/30">
-                          <td colSpan={modalTableColCount} className="px-4 py-8 text-center text-sm text-[#07713c]/85">
-                            Loading events...
-                          </td>
-                        </tr>
-                      ) : modalEvents.length === 0 ? (
-                        <tr className="border-t border-[#07713c]/30">
-                          <td colSpan={modalTableColCount} className="px-4 py-8 text-center text-sm text-[#07713c]/85">
-                            No events match the current filters.
-                          </td>
-                        </tr>
-                      ) : (
-                      modalEvents.map((event) => (
-                        <tr
-                          key={event.id}
-                          onClick={() => setSelectedEventRowId(event.id)}
-                          className={`border-t border-[#07713c]/30 cursor-pointer ${
-                            selectedEventRowId === event.id ? "bg-[#07713c]/10" : "hover:bg-[#07713c]/[0.04]"
-                          }`}
-                        >
-                          <td className={`border-r border-[#07713c]/30 px-4 py-2.5 text-left font-medium text-[#07713c] whitespace-nowrap ${eventNameHeaderWidthClass}`}>
-                            <span className="block w-full overflow-hidden text-ellipsis" title={event.name}>
-                              {event.name}
-                            </span>
-                          </td>
-                          <td className="border-r border-[#07713c]/30 pl-4 pr-6 py-2.5 text-center whitespace-nowrap text-[#07713c]">{formatEventDateForDisplay(event.date)}</td>
-                          <td className="border-r border-[#07713c]/30 px-4 py-2.5 text-center whitespace-nowrap text-[#07713c]">{sessionLabel(event.sessionKind)}</td>
-                          <td className="border-r border-[#07713c]/30 px-3 py-2.5 text-center whitespace-nowrap">
-                            {getEventAttendanceStatus(event) === "Attended" ? (
-                              <span className="inline-flex rounded-full bg-[#07713c]/10 px-2.5 py-0.5 text-xs font-medium text-[#07713c]">
-                                Attended
-                              </span>
-                            ) : (
-                              <span className="inline-flex rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">
-                                Absent
-                              </span>
-                            )}
-                          </td>
-                          {showAmColumns && (
-                            <>
-                              <td className="border-r border-[#07713c]/30 px-3 py-2.5 text-center whitespace-nowrap"><ModalPeriodSlot event={event} period="am" value={event.amIn} /></td>
-                              <td className="border-r border-[#07713c]/30 px-3 py-2.5 text-center whitespace-nowrap"><ModalPeriodSlot event={event} period="am" value={event.amOut} /></td>
-                            </>
-                          )}
-                          {showPmColumns && (
-                            <>
-                              <td className="border-r border-[#07713c]/30 px-3 py-2.5 text-center whitespace-nowrap"><ModalPeriodSlot event={event} period="pm" value={event.pmIn} /></td>
-                              <td className="border-r border-[#07713c]/30 px-3 py-2.5 text-center whitespace-nowrap"><ModalPeriodSlot event={event} period="pm" value={event.pmOut} /></td>
-                            </>
-                          )}
-                          <td className="w-[10%] px-3 py-2.5 text-right text-red-700 font-semibold tabular-nums whitespace-nowrap">{formatPhp(event.fine)}</td>
-                        </tr>
-                      ))
-                      )}
-                    </tbody>
-                    <tfoot>
-                    <tr className="bg-[#07713c]/[0.07] border-t border-[#07713c]/30">
-                        <td colSpan={modalTableColCount - 1} className="border-r border-[#07713c]/30 px-4 py-3 text-right text-sm font-semibold text-[#07713c]">Total fines across all events</td>
-                        <td className="w-[10%] px-3 py-3 text-right text-sm font-bold text-red-700 tabular-nums">{formatPhp(modalFilteredTotalFine)}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              </div>
-              <div className="mt-3 text-xs text-[#07713c]/80">
-                Paid: {formatPhp(modalStudent.paidAmount)} · Waived: {formatPhp(modalStudent.waivedAmount)} · Remaining: {formatPhp(modalStudent.remaining)}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showPaymentModal && selectedRow && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between gap-3 bg-[#07713C] px-5 py-3">
-              <h3 className="min-w-0 text-xl font-semibold text-white">Payment</h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowPaymentModal(false);
-                  setIsPaymentEditMode(false);
-                  setRemainingBalanceInput("");
-                }}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-yellow-300 text-[#07713c] hover:bg-yellow-400"
-                aria-label="Close"
-                title="Close"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-5 space-y-4 text-base">
-              <div className="grid gap-4">
-                <div className="rounded-xl border border-[#07713c]/20 bg-[#07713c]/[0.04] p-3.5">
-                  <div className="mt-2 space-y-1.5 text-[#07713c]">
-                    <p><span className="font-semibold">Name:</span> {selectedRow.studentName}</p>
-                    <p><span className="font-semibold">Student ID:</span> {selectedRow.studentId}</p>
-                    <p><span className="font-semibold">Year:</span> {selectedRow.year}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-[#07713c]/20 bg-gray-50 p-3">
-                <p className="text-base font-semibold uppercase tracking-wide text-[#07713c]/80">Payment Preview</p>
-                <div className="mt-2 space-y-1.5 text-base text-[#07713c]">
-                  <div className="flex items-center justify-between">
-                    <span>Balance</span>
-                    {isPaymentEditMode ? (
-                      <div className="space-y-1">
-                        <div className="grid grid-cols-[18px_minmax(90px,120px)] items-center gap-1">
-                          <span className="text-red-700">₱</span>
-                          <input
-                            value={remainingBalanceInput}
-                            onChange={(e) => {
-                              const raw = e.target.value;
-                              const normalized = raw
-                                .replace(/[^\d.]/g, "")
-                                .replace(/(\..*)\./g, "$1");
-                              const parsed = parseMoneyInput(normalized);
-                              if (normalized === "" || !Number.isFinite(parsed)) {
-                                setRemainingBalanceInput(normalized);
-                              } else {
-                                const clamped = Math.min(parsed, Math.max(0, selectedRow.totalFine));
-                                setRemainingBalanceInput(String(clamped));
-                              }
-                              if (paymentError) setPaymentError("");
-                            }}
-                            placeholder="amount"
-                            inputMode="decimal"
-                            pattern="^\\d*\\.?\\d*$"
-                            className="w-full border-0 border-b border-[#07713c]/20 bg-transparent px-1 py-1 text-right tabular-nums text-red-700 outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0"
-                          />
-                        </div>
-                        <p className="text-right text-xs text-[#07713c]/75">
-                          Max: {formatPhp(selectedRow.totalFine)} (Total Fine)
-                        </p>
-                      </div>
-                    ) : (
-                      <span className="font-semibold tabular-nums text-red-700">{formatPhp(selectedRow.remaining)}</span>
-                    )}
-                  </div>
-                  {!isPaymentEditMode && (
-                    <div className="grid grid-cols-[1fr_minmax(90px,120px)] items-center gap-3">
-                      <label className="text-base font-semibold text-[#07713c]">Amount to pay</label>
-                      <div className="flex items-center gap-1 border-0 border-b border-[#07713c]/20">
-                        <span className="text-red-700">₱</span>
-                        <input
-                          value={paymentAmountInput}
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            const normalized = raw
-                              .replace(/[^\d.]/g, "")
-                              .replace(/(\..*)\./g, "$1");
-                            setPaymentAmountInput(normalized);
-                            if (paymentError) setPaymentError("");
-                          }}
-                          placeholder="amount"
-                          inputMode="decimal"
-                          pattern="^\d*\.?\d*$"
-                          className="w-full border-0 bg-transparent px-1 py-2 text-right tabular-nums text-red-700 outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0"
-                        />
-                      </div>
-                    </div>
-                  )}
-                  <p className="flex items-center justify-between border-t border-[#07713c]/20 pt-1.5">
-                    <span>Remaining Balance</span>
-                    <span className="font-bold tabular-nums text-red-700">
-                      {formatPhp(
-                        Math.max(
-                          0,
-                          (isPaymentEditMode
-                            ? Math.max(0, Number.isFinite(parseMoneyInput(remainingBalanceInput)) ? parseMoneyInput(remainingBalanceInput) : 0)
-                            : selectedRow.remaining) -
-                            Math.max(0, Number.isFinite(parseMoneyInput(paymentAmountInput)) ? parseMoneyInput(paymentAmountInput) : 0),
-                        ),
-                      )}
-                    </span>
-                  </p>
-                </div>
-              </div>
-
-              {paymentError ? <p className="text-base font-medium text-red-700">{paymentError}</p> : null}
-            </div>
-            <div className="px-4 py-3 border-t border-[#07713c]/20 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  if (isPaymentEditMode) {
-                    setIsPaymentEditMode(false);
-                    setRemainingBalanceInput("");
-                    setPaymentError("");
-                    return;
-                  }
-                  setIsPaymentEditMode(true);
-                  setPaymentAmountInput("");
-                  setRemainingBalanceInput(String(Number(selectedRow.remaining) || 0));
-                  setPaymentError("");
-                }}
-                className="px-4 py-2 rounded-lg border border-[#07713c]/30 text-lg text-[#07713c] hover:bg-[#07713c]/5"
-              >
-                {isPaymentEditMode ? "Cancel Edit" : "Edit"}
-              </button>
-              <button type="button" onClick={handleSubmitPayment} className="px-4 py-2 rounded-lg bg-[#07713C] text-lg text-white">{isPaymentEditMode ? "Save Edit" : "Save Payment"}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {editingFine && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
-            <div className="bg-[#07713C] px-5 py-3">
-              <h3 className="text-white font-semibold">Edit Fine Amount</h3>
-            </div>
-            <div className="p-4 space-y-3 text-sm">
-              <p className="text-[#07713c] font-medium">{editingFine.eventName}</p>
-              <div>
-                <label className="block mb-1 text-xs font-semibold text-[#07713c]">Fine amount</label>
-                <input
-                  value={editFineAmountInput}
-                  onChange={(e) => {
-                    setEditFineAmountInput(e.target.value);
-                    if (editFineError) setEditFineError("");
-                  }}
-                  placeholder="0.00"
-                  className="w-full rounded-lg border border-[#07713c]/30 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
-                />
-              </div>
-              {editFineError ? <p className="text-xs font-medium text-red-700">{editFineError}</p> : null}
-            </div>
-            <div className="px-4 py-3 border-t border-[#07713c]/20 flex justify-end gap-2">
-              <button type="button" onClick={() => setEditingFine(null)} className="px-4 py-2 rounded-lg border border-[#07713c]/30 text-[#07713c]">Cancel</button>
-              <button type="button" onClick={handleSaveFineEdit} className="px-4 py-2 rounded-lg bg-[#07713C] text-white">Save</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isGraphModalOpen && selectedRow && (
-        <div className="fixed inset-0 z-[54] flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-4xl rounded-2xl bg-white shadow-2xl overflow-hidden">
-            <div className="bg-[#07713C] px-5 py-3 flex items-center justify-between">
-              <h3 className="text-white text-xl font-semibold">
-                Fine Trend · {selectedRow.studentName} · {selectedRow.studentId}
+      {showPayStudentModal && (
+        <div className="fixed inset-0 z-[62] flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-4xl max-h-[90vh] rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between border-b border-[#07713c]/30 bg-[#07713c]/10 px-5 py-3 shrink-0">
+              <h3 className="text-lg font-semibold text-black">
+                {payFlowStep === "search" ? "Add Student" : "Review Fines & Pay"}
               </h3>
               <button
                 type="button"
-                onClick={() => setIsGraphModalOpen(false)}
-                className="w-7 h-7 rounded-full bg-yellow-300 flex items-center justify-center text-[#07713c] hover:bg-yellow-400"
+                onClick={closePayStudentModal}
+                className="w-7 h-7 rounded-full bg-yellow-300 flex items-center justify-center text-black hover:bg-yellow-400"
                 aria-label="Close"
-                title="Close"
               >
                 ✕
               </button>
             </div>
-            <div className="p-5">
-              <div className="h-[420px] rounded-lg border border-[#07713c]/20 p-3">
-                {isGraphDetailLoading ? (
-                  <p className="text-sm text-[#07713c]/75">Loading chart data...</p>
-                ) : selectedStudentLineData ? (
-                  <Line data={selectedStudentLineData} options={selectedStudentLineOptions} />
-                ) : (
-                  <p className="text-sm text-[#07713c]/75">No chart data available.</p>
-                )}
+
+            {payFlowStep === "search" ? (
+              <>
+                <div className="p-5 space-y-4">
+                  <p className="text-sm text-black/75">Search by Student ID or RFID. The student is not saved on this page — only the payment transaction is recorded.</p>
+                  <label className="block text-sm text-black">
+                    <span className="mb-1 block font-semibold">Student ID or RFID</span>
+                    <input
+                      ref={addStudentInputRef}
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      value={addStudentIdentifier}
+                      onChange={(e) => {
+                        setAddStudentIdentifier(e.target.value.replace(/\D/g, ""));
+                        if (addStudentError) setAddStudentError("");
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        e.preventDefault();
+                        if (addStudentAutoSubmitTimerRef.current) {
+                          clearTimeout(addStudentAutoSubmitTimerRef.current);
+                          addStudentAutoSubmitTimerRef.current = null;
+                        }
+                        handleAddStudent(addStudentIdentifier);
+                      }}
+                      placeholder="Tap or enter Student ID / RFID"
+                      className="w-full rounded-lg border border-[#07713c]/40 px-3 py-2 text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                      autoFocus
+                    />
+                  </label>
+                  {addStudentError ? <p className="text-sm font-medium text-black">{addStudentError}</p> : null}
+                  {isAddingStudent ? <p className="text-sm text-black/75">Searching student...</p> : null}
+                </div>
+                <div className="px-5 py-3 border-t border-[#07713c]/20 flex justify-end gap-2 shrink-0">
+                  <button type="button" onClick={closePayStudentModal} className="px-4 py-2 rounded-lg border border-[#07713c]/30 text-black hover:bg-gray-50">
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddStudent}
+                    disabled={isAddingStudent}
+                    className="px-4 py-2 rounded-lg border border-[#07713c] bg-[#07713c]/10 font-medium text-black hover:bg-[#07713c]/15 disabled:opacity-60"
+                  >
+                    {isAddingStudent ? "Searching..." : "Search Student"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col min-h-0 flex-1">
+                <div className="p-5 overflow-y-auto flex-1 space-y-4">
+                  {isPayFlowStudentLoading ? (
+                    <p className="text-sm text-black/85 text-center py-8">Calculating fines...</p>
+                  ) : isPayFlowStudentError || !payFlowStudent ? (
+                    <p className="text-sm text-black text-center py-8">Unable to load student fines.</p>
+                  ) : (
+                    <>
+                      <div className="rounded-xl border border-[#07713c]/25 bg-[#07713c]/[0.04] p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-black">
+                        <div>
+                          <p className="text-lg font-bold">{payFlowStudent.studentName}</p>
+                          <p className="text-sm">ID: {payFlowStudent.studentId}</p>
+                          <p className="text-sm">{payFlowStudent.departmentDisplay || payFlowStudent.department || "—"} · Year {payFlowStudent.year}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div className="rounded-lg border border-[#07713c]/20 bg-white px-3 py-2">
+                            <p className="text-xs text-black/70">Total Fine</p>
+                            <p className="font-bold tabular-nums">{formatPhp(payFlowStudent.totalFine)}</p>
+                          </div>
+                          <div className="rounded-lg border border-[#07713c]/20 bg-white px-3 py-2">
+                            <p className="text-xs text-black/70">Remaining</p>
+                            <p className="font-bold tabular-nums">{formatPhp(payFlowStudent.remaining)}</p>
+                          </div>
+                          <div className="rounded-lg border border-[#07713c]/20 bg-white px-3 py-2">
+                            <p className="text-xs text-black/70">Paid</p>
+                            <p className="font-bold tabular-nums">{formatPhp(payFlowStudent.paidAmount)}</p>
+                          </div>
+                          <div className="hidden rounded-lg border border-[#07713c]/20 bg-white px-3 py-2">
+                            <p className="text-xs text-black/70">Waived</p>
+                            <p className="font-bold tabular-nums">{formatPhp(payFlowStudent.waivedAmount)}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="overflow-x-auto rounded-lg border border-[#07713c]/30">
+                        <table className="w-full min-w-[640px] text-sm">
+                          <thead className={`border-b border-[#07713c]/30 bg-[#07713c]/10 text-xs uppercase ${PAYMENTS_TH_TEXT}`}>
+                            <tr>
+                              <th className="px-4 py-2 text-left">Event</th>
+                              <th className="px-4 py-2 text-center">Date</th>
+                              <th className="px-4 py-2 text-center">Session</th>
+                              <th className="px-4 py-2 text-right">Remaining Fine</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {deskEvents.length === 0 ? (
+                              <tr>
+                                <td colSpan={4} className="px-4 py-6 text-center text-black/85">No completed events with fines.</td>
+                              </tr>
+                            ) : (
+                              deskEvents.map((event) => (
+                                <tr key={event.id} className="border-t border-[#07713c]/20">
+                                  <td className="px-4 py-2.5 text-black font-medium">{event.name}</td>
+                                  <td className="px-4 py-2.5 text-center text-black">{formatEventDateForDisplay(event.date)}</td>
+                                  <td className="px-4 py-2.5 text-center text-black">{sessionLabel(event.sessionKind)}</td>
+                                  <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-black">{formatPhp(event.fine)}</td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                          <tfoot>
+                            <tr className="bg-[#07713c]/[0.07] border-t border-[#07713c]/30">
+                              <td colSpan={3} className="px-4 py-3 text-right text-sm font-semibold text-black">Total remaining fines</td>
+                              <td className="px-4 py-3 text-right text-sm font-bold tabular-nums text-black">{formatPhp(deskFilteredTotalFine)}</td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+
+                      <div className="rounded-xl border border-[#07713c]/25 bg-gray-50 p-4 space-y-3">
+                        <p className="text-sm font-semibold uppercase tracking-wide text-black/80">Record Payment</p>
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-black">
+                          <span>Current balance</span>
+                          <span className="font-semibold tabular-nums">{formatPhp(payFlowStudent.remaining)}</span>
+                        </div>
+                        <label className="block text-sm text-black">
+                          <span className="mb-1 block font-semibold">Amount to pay</span>
+                          <div className="flex items-center gap-2 rounded-lg border border-[#07713c]/40 bg-white px-3 py-2">
+                            <span className="text-black">₱</span>
+                            <input
+                              value={paymentAmountInput}
+                              onChange={(e) => {
+                                const normalized = e.target.value
+                                  .replace(/[^\d.]/g, "")
+                                  .replace(/(\..*)\./g, "$1");
+                                setPaymentAmountInput(normalized);
+                                if (paymentError) setPaymentError("");
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleSubmitPayment();
+                              }}
+                              placeholder="0.00"
+                              inputMode="decimal"
+                              className="w-full bg-transparent text-right tabular-nums text-black outline-none focus:ring-0"
+                            />
+                          </div>
+                        </label>
+                        {payFlowStudent.remaining > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPaymentAmountInput(String(payFlowStudent.remaining));
+                              if (paymentError) setPaymentError("");
+                            }}
+                            className="text-xs font-medium text-[#07713c] hover:underline underline-offset-2"
+                          >
+                            Pay full balance ({formatPhp(payFlowStudent.remaining)})
+                          </button>
+                        ) : null}
+                        <div className="flex items-center justify-between border-t border-[#07713c]/20 pt-2 text-sm text-black">
+                          <span className="font-medium">New balance after payment</span>
+                          <span className="font-bold tabular-nums text-[#07713c]">{formatPhp(payFlowPreviewNewBalance)}</span>
+                        </div>
+                        {paymentError ? <p className="text-sm font-medium text-black">{paymentError}</p> : null}
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="px-5 py-3 border-t border-[#07713c]/20 flex flex-wrap justify-between gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPayFlowStep("search");
+                      setPayFlowStudentId("");
+                      setAddStudentIdentifier("");
+                      setPaymentAmountInput("");
+                      setPaymentError("");
+                    }}
+                    className="px-4 py-2 rounded-lg border border-[#07713c]/30 text-black hover:bg-gray-50"
+                  >
+                    Search Another
+                  </button>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={closePayStudentModal} className="px-4 py-2 rounded-lg border border-[#07713c]/30 text-black hover:bg-gray-50">
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSubmitPayment}
+                      disabled={!payFlowStudent || payFlowStudent.remaining <= 0 || recordPaymentMutation.isPending}
+                      className="px-4 py-2 rounded-lg border border-[#07713c] bg-[#07713c] font-semibold text-white hover:bg-[#055a2e] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {recordPaymentMutation.isPending ? "Saving..." : "Save Payment"}
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -1328,22 +1021,22 @@ export default function Payments({ onNavigate, onLogout }) {
       {exportOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
-            <h3 className="text-lg font-semibold text-[#07713c]">Export / reports</h3>
-            <p className="mt-2 text-sm text-[#07713c]">
-              Apply filters below for export.
+            <h3 className="text-lg font-semibold text-black">Export / reports</h3>
+            <p className="mt-2 text-sm text-black">
+              Apply filters below for export. {isExportListLoading ? "Loading student list..." : ""}
             </p>
             <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-              <label className="flex flex-col gap-1 text-xs text-[#07713c] sm:col-span-2">
+              <label className="flex flex-col gap-1 text-xs text-black sm:col-span-2">
                 Search
                 <input
                   type="search"
                   value={exportSearch}
                   onChange={(e) => setExportSearch(e.target.value)}
                   placeholder="Search student, ID, or course"
-                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                  className="h-9 rounded-lg border border-[#07713c]/40 bg-white px-2.5 text-sm text-black placeholder:text-black/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                 />
               </label>
-              <label className="flex flex-col gap-1 text-xs text-[#07713c]">
+              <label className="flex flex-col gap-1 text-xs text-black">
                 Status
                 <select
                   value={exportStatusFilter}
@@ -1357,7 +1050,7 @@ export default function Payments({ onNavigate, onLogout }) {
                   <option>Waived</option>
                 </select>
               </label>
-              <label className="flex flex-col gap-1 text-xs text-[#07713c]">
+              <label className="flex flex-col gap-1 text-xs text-black">
                 College
                 <select
                   value={exportCollegeFilter}
@@ -1372,7 +1065,7 @@ export default function Payments({ onNavigate, onLogout }) {
                   ))}
                 </select>
               </label>
-              <label className="flex flex-col gap-1 text-xs text-[#07713c]">
+              <label className="flex flex-col gap-1 text-xs text-black">
                 Year
                 <select
                   value={exportYearFilter}
@@ -1387,7 +1080,7 @@ export default function Payments({ onNavigate, onLogout }) {
                   ))}
                 </select>
               </label>
-              <label className="flex flex-col gap-1 text-xs text-[#07713c]">
+              <label className="flex flex-col gap-1 text-xs text-black">
                 Balance
                 <select
                   value={exportBalanceFilter}
@@ -1400,7 +1093,7 @@ export default function Payments({ onNavigate, onLogout }) {
                 </select>
               </label>
             </div>
-            <p className="mt-3 text-xs text-[#07713c]/85">
+            <p className="mt-3 text-xs text-black/85">
               {exportFilteredRows.length} student record(s) will be exported.
             </p>
             <div className="mt-4 space-y-2">
@@ -1410,7 +1103,7 @@ export default function Payments({ onNavigate, onLogout }) {
                   exportPaymentsCsv();
                   setExportOpen(false);
                 }}
-                className="w-full rounded-lg bg-[#07713c] px-4 py-2.5 text-sm font-medium text-white hover:brightness-95"
+                className="w-full rounded-lg border border-[#07713c] bg-[#07713c]/10 px-4 py-2.5 text-sm font-medium text-black hover:bg-[#07713c]/15"
               >
                 Export CSV — filtered payments
               </button>
@@ -1420,21 +1113,21 @@ export default function Payments({ onNavigate, onLogout }) {
                   exportPaymentsPdf();
                   setExportOpen(false);
                 }}
-                className="w-full rounded-lg border border-[#07713c]/40 px-4 py-2.5 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/10"
+                className="w-full rounded-lg border border-[#07713c]/40 px-4 py-2.5 text-sm font-medium text-black hover:bg-[#07713c]/10"
               >
                 Export PDF — filtered payments
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  setExportSearch(search);
-                  setExportStatusFilter(statusFilter);
+                  setExportSearch("");
+                  setExportStatusFilter("All");
                   setExportCollegeFilter("all");
                   setExportCourseFilter("all");
                   setExportYearFilter("all");
                   setExportBalanceFilter("all");
                 }}
-                className="w-full rounded-lg border border-[#07713c]/30 px-4 py-2 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/8"
+                className="w-full rounded-lg border border-[#07713c]/30 px-4 py-2 text-sm font-medium text-black hover:bg-[#07713c]/8"
               >
                 Reset export filters
               </button>
@@ -1442,10 +1135,115 @@ export default function Payments({ onNavigate, onLogout }) {
             <button
               type="button"
               onClick={() => setExportOpen(false)}
-              className="mt-4 w-full rounded-lg border border-[#07713c]/30 py-2 text-sm text-[#07713c] hover:bg-[#07713c]/10"
+              className="mt-4 w-full rounded-lg border border-[#07713c]/30 py-2 text-sm text-black hover:bg-[#07713c]/10"
             >
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {selectedTransaction && (
+        <div className="fixed inset-0 z-[63] flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between border-b border-[#07713c]/30 bg-[#07713c]/10 px-5 py-3">
+              <h3 className="text-lg font-semibold text-black">Payment Transaction</h3>
+              <button
+                type="button"
+                onClick={() => setSelectedTransaction(null)}
+                className="w-7 h-7 rounded-full bg-yellow-300 flex items-center justify-center text-black hover:bg-yellow-400"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="px-5 py-4 space-y-4 text-sm text-black">
+              <div className="rounded-lg border border-[#07713c]/20 bg-[#07713c]/5 px-4 py-3">
+                <p className="text-xs uppercase tracking-wide text-black/60">Transaction Code</p>
+                <p className="mt-1 font-mono text-base font-bold">{selectedTransaction.transactionCode}</p>
+              </div>
+
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <div>
+                  <dt className="text-xs text-black/60">Date</dt>
+                  <dd className="font-medium">{formatDateTimeShort(selectedTransaction.paidAt)}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-black/60">Status</dt>
+                  <dd>
+                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${transactionStatusClass(selectedTransaction.status)}`}>
+                      {selectedTransaction.status}
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-black/60">Student ID</dt>
+                  <dd className="font-medium">{selectedTransaction.studentId}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-black/60">Student Name</dt>
+                  <dd className="font-medium truncate" title={selectedTransaction.studentName}>
+                    {selectedTransaction.studentName}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-black/60">Department / Year</dt>
+                  <dd className="font-medium">
+                    {selectedTransaction.department || "—"}
+                    {selectedTransaction.year ? ` · ${selectedTransaction.year}` : ""}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-black/60">Amount Paid</dt>
+                  <dd className="font-semibold tabular-nums text-[#07713c]">{formatPhp(selectedTransaction.amountPaid)}</dd>
+                </div>
+                {selectedTransaction.previousBalance != null ? (
+                  <div>
+                    <dt className="text-xs text-black/60">Previous Balance</dt>
+                    <dd className="font-medium tabular-nums">{formatPhp(selectedTransaction.previousBalance)}</dd>
+                  </div>
+                ) : null}
+                {selectedTransaction.balanceAfter != null ? (
+                  <div>
+                    <dt className="text-xs text-black/60">Balance After</dt>
+                    <dd className="font-medium tabular-nums">{formatPhp(selectedTransaction.balanceAfter)}</dd>
+                  </div>
+                ) : null}
+                <div className="hidden">
+                  <dt className="text-xs text-black/60">Payment Method</dt>
+                  <dd className="font-medium">{selectedTransaction.paymentMethod || "Cash"}</dd>
+                </div>
+                <div className="hidden">
+                  <dt className="text-xs text-black/60">Encoded By</dt>
+                  <dd className="font-medium">{selectedTransaction.encodedBy || "—"}</dd>
+                </div>
+              </dl>
+
+              {selectedTransaction.remarks ? (
+                <div className="rounded-lg border border-[#07713c]/15 bg-gray-50 px-3 py-2">
+                  <p className="text-xs text-black/60">Remarks</p>
+                  <p className="mt-1 text-sm">{selectedTransaction.remarks}</p>
+                </div>
+              ) : null}
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => printReceipt(transactionToReceipt(selectedTransaction))}
+                  className="rounded-lg border border-[#07713c] bg-[#07713c] px-4 py-2 text-sm font-semibold text-white hover:bg-[#055a2e]"
+                >
+                  Print Receipt
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTransaction(null)}
+                  className="rounded-lg border border-[#07713c]/30 px-4 py-2 text-sm text-black hover:bg-gray-50"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -7,6 +7,10 @@ import { getDashboardRoleLabel } from "../utils/roles";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { useDeleteUser, useUpdateUser, useUsersList } from "../hooks/useUsersManagement";
 
+/** Users page main content text (sidebar + top header excluded). */
+const USERS_PAGE_TEXT = "text-black";
+const USERS_TH_TEXT = "font-bold text-black";
+
 export default function UsersPage({ onNavigate, onLogout }) {
   const { role, isGovernor, governorScope } = useGovernorScope();
   const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
@@ -89,10 +93,10 @@ export default function UsersPage({ onNavigate, onLogout }) {
 
   return (
     <div className="flex min-h-screen bg-gray-50 [&_button]:cursor-pointer">
-      <aside className="sticky top-0 h-screen max-h-screen w-64 shrink-0 self-start overflow-y-auto bg-[#07713C] text-white flex flex-col">
+      <aside className="sticky top-0 h-screen max-h-screen w-64 shrink-0 self-start overflow-y-auto bg-[#07713C] text-white flex flex-col [&_p]:text-white">
         <div className="p-6 space-y-4">
           <img src="/logo.png" alt="NMCI" className="w-16 h-16 rounded-full bg-white/10 object-contain mx-auto" />
-          <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif]">
+          <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif] text-white">
             Northern Mindanao Colleges, Inc.
           </p>
         </div>
@@ -144,10 +148,10 @@ export default function UsersPage({ onNavigate, onLogout }) {
           </div>
         </header>
 
-        <main className="flex-1 p-6 overflow-auto">
+        <main className={`flex-1 p-6 overflow-auto ${USERS_PAGE_TEXT} [&_th]:font-bold [&_th]:!text-black`}>
           <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-medium text-[#36454F]">
+              <p className="text-sm font-medium text-black">
                 {isAdmin
                   ? "Manage registered users. Admin can update username/password and remove accounts."
                   : "You can view users, but only admin can edit."}
@@ -157,20 +161,20 @@ export default function UsersPage({ onNavigate, onLogout }) {
                   <button
                     type="button"
                     onClick={() => setCreateOpen(true)}
-                    className="rounded-lg bg-[#07713c] px-4 py-2 text-xs font-semibold text-white hover:bg-[#055a2e]"
+                    className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-4 py-2 text-xs font-semibold text-black hover:bg-[#07713c]/15"
                   >
                     + Add User
                   </button>
                 )}
               </div>
             </div>
-            <p className="text-xs text-[#36454F]/75">Role: {roleLabel}</p>
-            {actionError && <p className="text-sm text-red-600">{actionError}</p>}
-            {actionSuccess && <p className="text-sm text-green-700">{actionSuccess}</p>}
+            <p className="text-xs text-black/75">Role: {roleLabel}</p>
+            {actionError && <p className="text-sm text-black">{actionError}</p>}
+            {actionSuccess && <p className="text-sm text-black">{actionSuccess}</p>}
 
             <div className="overflow-x-auto rounded-lg border border-[#07713c]/20">
               <table className="w-full min-w-[760px] text-sm font-[Inter,sans-serif]">
-                <thead className="border-b border-[#07713c]/30 bg-[#07713c] text-xs font-semibold uppercase tracking-wide text-white">
+                <thead className={`border-b border-[#07713c]/30 bg-[#07713c]/10 text-xs uppercase tracking-wide ${USERS_TH_TEXT}`}>
                   <tr>
                     <th className="px-3 py-2.5 text-left align-middle">ID</th>
                     <th className="px-3 py-2.5 text-left align-middle">Username</th>
@@ -183,13 +187,13 @@ export default function UsersPage({ onNavigate, onLogout }) {
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td className="px-3 py-3 text-sm text-gray-500" colSpan={6}>
+                      <td className="px-3 py-3 text-sm text-black/85" colSpan={6}>
                         Loading users...
                       </td>
                     </tr>
                   ) : sortedUsers.length === 0 ? (
                     <tr>
-                      <td className="px-3 py-3 text-sm text-gray-500" colSpan={6}>
+                      <td className="px-3 py-3 text-sm text-black/85" colSpan={6}>
                         No users found.
                       </td>
                     </tr>
@@ -198,44 +202,44 @@ export default function UsersPage({ onNavigate, onLogout }) {
                       const isEditing = editingUserId === user.id;
                       return (
                         <tr key={user.id} className="border-t border-[#07713c]/20 hover:bg-gray-50">
-                          <td className="px-3 py-1.5 text-left font-medium leading-snug text-[#07713c]">{user.id}</td>
-                          <td className="px-3 py-1.5 text-left font-medium leading-snug text-[#07713c]">
+                          <td className="px-3 py-1.5 text-left font-medium leading-snug text-black">{user.id}</td>
+                          <td className="px-3 py-1.5 text-left font-medium leading-snug text-black">
                             {isEditing ? (
                               <input
                                 type="text"
                                 value={editForm.username}
                                 onChange={(e) => setEditForm((prev) => ({ ...prev, username: e.target.value }))}
-                                className="w-full rounded-lg border border-[#07713c]/40 bg-white px-2.5 py-1.5 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                                className="w-full rounded-lg border border-[#07713c]/40 bg-white px-2.5 py-1.5 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                               />
                             ) : (
                               user.username
                             )}
                           </td>
-                          <td className="px-3 py-1.5 text-left leading-snug text-[#07713c]">
+                          <td className="px-3 py-1.5 text-left leading-snug text-black">
                             {isEditing && isAdmin ? (
                               <input
                                 type="password"
                                 value={editForm.password}
                                 onChange={(e) => setEditForm((prev) => ({ ...prev, password: e.target.value }))}
-                                className="w-full min-w-44 rounded-lg border border-[#07713c]/40 bg-white px-2.5 py-1.5 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                                className="w-full min-w-44 rounded-lg border border-[#07713c]/40 bg-white px-2.5 py-1.5 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
                                 placeholder="Enter new password"
                               />
                             ) : (
-                              <span className="text-[#07713c]/65">••••••••</span>
+                              <span className="text-black/65">••••••••</span>
                             )}
                           </td>
-                          <td className="px-3 py-1.5 text-left leading-snug text-[#07713c]">{roleLabelForUsersPage(user.role)}</td>
-                          <td className="px-3 py-1.5 text-left leading-snug text-[#07713c]">{user.department_name || "-"}</td>
+                          <td className="px-3 py-1.5 text-left leading-snug text-black">{roleLabelForUsersPage(user.role)}</td>
+                          <td className="px-3 py-1.5 text-left leading-snug text-black">{user.department_name || "-"}</td>
                           <td className="px-3 py-1.5 text-left">
                             {!isAdmin ? (
-                              <span className="text-xs text-[#36454F]/60">View only</span>
+                              <span className="text-xs text-black/60">View only</span>
                             ) : isEditing ? (
                               <div className="flex items-center gap-2">
                                 <button
                                   type="button"
                                   onClick={saveEdit}
                                   disabled={updateUserMutation.isPending}
-                                  className="rounded-lg bg-[#07713C] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                                  className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-3 py-1.5 text-xs font-semibold text-black hover:bg-[#07713c]/15 disabled:opacity-60"
                                 >
                                   Save
                                 </button>
@@ -245,7 +249,7 @@ export default function UsersPage({ onNavigate, onLogout }) {
                                     setEditingUserId(null);
                                     setEditForm({ username: "", password: "" });
                                   }}
-                                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-[#36454F]"
+                                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-black"
                                 >
                                   Cancel
                                 </button>
@@ -255,7 +259,7 @@ export default function UsersPage({ onNavigate, onLogout }) {
                                 <button
                                   type="button"
                                   onClick={() => startEdit(user)}
-                                  className="rounded-lg border border-[#07713C]/40 px-3 py-1.5 text-xs font-medium text-[#07713C] hover:bg-[#07713C]/10"
+                                  className="rounded-lg border border-[#07713C]/40 px-3 py-1.5 text-xs font-medium text-black hover:bg-[#07713C]/10"
                                 >
                                   Edit
                                 </button>
@@ -263,7 +267,7 @@ export default function UsersPage({ onNavigate, onLogout }) {
                                   type="button"
                                   onClick={() => removeUser(user.id)}
                                   disabled={deleteUserMutation.isPending}
-                                  className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                                  className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-semibold text-black hover:bg-red-100 disabled:opacity-60"
                                 >
                                   Remove
                                 </button>

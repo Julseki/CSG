@@ -4,6 +4,7 @@ import { useGovernorScope } from "../hooks/useGovernorScope";
 import { isCsgPresident } from "../utils/roles";
 import {
   AM_SESSION_TIME_OPTIONS,
+  AM_SESSION_TIME_OUT_OPTIONS,
   PM_SESSION_TIME_OPTIONS,
   GRACE_HOUR_OPTIONS,
   GRACE_MINUTE_OPTIONS,
@@ -24,6 +25,9 @@ const STEPS = [
 ];
 
 const MIN_EVENT_PASSWORD_LENGTH = 6;
+
+/** Add Event modal main content text. */
+const ADD_EVENT_TEXT = "text-black";
 
 export default function AddEvent({ onBack, onNext }) {
   const { role, isGovernor, governorScope } = useGovernorScope();
@@ -286,15 +290,15 @@ export default function AddEvent({ onBack, onNext }) {
       <div className="w-full max-w-3xl rounded-2xl bg-[#07713c] p-px shadow-2xl">
         <div className="overflow-hidden rounded-[calc(1rem-1px)] bg-white">
         {/* Header — top radius matches inner panel so green fills the curve, not the white shell */}
-        <div className="flex items-center justify-between rounded-t-[calc(1rem-1px)] border-b border-[#055a2e] bg-[#07713c] px-6 py-4">
+        <div className="flex items-center justify-between rounded-t-[calc(1rem-1px)] border-b border-[#07713c]/30 bg-[#07713c]/10 px-6 py-4">
           <div>
-            <h1 className="text-xl font-bold text-white">Add New Event</h1>
-            <p className="text-sm text-white/90 mt-0.5">Step {step} Of 3 — {STEPS[step - 1].label}</p>
+            <h1 className="text-xl font-bold text-black">Add New Event</h1>
+            <p className="text-sm text-black/90 mt-0.5">Step {step} Of 3 — {STEPS[step - 1].label}</p>
           </div>
           <button
             type="button"
             onClick={onBack}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-[#07713c] transition-colors outline-none hover:bg-yellow-300 focus-visible:ring-2 focus-visible:ring-white/70"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-black transition-colors outline-none hover:bg-yellow-300 focus-visible:ring-2 focus-visible:ring-[#07713c]/30"
           >
             <span className="text-lg font-bold">×</span>
           </button>
@@ -307,12 +311,12 @@ export default function AddEvent({ onBack, onNext }) {
               <div key={s.id} className="flex items-center gap-2">
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    step >= s.id ? "bg-[#07713c] text-white" : "bg-[#07713c]/12 text-[#07713c]/65"
+                    step >= s.id ? "bg-[#07713c]/10 font-semibold text-black" : "bg-[#07713c]/12 text-black/65"
                   }`}
                 >
                   {s.id}
                 </div>
-                <span className={`text-sm font-medium ${step >= s.id ? "text-[#07713c]" : "text-[#07713c]/45"}`}>
+                <span className={`text-sm font-medium ${step >= s.id ? "text-black" : "text-black/45"}`}>
                   {s.label}
                 </span>
                 {i < STEPS.length - 1 && (
@@ -324,11 +328,11 @@ export default function AddEvent({ onBack, onNext }) {
         </div>
 
         {/* Form Content */}
-        <main className="max-h-[80vh] overflow-y-auto px-6 pb-6 pt-4 [scrollbar-width:thin] [scrollbar-color:rgba(7,113,60,0.28)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#07713c]/30 [&::-webkit-scrollbar-thumb]:hover:bg-[#07713c]/40 [&::-webkit-scrollbar-track]:bg-transparent">
+        <main className={`max-h-[80vh] overflow-y-auto px-6 pb-6 pt-4 ${ADD_EVENT_TEXT} [scrollbar-width:thin] [scrollbar-color:rgba(7,113,60,0.28)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#07713c]/30 [&::-webkit-scrollbar-thumb]:hover:bg-[#07713c]/40 [&::-webkit-scrollbar-track]:bg-transparent`}>
         {step === 1 && (
           <div className="space-y-6">
             {Object.values(errors).filter(Boolean).length > 0 && (
-              <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+              <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-black">
                 {Object.values(errors).filter(Boolean).map((msg, i) => (
                   <p key={i}>{msg}</p>
                 ))}
@@ -337,48 +341,48 @@ export default function AddEvent({ onBack, onNext }) {
 
             {/* Event Name */}
             <div>
-              <label className="block text-sm font-semibold text-[#07713c] mb-1">Event Name *</label>
+              <label className="block text-sm font-semibold text-black mb-1">Event Name *</label>
               <input
                 type="text"
                 value={eventName}
                 onChange={(e) => { setEventName(e.target.value); setErrors((prev) => ({ ...prev, eventName: null })); }}
                 placeholder="Eg, General Assembly"
-                className={`w-full rounded-lg border px-4 py-2.5 text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 ${errors.eventName ? "border-red-500 bg-red-50/30" : "border-[#07713c]/35 bg-white"}`}
+                className={`w-full rounded-lg border px-4 py-2.5 text-black placeholder:text-black/45 focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 ${errors.eventName ? "border-red-500 bg-red-50/30" : "border-[#07713c]/35 bg-white"}`}
               />
-              {errors.eventName && <p className="text-xs text-red-600 mt-1">{errors.eventName}</p>}
+              {errors.eventName && <p className="text-xs text-black mt-1">{errors.eventName}</p>}
             </div>
 
             {/* Event Date & Venue */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-[#07713c] mb-1">Event Date *</label>
+                <label className="block text-sm font-semibold text-black mb-1">Event Date *</label>
                 <div className="flex gap-2">
                   <input
                     type="date"
                     value={eventDate}
                     onChange={(e) => { setEventDate(e.target.value); setErrors((prev) => ({ ...prev, eventDate: null })); }}
-                    className={`flex-1 rounded-lg border px-4 py-2.5 text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 ${errors.eventDate ? "border-red-500 bg-red-50/30" : "border-[#07713c]/35 bg-white"}`}
+                    className={`flex-1 rounded-lg border px-4 py-2.5 text-black focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 ${errors.eventDate ? "border-red-500 bg-red-50/30" : "border-[#07713c]/35 bg-white"}`}
                   />
                 </div>
-                {errors.eventDate && <p className="text-xs text-red-600 mt-1">{errors.eventDate}</p>}
+                {errors.eventDate && <p className="text-xs text-black mt-1">{errors.eventDate}</p>}
               </div>
               <div>
-                <label className="block text-sm font-semibold text-[#07713c] mb-1">Event Venue *</label>
+                <label className="block text-sm font-semibold text-black mb-1">Event Venue *</label>
                 <input
                   type="text"
                   value={venue}
                   onChange={(e) => { setVenue(e.target.value); setErrors((prev) => ({ ...prev, venue: null })); }}
                   placeholder="E.G, City Gym"
-                  className={`w-full rounded-lg border px-4 py-2.5 text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 ${errors.venue ? "border-red-500 bg-red-50/30" : "border-[#07713c]/35 bg-white"}`}
+                  className={`w-full rounded-lg border px-4 py-2.5 text-black placeholder:text-black/45 focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 ${errors.venue ? "border-red-500 bg-red-50/30" : "border-[#07713c]/35 bg-white"}`}
                 />
-                {errors.venue && <p className="text-xs text-red-600 mt-1">{errors.venue}</p>}
+                {errors.venue && <p className="text-xs text-black mt-1">{errors.venue}</p>}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-[#07713c] mb-1">Fines</label>
+              <label className="block text-sm font-semibold text-black mb-1">Fines</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#07713c]/70">₱</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-black/70">₱</span>
                 <input
                   type="number"
                   min="0"
@@ -390,15 +394,15 @@ export default function AddEvent({ onBack, onNext }) {
                     setErrors((prev) => ({ ...prev, fineAmount: null }));
                   }}
                   placeholder="0"
-                  className={`w-full rounded-lg border py-2.5 pl-8 pr-4 text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 ${errors.fineAmount ? "border-red-500 bg-red-50/30" : "border-[#07713c]/35 bg-white"}`}
+                  className={`w-full rounded-lg border py-2.5 pl-8 pr-4 text-black placeholder:text-black/45 focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 ${errors.fineAmount ? "border-red-500 bg-red-50/30" : "border-[#07713c]/35 bg-white"}`}
                 />
               </div>
-              {errors.fineAmount && <p className="text-xs text-red-600 mt-1">{errors.fineAmount}</p>}
+              {errors.fineAmount && <p className="text-xs text-black mt-1">{errors.fineAmount}</p>}
             </div>
 
             {/* Event Duration */}
             <div>
-              <label className="block text-sm font-semibold text-[#07713c] mb-2">Event Duration *</label>
+              <label className="block text-sm font-semibold text-black mb-2">Event Duration *</label>
               <div className="grid grid-cols-2 gap-4">
                 <button
                   type="button"
@@ -412,8 +416,8 @@ export default function AddEvent({ onBack, onNext }) {
                   }`}
                 >
                   <span className="text-2xl">☀️</span>
-                  <p className="font-medium text-amber-600 mt-1">Whole Day</p>
-                  <p className="text-xs text-gray-500">Am + Pm Session</p>
+                  <p className="font-medium text-black mt-1">Whole Day</p>
+                  <p className="text-xs text-black/75">Am + Pm Session</p>
                 </button>
                 <button
                   type="button"
@@ -427,8 +431,8 @@ export default function AddEvent({ onBack, onNext }) {
                   }`}
                 >
                   <span className="text-2xl">🌓</span>
-                  <p className="font-medium text-amber-600 mt-1">Half Day</p>
-                  <p className="text-xs text-gray-500">Am Or Pm Only</p>
+                  <p className="font-medium text-black mt-1">Half Day</p>
+                  <p className="text-xs text-black/75">Am Or Pm Only</p>
                 </button>
               </div>
               {duration === "half" && (
@@ -468,11 +472,11 @@ export default function AddEvent({ onBack, onNext }) {
             {/* AM Session */}
             {(duration === "whole" || (duration === "half" && useAmHalf)) && (
             <div className="rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] p-4">
-              <h3 className="text-sm font-semibold text-[#07713c] mb-4">Am Session - Time In / Out</h3>
+              <h3 className="text-sm font-semibold text-black mb-4">Am Session - Time In / Out</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-4">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-[#07713c]">Time In</label>
+                    <label className="mb-1 block text-xs font-medium text-black">Time In</label>
                     <div className="flex gap-2">
                       <select
                         value={amTimeIn}
@@ -489,16 +493,16 @@ export default function AddEvent({ onBack, onNext }) {
                           </option>
                         ))}
                       </select>
-                      <span className="flex shrink-0 items-center px-2 text-[#07713c]/60">🕐</span>
+                      <span className="flex shrink-0 items-center px-2 text-black/60">🕐</span>
                     </div>
-                    {errors.amTimeIn && <p className="text-xs text-red-600 mt-1">{errors.amTimeIn}</p>}
+                    {errors.amTimeIn && <p className="text-xs text-black mt-1">{errors.amTimeIn}</p>}
                   </div>
                   <div>
-                    <span className="mb-1 block text-xs font-medium text-[#07713c]">Late — Time In</span>
+                    <span className="mb-1 block text-xs font-medium text-black">Late — Time In</span>
                     <div className="flex gap-2">
                       <div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
                         <div className="min-w-0">
-                          <label className="mb-1 block text-[11px] font-medium text-[#07713c]/80">Hour(s)</label>
+                          <label className="mb-1 block text-[11px] font-medium text-black/80">Hour(s)</label>
                           <select
                             value={amGraceHours}
                             onChange={(e) => {
@@ -515,7 +519,7 @@ export default function AddEvent({ onBack, onNext }) {
                           </select>
                         </div>
                         <div className="min-w-0">
-                          <label className="mb-1 block text-[11px] font-medium text-[#07713c]/80">Minutes</label>
+                          <label className="mb-1 block text-[11px] font-medium text-black/80">Minutes</label>
                           <select
                             value={amGraceMinutes}
                             onChange={(e) => {
@@ -532,15 +536,15 @@ export default function AddEvent({ onBack, onNext }) {
                           </select>
                         </div>
                       </div>
-                      <span className="flex shrink-0 items-center self-end px-2 pb-2 text-[#07713c]/60 select-none" aria-hidden>
+                      <span className="flex shrink-0 items-center self-end px-2 pb-2 text-black/60 select-none" aria-hidden>
                         🕐
                       </span>
                     </div>
-                    {errors.amGraceInMinutes && <p className="text-xs text-red-600 mt-1">{errors.amGraceInMinutes}</p>}
+                    {errors.amGraceInMinutes && <p className="text-xs text-black mt-1">{errors.amGraceInMinutes}</p>}
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-[#07713c]">Time Out</label>
+                  <label className="mb-1 block text-xs font-medium text-black">Time Out</label>
                   <div className="flex gap-2">
                     <select
                       value={amTimeOut}
@@ -551,15 +555,15 @@ export default function AddEvent({ onBack, onNext }) {
                       className={`flex-1 min-w-0 px-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55 ${errors.amTimeOut ? "border-red-500" : "border-gray-300"}`}
                     >
                       <option value="">Select time</option>
-                      {AM_SESSION_TIME_OPTIONS.map((timeOption) => (
+                      {AM_SESSION_TIME_OUT_OPTIONS.map((timeOption) => (
                         <option key={`am-out-${timeOption}`} value={timeOption}>
                           {timeOption}
                         </option>
                       ))}
                     </select>
-                    <span className="flex shrink-0 items-center px-2 text-[#07713c]/60">🕐</span>
+                    <span className="flex shrink-0 items-center px-2 text-black/60">🕐</span>
                   </div>
-                  {errors.amTimeOut && <p className="text-xs text-red-600 mt-1">{errors.amTimeOut}</p>}
+                  {errors.amTimeOut && <p className="text-xs text-black mt-1">{errors.amTimeOut}</p>}
                 </div>
               </div>
             </div>
@@ -568,11 +572,11 @@ export default function AddEvent({ onBack, onNext }) {
             {/* PM Session */}
             {(duration === "whole" || (duration === "half" && usePmHalf)) && (
             <div className="rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] p-4">
-              <h3 className="text-sm font-semibold text-[#07713c] mb-4">Pm Session - Time In / Out</h3>
+              <h3 className="text-sm font-semibold text-black mb-4">Pm Session - Time In / Out</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-4">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-[#07713c]">Time In</label>
+                    <label className="mb-1 block text-xs font-medium text-black">Time In</label>
                     <div className="flex gap-2">
                       <select
                         value={pmTimeIn}
@@ -589,16 +593,16 @@ export default function AddEvent({ onBack, onNext }) {
                           </option>
                         ))}
                       </select>
-                      <span className="flex shrink-0 items-center px-2 text-[#07713c]/60">🕐</span>
+                      <span className="flex shrink-0 items-center px-2 text-black/60">🕐</span>
                     </div>
-                    {errors.pmTimeIn && <p className="text-xs text-red-600 mt-1">{errors.pmTimeIn}</p>}
+                    {errors.pmTimeIn && <p className="text-xs text-black mt-1">{errors.pmTimeIn}</p>}
                   </div>
                   <div>
-                    <span className="mb-1 block text-xs font-medium text-[#07713c]">Late — Time In</span>
+                    <span className="mb-1 block text-xs font-medium text-black">Late — Time In</span>
                     <div className="flex gap-2">
                       <div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
                         <div className="min-w-0">
-                          <label className="mb-1 block text-[11px] font-medium text-[#07713c]/80">Hour(s)</label>
+                          <label className="mb-1 block text-[11px] font-medium text-black/80">Hour(s)</label>
                           <select
                             value={pmGraceHours}
                             onChange={(e) => {
@@ -615,7 +619,7 @@ export default function AddEvent({ onBack, onNext }) {
                           </select>
                         </div>
                         <div className="min-w-0">
-                          <label className="mb-1 block text-[11px] font-medium text-[#07713c]/80">Minutes</label>
+                          <label className="mb-1 block text-[11px] font-medium text-black/80">Minutes</label>
                           <select
                             value={pmGraceMinutes}
                             onChange={(e) => {
@@ -632,15 +636,15 @@ export default function AddEvent({ onBack, onNext }) {
                           </select>
                         </div>
                       </div>
-                      <span className="flex shrink-0 items-center self-end px-2 pb-2 text-[#07713c]/60 select-none" aria-hidden>
+                      <span className="flex shrink-0 items-center self-end px-2 pb-2 text-black/60 select-none" aria-hidden>
                         🕐
                       </span>
                     </div>
-                    {errors.pmGraceInMinutes && <p className="text-xs text-red-600 mt-1">{errors.pmGraceInMinutes}</p>}
+                    {errors.pmGraceInMinutes && <p className="text-xs text-black mt-1">{errors.pmGraceInMinutes}</p>}
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-[#07713c]">Time Out</label>
+                  <label className="mb-1 block text-xs font-medium text-black">Time Out</label>
                   <div className="flex gap-2">
                     <select
                       value={pmTimeOut}
@@ -657,9 +661,9 @@ export default function AddEvent({ onBack, onNext }) {
                         </option>
                       ))}
                     </select>
-                    <span className="flex shrink-0 items-center px-2 text-[#07713c]/60">🕐</span>
+                    <span className="flex shrink-0 items-center px-2 text-black/60">🕐</span>
                   </div>
-                  {errors.pmTimeOut && <p className="text-xs text-red-600 mt-1">{errors.pmTimeOut}</p>}
+                  {errors.pmTimeOut && <p className="text-xs text-black mt-1">{errors.pmTimeOut}</p>}
                 </div>
               </div>
             </div>
@@ -669,11 +673,11 @@ export default function AddEvent({ onBack, onNext }) {
 
         {step === 2 && (
           <div className="space-y-6">
-            <h2 className="text-base font-semibold text-[#07713c]">Audience Details</h2>
+            <h2 className="text-base font-semibold text-black">Audience Details</h2>
 
             {shouldShowMajorSelection && (
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Major</label>
+                <label className="block text-sm font-semibold text-black mb-1">Major</label>
                 <select
                   value={major}
                   onChange={(e) => setMajor(e.target.value)}
@@ -695,12 +699,12 @@ export default function AddEvent({ onBack, onNext }) {
             {/* Mandatory toggle */}
             {!isCsgRole && (
               <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold text-gray-700">Mandatory Event?</span>
+                <span className="text-sm font-semibold text-black">Mandatory Event?</span>
                 <button
                   type="button"
                   onClick={() => setIsMandatory((v) => !v)}
                   className={`px-4 py-1.5 text-xs font-medium rounded-full border ${
-                    isMandatory ? "bg-[#07713c] text-white border-[#07713c]" : "bg-white text-gray-700 border-gray-300"
+                    isMandatory ? "bg-[#07713c]/10 text-black border-[#07713c]" : "bg-white text-black border-gray-300"
                   }`}
                 >
                   {isMandatory ? "Yes, mandatory" : "No, optional"}
@@ -710,12 +714,12 @@ export default function AddEvent({ onBack, onNext }) {
 
             {/* Audience notes */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Audience Notes (optional)</label>
+              <label className="block text-sm font-semibold text-black mb-1">Audience Notes (optional)</label>
               <textarea
                 value={audienceNotes}
                 onChange={(e) => setAudienceNotes(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm text-black placeholder:text-black/40 focus:outline-none focus:ring-1 focus:ring-[#07713c]/20 focus:border-[#07713c]/55"
               />
             </div>
           </div>
@@ -723,36 +727,36 @@ export default function AddEvent({ onBack, onNext }) {
 
         {step === 3 && (
   <div className="space-y-6">
-    <h2 className="text-base font-semibold text-[#07713c]">Confirm Event Details</h2>
+    <h2 className="text-base font-semibold text-black">Confirm Event Details</h2>
 
     {/* Basic Info summary */}
     <div className="space-y-2 rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] p-4 shadow-sm">
       <div className="flex justify-between text-sm">
-        <span className="font-semibold text-[#07713c]">Event Name</span>
-        <span className="text-[#07713c]">{eventName || "-"}</span>
+        <span className="font-semibold text-black">Event Name</span>
+        <span className="text-black">{eventName || "-"}</span>
       </div>
       <div className="flex justify-between text-sm">
-        <span className="font-semibold text-[#07713c]">Date</span>
-        <span className="text-[#07713c]">{eventDate || "-"}</span>
+        <span className="font-semibold text-black">Date</span>
+        <span className="text-black">{eventDate || "-"}</span>
       </div>
       <div className="flex justify-between text-sm">
-        <span className="font-semibold text-[#07713c]">Venue</span>
-        <span className="text-[#07713c]">{venue || "-"}</span>
+        <span className="font-semibold text-black">Venue</span>
+        <span className="text-black">{venue || "-"}</span>
       </div>
       <div className="flex justify-between text-sm">
-        <span className="font-semibold text-[#07713c]">Duration</span>
-        <span className="text-[#07713c]">
+        <span className="font-semibold text-black">Duration</span>
+        <span className="text-black">
           {duration === "whole" ? "Whole Day (AM + PM)" : "Half Day (AM or PM only)"}
         </span>
       </div>
       <div className="flex justify-between text-sm">
-        <span className="font-semibold text-[#07713c]">Fines</span>
-        <span className="text-[#07713c]">{fineAmount ? `₱${fineAmount}` : "-"}</span>
+        <span className="font-semibold text-black">Fines</span>
+        <span className="text-black">{fineAmount ? `₱${fineAmount}` : "-"}</span>
       </div>
 
       {/* AM Session */}
       {(duration === "whole" || (duration === "half" && useAmHalf)) && (
-        <div className="mt-3 border-t border-[#07713c]/15 pt-3 text-xs text-[#07713c]">
+        <div className="mt-3 border-t border-[#07713c]/15 pt-3 text-xs text-black">
           <p className="font-semibold mb-1">AM Session</p>
           <p>Time In: {amTimeIn || "-"}</p>
           <p>Time Out: {amTimeOut || "-"}</p>
@@ -762,7 +766,7 @@ export default function AddEvent({ onBack, onNext }) {
 
       {/* PM Session */}
       {(duration === "whole" || (duration === "half" && usePmHalf)) && (
-        <div className="mt-3 border-t border-[#07713c]/15 pt-3 text-xs text-[#07713c]">
+        <div className="mt-3 border-t border-[#07713c]/15 pt-3 text-xs text-black">
           <p className="font-semibold mb-1">PM Session</p>
           <p>Time In: {pmTimeIn || "-"}</p>
           <p>Time Out: {pmTimeOut || "-"}</p>
@@ -771,7 +775,7 @@ export default function AddEvent({ onBack, onNext }) {
       )}
 
       {/* Audience */}
-      <div className="mt-3 border-t border-[#07713c]/15 pt-3 text-xs text-[#07713c]">
+      <div className="mt-3 border-t border-[#07713c]/15 pt-3 text-xs text-black">
         <p className="font-semibold mb-1">Audience</p>
         {role === "ceas_governor" && major === "BSED" ? (
           <p>Major: BSED — English, Filipino, Math only (BEED excluded)</p>
@@ -792,14 +796,14 @@ export default function AddEvent({ onBack, onNext }) {
 
     <div className="space-y-3 rounded-lg border border-[#07713c]/25 bg-white p-4 shadow-sm">
       <div>
-        <h3 className="text-sm font-semibold text-[#07713c]">Event password</h3>
-        <p className="mt-1 text-xs text-[#07713c]/80">
+        <h3 className="text-sm font-semibold text-black">Event password</h3>
+        <p className="mt-1 text-xs text-black/80">
           Required. Staff will enter this on the homepage before students can tap in or out.
         </p>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-xs font-medium text-[#07713c]">Password</label>
+          <label className="mb-1 block text-xs font-medium text-black">Password</label>
           <div className="relative">
             <input
               type={showEventPassword ? "text" : "password"}
@@ -808,7 +812,7 @@ export default function AddEvent({ onBack, onNext }) {
                 setEventPassword(e.target.value);
                 setErrors((prev) => ({ ...prev, eventPassword: null, confirmEventPassword: null }));
               }}
-              className={`w-full rounded-lg border bg-white px-3 py-2 pr-14 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 ${
+              className={`w-full rounded-lg border bg-white px-3 py-2 pr-14 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 ${
                 errors.eventPassword ? "border-red-500" : "border-[#07713c]/40"
               }`}
               placeholder="Enter event password"
@@ -817,15 +821,15 @@ export default function AddEvent({ onBack, onNext }) {
             <button
               type="button"
               onClick={() => setShowEventPassword((prev) => !prev)}
-              className="absolute inset-y-0 right-3 text-[11px] text-[#07713c] hover:text-[#055a2e]"
+              className="absolute inset-y-0 right-3 text-[11px] text-black hover:text-black/70"
             >
               {showEventPassword ? "Hide" : "Show"}
             </button>
           </div>
-          {errors.eventPassword && <p className="mt-1 text-xs text-red-600">{errors.eventPassword}</p>}
+          {errors.eventPassword && <p className="mt-1 text-xs text-black">{errors.eventPassword}</p>}
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-[#07713c]">Confirm password</label>
+          <label className="mb-1 block text-xs font-medium text-black">Confirm password</label>
           <div className="relative">
             <input
               type={showConfirmEventPassword ? "text" : "password"}
@@ -834,7 +838,7 @@ export default function AddEvent({ onBack, onNext }) {
                 setConfirmEventPassword(e.target.value);
                 setErrors((prev) => ({ ...prev, confirmEventPassword: null }));
               }}
-              className={`w-full rounded-lg border bg-white px-3 py-2 pr-14 text-sm text-[#07713c] focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 ${
+              className={`w-full rounded-lg border bg-white px-3 py-2 pr-14 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30 ${
                 errors.confirmEventPassword ? "border-red-500" : "border-[#07713c]/40"
               }`}
               placeholder="Confirm event password"
@@ -843,13 +847,13 @@ export default function AddEvent({ onBack, onNext }) {
             <button
               type="button"
               onClick={() => setShowConfirmEventPassword((prev) => !prev)}
-              className="absolute inset-y-0 right-3 text-[11px] text-[#07713c] hover:text-[#055a2e]"
+              className="absolute inset-y-0 right-3 text-[11px] text-black hover:text-black/70"
             >
               {showConfirmEventPassword ? "Hide" : "Show"}
             </button>
           </div>
           {errors.confirmEventPassword && (
-            <p className="mt-1 text-xs text-red-600">{errors.confirmEventPassword}</p>
+            <p className="mt-1 text-xs text-black">{errors.confirmEventPassword}</p>
           )}
         </div>
       </div>
@@ -863,7 +867,7 @@ export default function AddEvent({ onBack, onNext }) {
             <button
               type="button"
               onClick={() => setStep((s) => Math.max(1, s - 1))}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 border border-red-300 bg-red-50 text-black font-medium rounded-lg hover:bg-red-100 transition-colors"
             >
               ← Back
             </button>
@@ -874,7 +878,7 @@ export default function AddEvent({ onBack, onNext }) {
             type="button"
             onClick={handleNext}
             disabled={step === 3 && addEvent.isPending}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#07713c] px-6 py-3 font-medium text-white transition-colors hover:brightness-95 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-lg border border-[#07713c] bg-[#07713c]/10 px-6 py-3 font-medium text-black transition-colors hover:bg-[#07713c]/15 disabled:opacity-60"
           >
             {step === 3 ? (addEvent.isPending ? "Creating..." : "Create Event") : "Next"}
             {step < 3 && <span>→</span>}

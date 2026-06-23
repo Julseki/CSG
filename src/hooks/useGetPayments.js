@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import api from "../api/axiosInstance";
 
 export const PAYMENTS_QUERY_KEY = ["payments", "students"];
+export const PAYMENTS_SUMMARY_QUERY_KEY = ["payments", "summary"];
+export const PAYMENTS_TRANSACTIONS_QUERY_KEY = ["payments", "transactions"];
 
 export function paymentStudentQueryKey(studentId) {
   return ["payments", "student", String(studentId ?? "")];
@@ -33,6 +35,7 @@ export function mapPaymentRow(raw) {
     studentName: String(raw?.studentName ?? "Unknown Student"),
     course: String(raw?.course ?? "—"),
     major,
+    department: String(raw?.department ?? "—"),
     year: String(raw?.year ?? "—"),
     totalEvents: Math.max(0, Number(raw?.totalEvents) || 0),
     totalFine: Math.max(0, Number(raw?.totalFine) || 0),
@@ -61,6 +64,10 @@ export function mergePaymentStudentRow(listRow, detailRow) {
   }
   return {
     ...listRow,
+    course: detailRow.course ?? listRow.course,
+    major: detailRow.major ?? listRow.major,
+    department: detailRow.department ?? listRow.department,
+    year: detailRow.year ?? listRow.year,
     totalEvents: detailRow.totalEvents ?? listRow.totalEvents,
     totalFine: detailRow.totalFine ?? listRow.totalFine,
     paidAmount: detailRow.paidAmount ?? listRow.paidAmount,
@@ -78,6 +85,64 @@ export async function getPayments() {
 export async function getPaymentStudent(studentId) {
   const { data } = await api.get(`/payments/students/${encodeURIComponent(studentId)}`);
   return mapPaymentRow(data?.student ?? data);
+}
+
+export async function lookupPaymentStudent(identifier) {
+  const { data } = await api.get("/payments/students/lookup", {
+    params: { identifier: String(identifier ?? "").trim() },
+  });
+  return mapPaymentRow(data?.student ?? data);
+}
+
+export async function getPaymentSummary() {
+  const { data } = await api.get("/payments/summary");
+  const summary = data?.summary ?? data ?? {};
+  return {
+    ledgerTotal: Math.max(0, Number(summary.ledgerTotal) || 0),
+    collected: Math.max(0, Number(summary.collected) || 0),
+    outstanding: Math.max(0, Number(summary.outstanding) || 0),
+    waived: Math.max(0, Number(summary.waived) || 0),
+    studentsWithBalance: Math.max(0, Number(summary.studentsWithBalance) || 0),
+  };
+}
+
+export async function getPaymentTransactions() {
+  const { data } = await api.get("/payments/transactions");
+  const rows = Array.isArray(data?.transactions) ? data.transactions : [];
+  return rows.map((row) => ({
+    id: Number(row?.id) || 0,
+    transactionCode: String(row?.transactionCode ?? ""),
+    studentId: String(row?.studentId ?? ""),
+    studentName: String(row?.studentName ?? "Unknown Student"),
+    amountPaid: Math.max(0, Number(row?.amountPaid) || 0),
+    paymentMethod: String(row?.paymentMethod ?? "Cash"),
+    remarks: row?.remarks != null ? String(row.remarks) : null,
+    paidAt: String(row?.paidAt ?? ""),
+    encodedBy: String(row?.encodedBy ?? ""),
+    status: String(row?.status ?? "Partial") === "Paid" ? "Paid" : "Partial",
+    department: String(row?.department ?? "—"),
+    year: String(row?.year ?? ""),
+    previousBalance: row?.previousBalance != null ? Number(row.previousBalance) : null,
+    balanceAfter: row?.balanceAfter != null ? Number(row.balanceAfter) : null,
+  }));
+}
+
+export function useGetPaymentTransactions(options = {}) {
+  return useQuery({
+    queryKey: PAYMENTS_TRANSACTIONS_QUERY_KEY,
+    queryFn: getPaymentTransactions,
+    staleTime: 15_000,
+    ...options,
+  });
+}
+
+export function useGetPaymentSummary(options = {}) {
+  return useQuery({
+    queryKey: PAYMENTS_SUMMARY_QUERY_KEY,
+    queryFn: getPaymentSummary,
+    staleTime: 30_000,
+    ...options,
+  });
 }
 
 export function useGetPayments(options = {}) {
@@ -106,6 +171,8 @@ export function patchPaymentsStudentInCache(queryClient, rawStudent) {
   const updated = mapPaymentRow(rawStudent);
   const listRow = { ...updated, events: [] };
 
+  queryClient.setQueryData(paymentStudentQueryKey(updated.studentId), updated);
+
   queryClient.setQueryData(PAYMENTS_QUERY_KEY, (old) => {
     if (!Array.isArray(old)) return old;
     const index = old.findIndex((row) => row.studentId === updated.studentId);
@@ -114,6 +181,4 @@ export function patchPaymentsStudentInCache(queryClient, rawStudent) {
     next[index] = listRow;
     return next;
   });
-
-  queryClient.setQueryData(paymentStudentQueryKey(updated.studentId), updated);
 }

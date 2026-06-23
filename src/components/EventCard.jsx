@@ -1,5 +1,6 @@
 import { formatEventDateForDisplay, formatSqlTimeForDisplay } from "../hooks/useGetEvents";
-import { abbrevBsedMajorLabel, formatAudienceYearLevel, getAudienceScopeLabel } from "../utils/eventAudienceLabel";
+import { formatAudienceYearLevel, getAudienceScopeLabel } from "../utils/eventAudienceLabel";
+import { formatGraceDurationLabel } from "../utils/eventTimeOptions";
 
 const ALL_DEPARTMENT_COURSES = [
   { code: "BEED", name: "Bachelor of Elementary Education", major: "" },
@@ -14,62 +15,17 @@ const ALL_DEPARTMENT_COURSES = [
   { code: "BSBA", name: "BSBA Financial Management", major: "Financial Management" },
 ];
 
+/** Home event detail — all-departments audience shown as colleges, not per-program. */
+const ALL_DEPARTMENT_COLLEGES = [
+  "College of Criminal Justice Education",
+  "College of Business Administration",
+  "College of Education, Arts and Sciences",
+  "College of Information Technology",
+  "College of Hospitality Management",
+];
+
 function allDepartmentCourseLabel(course) {
   return course.name;
-}
-
-function majorAcronym(major) {
-  const v = String(major ?? "").trim().toLowerCase();
-  if (!v) return "";
-  if (v === "english") return "ENG";
-  if (v === "filipino") return "FIL";
-  if (v === "math" || v === "mathematics") return "Math";
-  if (v === "marketing management") return "MM";
-  if (v === "human resource development management") return "HRDM";
-  if (v === "financial management") return "FM";
-  return major;
-}
-
-function courseTagClass(code) {
-  const c = String(code ?? "").toUpperCase();
-  if (c === "BEED") {
-    return "bg-blue-100 text-blue-700";
-  }
-  if (c === "BSHM" || c === "HM") {
-    return "bg-violet-50 text-violet-600";
-  }
-  if (c === "BSBA") {
-    return "bg-amber-50 text-amber-700";
-  }
-  if (c === "BSIT") {
-    return "bg-black/25 text-black";
-  }
-  if (c === "BSCRIM" || c === "CCJE") {
-    // Olive tone sampled from user-provided reference image.
-    return "bg-[#46502B]/25 text-[#46502B]";
-  }
-  return "bg-[#07713c]/15 text-[#07713c]";
-}
-
-function courseWrapperClass(code) {
-  return "border-[#07713c]/20 bg-[#f6fff8]";
-}
-
-function courseTextClass(code) {
-  const c = String(code ?? "").toUpperCase();
-  if (c === "BSIT") {
-    return "text-black";
-  }
-  if (c === "BSCRIM" || c === "CCJE") {
-    return "text-[#46502B]";
-  }
-  if (c === "BSHM" || c === "HM") {
-    return "text-violet-600";
-  }
-  if (c === "BSBA") {
-    return "text-amber-700";
-  }
-  return "text-[#07713c]";
 }
 
 function statusPillClass(status) {
@@ -110,7 +66,7 @@ function Row({ label, value, small }) {
 function graceMins(v) {
   if (v == null || v === "") return "—";
   const n = Number(v);
-  return Number.isFinite(n) ? `${n} mins` : "—";
+  return Number.isFinite(n) ? formatGraceDurationLabel(n) : "—";
 }
 
 /**
@@ -366,12 +322,6 @@ function HRow({ label, value, small }) {
 function EventCardModalHorizontal({ ev }) {
   const audience = ev.is_all_departments ? "All departments" : getAudienceScopeLabel(ev);
 
-  const bsedPrograms = ALL_DEPARTMENT_COURSES.filter((c) => c.code === "BSED");
-  const beedProgram = ALL_DEPARTMENT_COURSES.find((c) => c.code === "BEED");
-  const bsitProgram = ALL_DEPARTMENT_COURSES.find((c) => c.code === "BSIT");
-  const bscrimProgram = ALL_DEPARTMENT_COURSES.find((c) => c.code === "BSCRIM");
-  const bshmProgram = ALL_DEPARTMENT_COURSES.find((c) => c.code === "BSHM");
-  const bsbaPrograms = ALL_DEPARTMENT_COURSES.filter((c) => c.code === "BSBA");
   const amRange = resolveTimePair(ev, "AM");
   const pmRange = resolveTimePair(ev, "PM");
   const sessionDescriptor = [ev.duration, ev.session, ev.sessionType].filter(Boolean).join(" ");
@@ -457,66 +407,15 @@ function EventCardModalHorizontal({ ev }) {
             Event Audience
           </p>
           {ev.is_all_departments ? (
-            <div className="mt-2.5 space-y-2.5">
-                {beedProgram && (
-                  <div className="rounded-lg border border-[#07713c]/20 bg-[#f6fff8] px-3 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="rounded border border-current/30 bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
-                        {beedProgram.code}
-                      </span>
-                      <span className="text-sm font-semibold text-blue-800">{beedProgram.name}</span>
-                    </div>
-                  </div>
-                )}
-
-                {bsedPrograms.length > 0 && (
-                  <div className="rounded-lg border border-[#07713c]/20 bg-[#f6fff8] px-3 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="rounded border border-current/30 bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
-                        BSED
-                      </span>
-                      <span className="text-sm font-semibold text-blue-800">Bachelor of Secondary Education</span>
-                    </div>
-                    <div className="mt-2 grid gap-1 sm:grid-cols-3">
-                      {bsedPrograms.map((p, idx) => (
-                        <div key={`bsed-${idx}`} className="rounded border border-blue-200/80 bg-white px-2 py-1.5 text-xs text-blue-700/90">
-                          {majorAcronym(p.major) || p.name}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid gap-2 grid-cols-1">
-                  {[bsitProgram, bscrimProgram, bshmProgram].filter(Boolean).map((p, idx) => (
-                    <div key={`prog-mid-${idx}`} className={`rounded-lg border px-3 py-2.5 ${courseWrapperClass(p.code)}`}>
-                      <div className="flex items-center gap-2">
-                        <span className={`rounded border border-current/30 px-2 py-0.5 text-[10px] font-semibold ${courseTagClass(p.code)}`}>{p.code}</span>
-                        <p className={`text-sm font-semibold ${courseTextClass(p.code)}`}>
-                          {p.name.replace("Bachelor of Science in ", "")}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+            <div className="mt-2.5 grid gap-2 grid-cols-1 sm:grid-cols-2">
+              {ALL_DEPARTMENT_COLLEGES.map((college) => (
+                <div
+                  key={college}
+                  className="rounded-lg border border-[#07713c]/20 bg-[#f6fff8] px-3 py-2.5"
+                >
+                  <p className="text-sm font-semibold text-[#07713c]">{college}</p>
                 </div>
-
-              {bsbaPrograms.length > 0 && (
-                <div className="rounded-lg border border-[#07713c]/20 bg-[#f6fff8] px-3 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="rounded border border-current/30 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                        BSBA
-                      </span>
-                      <span className="text-sm font-semibold text-amber-700">Bachelor of Science in Business Administration</span>
-                    </div>
-                    <div className="mt-2 grid gap-1 sm:grid-cols-3">
-                      {bsbaPrograms.map((p, idx) => (
-                        <div key={`bsba-${idx}`} className="rounded border border-amber-200/80 bg-white px-2 py-1.5 text-xs text-amber-700/90">
-                          {majorAcronym(p.major) || p.name}
-                        </div>
-                      ))}
-                    </div>
-                </div>
-              )}
+              ))}
             </div>
           ) : (
             <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">

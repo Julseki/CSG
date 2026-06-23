@@ -25,6 +25,9 @@ export const AM_SESSION_TIME_OPTIONS = AM_SESSION_MINUTE_MARKS.map((m) =>
   formatTime12FromTotalMinutes(m),
 );
 
+/** AM session time-out only — includes 1:00 PM after the usual AM marks. */
+export const AM_SESSION_TIME_OUT_OPTIONS = [...AM_SESSION_TIME_OPTIONS, "1:00 PM"];
+
 export const PM_SESSION_TIME_OPTIONS = (() => {
   const options = [];
   for (let m = 12 * 60; m < 24 * 60; m += 15) {

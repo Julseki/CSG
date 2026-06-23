@@ -48,6 +48,10 @@ const EVENTS_LIST_PAGE_SIZE = 10;
 /** Grid uses 12 so a 4-column row fills evenly (e.g. 3 full rows). */
 const EVENTS_GRID_PAGE_SIZE = 12;
 
+/** Manage Event main content text (sidebar + top header excluded). */
+const EVENTS_PAGE_TEXT = "text-black";
+const EVENTS_TH_TEXT = "font-bold text-black";
+
 function normStatusKey(status) {
   const n = String(status ?? "").trim().toLowerCase();
   if (n === "active" || n === "ongoing") return "ongoing";
@@ -73,19 +77,19 @@ function displayEventStatus(status) {
 
 function getEventStatusClass(status) {
   const k = normStatusKey(status);
-  if (k === "completed") return "bg-green-100 text-green-800";
-  if (k === "ongoing") return "bg-orange-100 text-orange-800";
-  if (k === "upcoming") return "bg-blue-100 text-blue-800";
-  return "bg-gray-100 text-gray-800";
+  if (k === "completed") return "bg-green-100 text-black";
+  if (k === "ongoing") return "bg-orange-100 text-black";
+  if (k === "upcoming") return "bg-blue-100 text-black";
+  return "bg-gray-100 text-black";
 }
 
 /** Event modal “Status:” value — bg + border pill (esp. upcoming: blue fill + blue border). */
 function getEventModalStatusBadgeClass(status) {
   const k = normStatusKey(status);
-  if (k === "completed") return "bg-green-100 text-green-900 border border-green-300";
-  if (k === "ongoing") return "bg-orange-100 text-orange-900 border border-orange-300";
-  if (k === "upcoming") return "bg-blue-100 text-blue-900 border border-blue-300";
-  return "bg-gray-100 text-gray-800 border border-gray-300";
+  if (k === "completed") return "bg-green-100 text-black border border-green-300";
+  if (k === "ongoing") return "bg-orange-100 text-black border border-orange-300";
+  if (k === "upcoming") return "bg-blue-100 text-black border border-blue-300";
+  return "bg-gray-100 text-black border border-gray-300";
 }
 
 function getDefaultFinesForEvent(ev) {
@@ -156,8 +160,8 @@ function EventModalSchedule({ ev, readOnly, onPatch }) {
 
   const row = (label, value) => (
     <div className="border-b border-[#07713c]/10 py-1.5 text-left last:border-0">
-      <span className="block text-[#07713c]/80">{label}</span>
-      <span className="mt-0.5 block font-medium tabular-nums text-[#07713c]">{value ?? "—"}</span>
+      <span className="block text-black/80">{label}</span>
+      <span className="mt-0.5 block font-medium tabular-nums text-black">{value ?? "—"}</span>
     </div>
   );
 
@@ -167,16 +171,16 @@ function EventModalSchedule({ ev, readOnly, onPatch }) {
   if (!readOnly && onPatch) {
     return (
       <div>
-        <p className="mb-2 text-xs font-semibold text-[#07713c]">Time in / out &amp; late threshold</p>
+        <p className="mb-2 text-xs font-semibold text-black">Time in / out &amp; late threshold</p>
         <div className="space-y-3">
           {showAmBlock && (
             <div className="rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] px-3 py-2">
-              <p className="mb-2 text-xs font-medium text-[#07713c]">AM Session</p>
+              <p className="mb-2 text-xs font-medium text-black">AM Session</p>
               <div className="space-y-3 text-sm">
                 <div className="grid grid-cols-1 gap-3 text-left sm:grid-cols-2 sm:gap-4">
                   <div className="flex min-w-0 flex-col gap-3 text-left">
                     <div className="flex min-w-0 flex-col gap-1.5">
-                      <span className="text-xs font-medium text-[#07713c]/85">Time in</span>
+                      <span className="text-xs font-medium text-black/85">Time in</span>
                       <select
                         className={EVENT_TIME_SELECT_CLASS}
                         value={sqlTimeToSessionSelectValue(ev.am_time_in ?? ev.amTimeIn, "am")}
@@ -194,12 +198,12 @@ function EventModalSchedule({ ev, readOnly, onPatch }) {
                       </select>
                     </div>
                     <div className="flex min-w-0 flex-col gap-1.5">
-                      <span className="text-xs font-medium text-[#07713c]/85">Late — time in</span>
+                      <span className="text-xs font-medium text-black/85">Late — time in</span>
                       <div className="grid w-full min-w-0 grid-cols-2 gap-2">
                         <div className="min-w-0">
-                          <span className="mb-1 block text-[11px] font-medium text-[#07713c]/75">Hour(s)</span>
+                          <span className="mb-1 block text-[11px] font-medium text-black/75">Hour(s)</span>
                           <select
-                            className="w-full min-w-0 cursor-pointer rounded-lg border border-[#07713c]/40 bg-white px-2 py-1.5 text-left text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
+                            className="w-full min-w-0 cursor-pointer rounded-lg border border-[#07713c]/40 bg-white px-2 py-1.5 text-left text-sm text-black focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
                             value={splitGraceTotalMinutes(gAmIn ?? 0).hours}
                             onChange={(e) => {
                               const h = Number(e.target.value);
@@ -216,9 +220,9 @@ function EventModalSchedule({ ev, readOnly, onPatch }) {
                           </select>
                         </div>
                         <div className="min-w-0">
-                          <span className="mb-1 block text-[11px] font-medium text-[#07713c]/75">Minutes</span>
+                          <span className="mb-1 block text-[11px] font-medium text-black/75">Minutes</span>
                           <select
-                            className="w-full min-w-0 cursor-pointer rounded-lg border border-[#07713c]/40 bg-white px-2 py-1.5 text-left text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
+                            className="w-full min-w-0 cursor-pointer rounded-lg border border-[#07713c]/40 bg-white px-2 py-1.5 text-left text-sm text-black focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
                             value={splitGraceTotalMinutes(gAmIn ?? 0).minutes}
                             onChange={(e) => {
                               const m = Number(e.target.value);
@@ -238,7 +242,7 @@ function EventModalSchedule({ ev, readOnly, onPatch }) {
                     </div>
                   </div>
                   <div className="flex w-full min-w-0 flex-col gap-1.5 text-left">
-                    <span className="text-xs font-medium text-[#07713c]/85">Time out</span>
+                    <span className="text-xs font-medium text-black/85">Time out</span>
                     <select
                       className={EVENT_TIME_SELECT_CLASS}
                       value={sqlTimeToSessionSelectValue(ev.am_time_out ?? ev.amTimeOut, "am")}
@@ -261,12 +265,12 @@ function EventModalSchedule({ ev, readOnly, onPatch }) {
           )}
           {showPmBlock && (
             <div className="rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] px-3 py-2">
-              <p className="mb-2 text-xs font-medium text-[#07713c]">PM Session</p>
+              <p className="mb-2 text-xs font-medium text-black">PM Session</p>
               <div className="space-y-3 text-sm">
                 <div className="grid grid-cols-1 gap-3 text-left sm:grid-cols-2 sm:gap-4">
                   <div className="flex min-w-0 flex-col gap-3 text-left">
                     <div className="flex min-w-0 flex-col gap-1.5">
-                      <span className="text-xs font-medium text-[#07713c]/85">Time in</span>
+                      <span className="text-xs font-medium text-black/85">Time in</span>
                       <select
                         className={EVENT_TIME_SELECT_CLASS}
                         value={sqlTimeToSessionSelectValue(ev.pm_time_in ?? ev.pmTimeIn, "pm")}
@@ -284,12 +288,12 @@ function EventModalSchedule({ ev, readOnly, onPatch }) {
                       </select>
                     </div>
                     <div className="flex min-w-0 flex-col gap-1.5">
-                      <span className="text-xs font-medium text-[#07713c]/85">Late — time in</span>
+                      <span className="text-xs font-medium text-black/85">Late — time in</span>
                       <div className="grid w-full min-w-0 grid-cols-2 gap-2">
                         <div className="min-w-0">
-                          <span className="mb-1 block text-[11px] font-medium text-[#07713c]/75">Hour(s)</span>
+                          <span className="mb-1 block text-[11px] font-medium text-black/75">Hour(s)</span>
                           <select
-                            className="w-full min-w-0 cursor-pointer rounded-lg border border-[#07713c]/40 bg-white px-2 py-1.5 text-left text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
+                            className="w-full min-w-0 cursor-pointer rounded-lg border border-[#07713c]/40 bg-white px-2 py-1.5 text-left text-sm text-black focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
                             value={splitGraceTotalMinutes(gPmIn ?? 0).hours}
                             onChange={(e) => {
                               const h = Number(e.target.value);
@@ -306,9 +310,9 @@ function EventModalSchedule({ ev, readOnly, onPatch }) {
                           </select>
                         </div>
                         <div className="min-w-0">
-                          <span className="mb-1 block text-[11px] font-medium text-[#07713c]/75">Minutes</span>
+                          <span className="mb-1 block text-[11px] font-medium text-black/75">Minutes</span>
                           <select
-                            className="w-full min-w-0 cursor-pointer rounded-lg border border-[#07713c]/40 bg-white px-2 py-1.5 text-left text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
+                            className="w-full min-w-0 cursor-pointer rounded-lg border border-[#07713c]/40 bg-white px-2 py-1.5 text-left text-sm text-black focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
                             value={splitGraceTotalMinutes(gPmIn ?? 0).minutes}
                             onChange={(e) => {
                               const m = Number(e.target.value);
@@ -328,7 +332,7 @@ function EventModalSchedule({ ev, readOnly, onPatch }) {
                     </div>
                   </div>
                   <div className="flex w-full min-w-0 flex-col gap-1.5 text-left">
-                    <span className="text-xs font-medium text-[#07713c]/85">Time out</span>
+                    <span className="text-xs font-medium text-black/85">Time out</span>
                     <select
                       className={EVENT_TIME_SELECT_CLASS}
                       value={sqlTimeToSessionSelectValue(ev.pm_time_out ?? ev.pmTimeOut, "pm")}
@@ -357,8 +361,8 @@ function EventModalSchedule({ ev, readOnly, onPatch }) {
   if (!showAmBlock && !showPmBlock) {
     return (
       <div>
-        <label className="mb-1 block text-xs font-semibold text-[#07713c]">Time in / out & late threshold</label>
-        <p className="min-h-[2.5rem] rounded-lg border border-[#07713c]/30 bg-[#07713c]/5 px-3 py-2 text-sm text-[#07713c]">
+        <label className="mb-1 block text-xs font-semibold text-black">Time in / out & late threshold</label>
+        <p className="min-h-[2.5rem] rounded-lg border border-[#07713c]/30 bg-[#07713c]/5 px-3 py-2 text-sm text-black">
           {summary || "—"}
         </p>
       </div>
@@ -367,11 +371,11 @@ function EventModalSchedule({ ev, readOnly, onPatch }) {
 
   return (
     <div>
-      <p className="mb-2 text-xs font-semibold text-[#07713c]">Time in / out & late threshold</p>
+      <p className="mb-2 text-xs font-semibold text-black">Time in / out & late threshold</p>
       <div className="space-y-3">
         {showAmBlock && (
           <div className="rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] px-3 py-2">
-            <p className="mb-2 text-xs font-medium text-[#07713c]">AM Session</p>
+            <p className="mb-2 text-xs font-medium text-black">AM Session</p>
             <div className="text-sm">
               {row("Time in", s.amIn)}
               {row("Time out", s.amOut)}
@@ -384,7 +388,7 @@ function EventModalSchedule({ ev, readOnly, onPatch }) {
         )}
         {showPmBlock && (
           <div className="rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.04] px-3 py-2">
-            <p className="mb-2 text-xs font-medium text-[#07713c]">PM Session</p>
+            <p className="mb-2 text-xs font-medium text-black">PM Session</p>
             <div className="text-sm">
               {row("Time in", s.pmIn)}
               {row("Time out", s.pmOut)}
@@ -630,10 +634,10 @@ export default function Events({ onLogout, onNavigate }) {
   return (
     <div className="flex min-h-screen bg-[#07713c]/[0.04] [&_button]:cursor-pointer">
       {/* Sidebar — same green as Attendance */}
-      <aside className="sticky top-0 h-screen max-h-screen w-64 shrink-0 self-start overflow-y-auto bg-[#07713c] text-white flex flex-col">
+      <aside className="sticky top-0 h-screen max-h-screen w-64 shrink-0 self-start overflow-y-auto bg-[#07713c] text-white flex flex-col [&_p]:text-white">
         <div className="p-6 space-y-4">
           <img src="/logo.png" alt="NMCI" className="w-16 h-16 rounded-full bg-white/10 object-contain mx-auto" />
-          <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif]">Northern Mindanao Colleges, Inc.</p>
+          <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif] text-white">Northern Mindanao Colleges, Inc.</p>
         </div>
         <nav className="flex-1 px-4 space-y-1">
           {navItems.map((item) => (
@@ -680,29 +684,29 @@ export default function Events({ onLogout, onNavigate }) {
           </div>
         </header>
 
-        <main className="flex-1 p-6 overflow-auto">
+        <main className={`flex-1 p-6 overflow-auto ${EVENTS_PAGE_TEXT} [&_th]:font-bold [&_th]:!text-black`}>
           {isEventsLoading && (
-            <p className="mb-3 rounded-lg border border-[#07713c]/30 bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-[#07713c]">Loading events…</p>
+            <p className="mb-3 rounded-lg border border-[#07713c]/30 bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-black">Loading events…</p>
           )}
           {isEventsError && (
-            <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">Could not load events.</p>
+            <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-black">Could not load events.</p>
           )}
           {/* Search, Filter, View, Add */}
           <div className="flex flex-wrap gap-4 mb-4 items-center">
             <div className="relative flex-1 min-w-[200px]">
-              <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#07713c]" />
+              <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
               <input
                 type="search"
                 placeholder="Search Event"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-[#07713c] placeholder:text-[#07713c]/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
+                className="w-full rounded-lg border border-[#07713c]/40 bg-white py-2 pl-10 pr-10 text-sm text-black placeholder:text-black/45 focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] [&::-webkit-search-cancel-button]:hidden"
               />
               {search.trim() !== "" && (
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-[#07713c]/85 hover:bg-gray-100 hover:text-[#07713c] focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
+                  className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-black/85 hover:bg-gray-100 hover:text-black focus:outline-none focus:ring-2 focus:ring-[#07713c]/30"
                   aria-label="Clear events search"
                 >
                   ×
@@ -712,7 +716,7 @@ export default function Events({ onLogout, onNavigate }) {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-lg border border-[#07713c]/40 bg-white px-4 py-2 text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
+              className="rounded-lg border border-[#07713c]/40 bg-white px-4 py-2 text-sm text-black focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
             >
               <option value="All Status">All Status</option>
               <option value="Ongoing">Ongoing</option>
@@ -722,7 +726,7 @@ export default function Events({ onLogout, onNavigate }) {
             <select
               value={sessionKindFilter}
               onChange={(e) => setSessionKindFilter(e.target.value)}
-              className="rounded-lg border border-[#07713c]/40 bg-white px-4 py-2 text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
+              className="rounded-lg border border-[#07713c]/40 bg-white px-4 py-2 text-sm text-black focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
               aria-label="Filter by session"
             >
               <option value="all">All sessions</option>
@@ -733,13 +737,13 @@ export default function Events({ onLogout, onNavigate }) {
             <div className="flex overflow-hidden rounded-lg border border-[#07713c]/40">
               <button
                 onClick={() => setViewMode("list")}
-                className={`px-3 py-2 text-sm ${viewMode === "list" ? "bg-[#07713c] text-white" : "bg-white text-[#07713c]/80 hover:bg-[#07713c]/10"}`}
+                className={`px-3 py-2 text-sm ${viewMode === "list" ? "bg-[#07713c]/10 font-medium text-black" : "bg-white text-black/80 hover:bg-[#07713c]/10"}`}
               >
                 ☰
               </button>
               <button
                 onClick={() => setViewMode("grid")}
-                className={`px-3 py-2 text-sm ${viewMode === "grid" ? "bg-[#07713c] text-white" : "bg-white text-[#07713c]/80 hover:bg-[#07713c]/10"}`}
+                className={`px-3 py-2 text-sm ${viewMode === "grid" ? "bg-[#07713c]/10 font-medium text-black" : "bg-white text-black/80 hover:bg-[#07713c]/10"}`}
               >
                 ⊞
               </button>
@@ -748,7 +752,7 @@ export default function Events({ onLogout, onNavigate }) {
               <button
                 type="button"
                 onClick={() => setShowAddEvent(true)}
-                className="rounded-lg bg-[#07713c] px-4 py-2 text-sm font-medium text-white transition-colors hover:brightness-95"
+                className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-[#07713c]/15"
               >
                 + Add Event
               </button>
@@ -769,23 +773,23 @@ export default function Events({ onLogout, onNavigate }) {
                     <col className="w-[11%]" />
                     <col className="w-[20%]" />
                   </colgroup>
-                  <thead className="border-b border-[#07713c]/30 bg-[#07713c]">
+                  <thead className={`border-b border-[#07713c]/30 bg-[#07713c]/10 text-xs uppercase tracking-wide ${EVENTS_TH_TEXT}`}>
                     <tr>
-                      <th className="align-middle px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Event Name</th>
-                      <th className="align-middle px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Date</th>
-                      <th className="align-middle px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Session</th>
-                      <th className="align-middle px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Venue</th>
-                      <th className="whitespace-nowrap px-3 py-3 text-right align-middle text-xs font-semibold uppercase tracking-wide text-white">
+                      <th className="align-middle px-3 py-3 text-left">Event Name</th>
+                      <th className="align-middle px-3 py-3 text-left">Date</th>
+                      <th className="align-middle px-3 py-3 text-left">Session</th>
+                      <th className="align-middle px-3 py-3 text-left">Venue</th>
+                      <th className="whitespace-nowrap px-3 py-3 text-right align-middle">
                         Fines
                       </th>
-                      <th className="align-middle px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Status</th>
-                      <th className="align-middle px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-white">Actions</th>
+                      <th className="align-middle px-3 py-3 text-center">Status</th>
+                      <th className="align-middle px-3 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredEvents.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-10 text-center text-sm text-[#07713c]/70">
+                        <td colSpan={7} className="px-4 py-10 text-center text-sm text-black/70">
                           No event records.
                         </td>
                       </tr>
@@ -798,21 +802,21 @@ export default function Events({ onLogout, onNavigate }) {
                             className="cursor-pointer border-b border-[#07713c]/15 hover:bg-[#07713c]/[0.04]"
                             onClick={() => openEventModal(ev, "view")}
                           >
-                            <td className="min-w-0 px-3 py-3 align-middle font-medium text-[#07713c]">
+                            <td className="min-w-0 px-3 py-3 align-middle font-medium text-black">
                               <span className="block truncate">{ev.name}</span>
                             </td>
-                            <td className="whitespace-nowrap px-3 py-3 align-middle font-medium text-[#07713c]">
+                            <td className="whitespace-nowrap px-3 py-3 align-middle font-medium text-black">
                               {formatEventDateForDisplay(ev.date)}
                             </td>
-                            <td className="px-3 py-3 align-middle font-medium text-[#07713c]">
+                            <td className="px-3 py-3 align-middle font-medium text-black">
                               {formatDurationForEventsList(ev)}
                             </td>
-                            <td className="min-w-0 px-3 py-3 align-middle font-medium text-[#07713c]">
+                            <td className="min-w-0 px-3 py-3 align-middle font-medium text-black">
                               <span className="line-clamp-2 break-words" title={ev.venue}>
                                 {ev.venue}
                               </span>
                             </td>
-                            <td className="align-middle py-3 px-3 text-right tabular-nums text-sm font-semibold text-red-600">
+                            <td className="align-middle py-3 px-3 text-right tabular-nums text-sm font-semibold text-black">
                               ₱{Number(fineVal).toLocaleString("en-PH")}
                             </td>
                             <td className="align-middle py-3 px-3 text-center">
@@ -827,7 +831,7 @@ export default function Events({ onLogout, onNavigate }) {
                               >
                                 <button
                                   type="button"
-                                  className="rounded-md px-2 py-1 text-xs font-medium text-[#07713c] hover:bg-[#07713c]/10"
+                                  className="rounded-md px-2 py-1 text-xs font-medium text-black hover:bg-[#07713c]/10"
                                   onClick={() => openEventModal(ev, "view")}
                                 >
                                   View
@@ -837,14 +841,14 @@ export default function Events({ onLogout, onNavigate }) {
                                     <button
                                       type="button"
                                       title="Edit event"
-                                      className="rounded-md px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50"
+                                      className="rounded-md px-2 py-1 text-xs font-medium text-black hover:bg-blue-50"
                                       onClick={(e) => handleEditClick(ev, e)}
                                     >
                                       Edit
                                     </button>
                                     <button
                                       type="button"
-                                      className="px-2 py-1 rounded-md text-xs font-medium text-red-600 hover:bg-red-50"
+                                      className="px-2 py-1 rounded-md text-xs font-medium text-black hover:bg-red-50"
                                       onClick={() => openDeleteFromRow(ev)}
                                     >
                                       Delete
@@ -863,7 +867,7 @@ export default function Events({ onLogout, onNavigate }) {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
                 {filteredEvents.length === 0 ? (
-                  <div className="col-span-full py-10 text-center text-sm text-[#07713c]/70">No event records.</div>
+                  <div className="col-span-full py-10 text-center text-sm text-black/70">No event records.</div>
                 ) : (
                   paginatedEvents.map((ev, i) => (
                     <div
@@ -880,7 +884,7 @@ export default function Events({ onLogout, onNavigate }) {
                       }}
                     >
                       <div className="mb-3 flex items-center justify-between gap-3">
-                        <h3 className="min-w-0 flex-1 line-clamp-2 text-base font-semibold leading-snug text-[#07713c] sm:text-[1.0625rem]">
+                        <h3 className="min-w-0 flex-1 line-clamp-2 text-base font-semibold leading-snug text-black sm:text-[1.0625rem]">
                           {ev.name}
                         </h3>
                         <span
@@ -889,13 +893,13 @@ export default function Events({ onLogout, onNavigate }) {
                           {displayEventStatus(ev.status)}
                         </span>
                       </div>
-                      <p className="mb-1 text-sm font-medium text-[#07713c]">{formatEventDateForDisplay(ev.date)}</p>
-                      <p className="mb-1 text-sm font-medium text-[#07713c]">{ev.venue}</p>
-                      <p className="mb-2 text-sm font-medium text-[#07713c]">{formatDurationForEventsList(ev)}</p>
+                      <p className="mb-1 text-sm font-medium text-black">{formatEventDateForDisplay(ev.date)}</p>
+                      <p className="mb-1 text-sm font-medium text-black">{ev.venue}</p>
+                      <p className="mb-2 text-sm font-medium text-black">{formatDurationForEventsList(ev)}</p>
                       <div className="border-t border-[#07713c]/15 pt-2">
                         <div className="flex items-baseline justify-between gap-3">
-                          <span className="shrink-0 text-xs font-medium text-[#07713c]">Fines</span>
-                          <span className="min-w-[4.5rem] text-right text-sm font-semibold tabular-nums text-red-600">
+                          <span className="shrink-0 text-xs font-medium text-black">Fines</span>
+                          <span className="min-w-[4.5rem] text-right text-sm font-semibold tabular-nums text-black">
                             ₱{Number(getFinesForEvent(ev)).toLocaleString("en-PH")}
                           </span>
                         </div>
@@ -907,7 +911,7 @@ export default function Events({ onLogout, onNavigate }) {
                       >
                         <button
                           type="button"
-                          className="rounded-md bg-[#07713c]/10 px-2.5 py-1 text-xs font-medium text-[#07713c] hover:bg-[#07713c]/20"
+                          className="rounded-md bg-[#07713c]/10 px-2.5 py-1 text-xs font-medium text-black hover:bg-[#07713c]/20"
                           onClick={() => openEventModal(ev, "view")}
                         >
                           View
@@ -917,14 +921,14 @@ export default function Events({ onLogout, onNavigate }) {
                             <button
                               type="button"
                               title="Edit event"
-                              className="rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                              className="rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-black hover:bg-blue-100"
                               onClick={(e) => handleEditClick(ev, e)}
                             >
                               Edit
                             </button>
                             <button
                               type="button"
-                              className="rounded-md bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-100"
+                              className="rounded-md bg-red-50 px-2.5 py-1 text-xs font-medium text-black hover:bg-red-100"
                               onClick={() => openDeleteFromRow(ev)}
                             >
                               Delete
@@ -944,6 +948,7 @@ export default function Events({ onLogout, onNavigate }) {
               onPageChange={setEventsPage}
               emptyLabel="No records to show."
               itemLabel="events"
+              className="!text-black"
             />
           </div>
         </main>
@@ -953,8 +958,8 @@ export default function Events({ onLogout, onNavigate }) {
       {showReportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl overflow-hidden">
-            <div className="bg-[#07713c] px-5 py-3">
-              <h3 className="font-semibold text-white">
+            <div className="border-b border-[#07713c]/30 bg-[#07713c]/10 px-5 py-3">
+              <h3 className="font-semibold text-black">
                 {reportMode === "settings"
                   ? `${roleLabel} Settings`
                   : reportMode === "import"
@@ -963,7 +968,7 @@ export default function Events({ onLogout, onNavigate }) {
               </h3>
             </div>
             <div className="p-5 space-y-4 text-sm">
-              <p className="text-gray-600">
+              <p className="text-black">
                 {reportMode === "settings"
                   ? "Settings are not implemented yet (this is a placeholder)."
                   : reportMode === "import"
@@ -977,10 +982,10 @@ export default function Events({ onLogout, onNavigate }) {
                     className="rounded-xl border border-[#07713c]/30 p-4 text-left transition-colors hover:border-[#07713c] hover:bg-[#07713c]/10"
                     onClick={() => setShowReportModal(false)}
                   >
-                    <p className="font-semibold text-[#07713c]">
+                    <p className="font-semibold text-black">
                       {reportMode === "import" ? "Import Attendance" : "Export Attendance"}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-black/75">
                       {reportMode === "import"
                         ? "Import attendance records into the system."
                         : "Download attendance records for reports."}
@@ -991,10 +996,10 @@ export default function Events({ onLogout, onNavigate }) {
                     className="rounded-xl border border-[#07713c]/30 p-4 text-left transition-colors hover:border-[#07713c] hover:bg-[#07713c]/10"
                     onClick={() => setShowReportModal(false)}
                   >
-                    <p className="font-semibold text-[#07713c]">
+                    <p className="font-semibold text-black">
                       {reportMode === "import" ? "Import Students" : "Export Students"}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-black/75">
                       {reportMode === "import"
                         ? "Import student records into the system."
                         : "Download student or department records."}
@@ -1004,7 +1009,7 @@ export default function Events({ onLogout, onNavigate }) {
               )}
             </div>
             <div className="px-4 py-3 border-t border-gray-200 flex justify-end">
-              <button type="button" onClick={() => setShowReportModal(false)} className="cursor-pointer rounded-lg bg-[#07713c] px-4 py-2 text-white hover:brightness-95">
+              <button type="button" onClick={() => setShowReportModal(false)} className="cursor-pointer rounded-lg border border-[#07713c] bg-[#07713c]/10 px-4 py-2 text-black hover:bg-[#07713c]/15">
                 Close
               </button>
             </div>
@@ -1025,26 +1030,26 @@ export default function Events({ onLogout, onNavigate }) {
             className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-[#07713c] px-5 py-3">
-              <h3 id="edit-not-allowed-title" className="text-sm font-semibold text-white sm:text-base">
+            <div className="border-b border-[#07713c]/30 bg-[#07713c]/10 px-5 py-3">
+              <h3 id="edit-not-allowed-title" className="text-sm font-semibold text-black sm:text-base">
                 Editing not permitted
               </h3>
             </div>
-            <div className="space-y-3 px-5 py-4 text-sm leading-relaxed text-[#07713c]/90">
+            <div className="space-y-3 px-5 py-4 text-sm leading-relaxed text-black/90">
               <p>
-                <span className="font-semibold text-[#07713c]">{editNotAllowedEventLabel}</span>
-                <span className="text-[#07713c]/80"> cannot be edited at this time.</span>
+                <span className="font-semibold text-black">{editNotAllowedEventLabel}</span>
+                <span className="text-black/80"> cannot be edited at this time.</span>
               </p>
               <p>
-                For institutional accuracy, events whose status is <strong className="text-[#07713c]">Completed</strong> or{" "}
-                <strong className="text-[#07713c]">Ongoing</strong> are locked from modification in this module. If a
+                For institutional accuracy, events whose status is <strong className="text-black">Completed</strong> or{" "}
+                <strong className="text-black">Ongoing</strong> are locked from modification in this module. If a
                 correction is required, please contact your administrator.
               </p>
             </div>
             <div className="flex justify-end border-t border-gray-200 px-5 py-3">
               <button
                 type="button"
-                className="rounded-lg bg-[#07713c] px-4 py-2 text-sm font-medium text-white transition-colors hover:brightness-95"
+                className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-[#07713c]/15"
                 onClick={() => setShowEditNotAllowedModal(false)}
               >
                 OK
@@ -1058,14 +1063,14 @@ export default function Events({ onLogout, onNavigate }) {
       {selectedEvent && editableEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-[3px]">
           <div className="flex max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between bg-[#07713c] px-6 py-3">
-              <h2 className="text-sm font-semibold text-white sm:text-base">
+            <div className="flex items-center justify-between border-b border-[#07713c]/30 bg-[#07713c]/10 px-6 py-3">
+              <h2 className="text-sm font-semibold text-black sm:text-base">
                 {eventModalMode === "view" ? "Event details" : "Edit event"}
               </h2>
               <button
                 type="button"
                 onClick={closeEventModal}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-[#07713c] transition-colors hover:bg-yellow-300"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-black transition-colors hover:bg-yellow-300"
                 aria-label="Close event modal"
               >
                 <span className="text-lg font-bold">×</span>
@@ -1073,34 +1078,34 @@ export default function Events({ onLogout, onNavigate }) {
             </div>
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 text-sm [scrollbar-width:thin] [scrollbar-color:rgba(7,113,60,0.28)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#07713c]/30 [&::-webkit-scrollbar-thumb]:hover:bg-[#07713c]/40 [&::-webkit-scrollbar-track]:bg-transparent sm:p-5">
               {eventModalMode === "edit" && (
-                <p className="rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.06] px-3 py-2 text-xs text-[#07713c]">
+                <p className="rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.06] px-3 py-2 text-xs text-black">
                   Save and delete are connected to the API.
                 </p>
               )}
               {editSaveError && (
-                <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 p-2 rounded-lg">{editSaveError}</p>
+                <p className="text-xs text-black bg-amber-50 border border-amber-200 p-2 rounded-lg">{editSaveError}</p>
               )}
               <div>
-                <label className="mb-1 block text-xs font-semibold text-[#07713c]">Event Name</label>
+                <label className="mb-1 block text-xs font-semibold text-black">Event Name</label>
                 <input
                   type="text"
                   readOnly={eventModalMode === "view"}
-                  className={`w-full rounded-lg border border-[#07713c]/40 px-3 py-2 text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 ${eventModalMode === "view" ? "bg-[#07713c]/5" : "bg-white"}`}
+                  className={`w-full rounded-lg border border-[#07713c]/40 px-3 py-2 text-black focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 ${eventModalMode === "view" ? "bg-[#07713c]/5" : "bg-white"}`}
                   value={editableEvent.name || ""}
                   onChange={(e) => setEditableEvent({ ...editableEvent, name: e.target.value })}
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-1 block text-xs font-semibold text-[#07713c]">Date</label>
+                  <label className="mb-1 block text-xs font-semibold text-black">Date</label>
                   {eventModalMode === "view" ? (
-                    <p className="rounded-lg border border-[#07713c]/30 bg-[#07713c]/5 px-3 py-2 text-sm text-[#07713c]">
+                    <p className="rounded-lg border border-[#07713c]/30 bg-[#07713c]/5 px-3 py-2 text-sm text-black">
                       {formatEventDateForDisplay(editableEvent.date)}
                     </p>
                   ) : (
                     <input
                       type="date"
-                      className="w-full rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
+                      className="w-full rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-black focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
                       value={eventYmdForDateInput(editableEvent.date)}
                       onChange={(e) => {
                         const v = e.target.value;
@@ -1112,14 +1117,14 @@ export default function Events({ onLogout, onNavigate }) {
                   )}
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold text-[#07713c]">Session</label>
+                  <label className="mb-1 block text-xs font-semibold text-black">Session</label>
                   {eventModalMode === "view" ? (
-                    <p className="rounded-lg border border-[#07713c]/30 bg-[#07713c]/5 px-3 py-2 text-sm text-[#07713c]">
+                    <p className="rounded-lg border border-[#07713c]/30 bg-[#07713c]/5 px-3 py-2 text-sm text-black">
                       {formatDurationForEventsList(selectedEvent)}
                     </p>
                   ) : (
                     <select
-                      className="w-full rounded-lg border border-[#07713c]/40 px-3 py-2 text-sm text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 bg-white"
+                      className="w-full rounded-lg border border-[#07713c]/40 px-3 py-2 text-sm text-black focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 bg-white"
                       value={
                         ["Whole Day", "AM Only", "PM Only"].includes(String(editableEvent.duration ?? "").trim())
                           ? String(editableEvent.duration).trim()
@@ -1137,30 +1142,30 @@ export default function Events({ onLogout, onNavigate }) {
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold text-[#07713c]">Venue</label>
+                <label className="mb-1 block text-xs font-semibold text-black">Venue</label>
                 <input
                   type="text"
                   readOnly={eventModalMode === "view"}
-                  className={`w-full rounded-lg border border-[#07713c]/40 px-3 py-2 text-[#07713c] focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 ${eventModalMode === "view" ? "bg-[#07713c]/5" : "bg-white"}`}
+                  className={`w-full rounded-lg border border-[#07713c]/40 px-3 py-2 text-black focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15 ${eventModalMode === "view" ? "bg-[#07713c]/5" : "bg-white"}`}
                   value={editableEvent.venue || ""}
                   onChange={(e) => setEditableEvent({ ...editableEvent, venue: e.target.value })}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold text-[#07713c]">Fines</label>
+                <label className="mb-1 block text-xs font-semibold text-black">Fines</label>
                 {eventModalMode === "view" ? (
-                  <p className="rounded-lg border border-[#07713c]/30 bg-[#07713c]/5 px-3 py-2 text-sm font-semibold tabular-nums text-red-600">
+                  <p className="rounded-lg border border-[#07713c]/30 bg-[#07713c]/5 px-3 py-2 text-sm font-semibold tabular-nums text-black">
                     ₱{Number(getFinesForEvent(selectedEvent)).toLocaleString("en-PH")}
                   </p>
                 ) : (
                   <div className="flex items-center gap-1 rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 focus-within:border-[#07713c]/55 focus-within:ring-1 focus-within:ring-[#07713c]/15">
-                    <span className="shrink-0 text-sm font-semibold tabular-nums text-red-600">₱</span>
+                    <span className="shrink-0 text-sm font-semibold tabular-nums text-black">₱</span>
                     <input
                       type="number"
                       min={0}
                       step={1}
                       inputMode="numeric"
-                      className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm font-semibold tabular-nums text-red-600 placeholder:text-red-600/40 focus:outline-none focus:ring-0"
+                      className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm font-semibold tabular-nums text-black placeholder:text-black/40 focus:outline-none focus:ring-0"
                       placeholder="0"
                       value={
                         editableEvent.fine == null || editableEvent.fine === ""
@@ -1189,16 +1194,16 @@ export default function Events({ onLogout, onNavigate }) {
               />
               {eventModalMode !== "view" && (
                 <div>
-                  <label className="mb-1 block text-xs font-semibold text-[#07713c]">Audience scope</label>
-                  <p className="min-h-[2.5rem] rounded-lg border border-[#07713c]/30 bg-[#07713c]/5 px-3 py-2 text-sm text-[#07713c]">
+                  <label className="mb-1 block text-xs font-semibold text-black">Audience scope</label>
+                  <p className="min-h-[2.5rem] rounded-lg border border-[#07713c]/30 bg-[#07713c]/5 px-3 py-2 text-sm text-black">
                     {getAudienceScopeLabel(editableEvent)}
                   </p>
                 </div>
               )}
               <div>
-                <label className="mb-1 block text-xs font-semibold text-[#07713c]">Audience notes</label>
+                <label className="mb-1 block text-xs font-semibold text-black">Audience notes</label>
                 {eventModalMode === "view" ? (
-                  <p className="min-h-[2.5rem] whitespace-pre-wrap rounded-lg border border-[#07713c]/30 bg-[#07713c]/5 px-3 py-2 text-sm text-[#07713c]">
+                  <p className="min-h-[2.5rem] whitespace-pre-wrap rounded-lg border border-[#07713c]/30 bg-[#07713c]/5 px-3 py-2 text-sm text-black">
                     {editableEvent.audience_notes != null && String(editableEvent.audience_notes).trim() !== ""
                       ? editableEvent.audience_notes
                       : "—"}
@@ -1206,7 +1211,7 @@ export default function Events({ onLogout, onNavigate }) {
                 ) : (
                   <textarea
                     rows={3}
-                    className="w-full rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-[#07713c] placeholder:text-[#07713c]/40 focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
+                    className="w-full rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-black placeholder:text-black/40 focus:border-[#07713c]/55 focus:outline-none focus:ring-1 focus:ring-[#07713c]/15"
                     placeholder="Optional notes for this audience…"
                     value={editableEvent.audience_notes ?? ""}
                     onChange={(e) =>
@@ -1215,7 +1220,7 @@ export default function Events({ onLogout, onNavigate }) {
                   />
                 )}
               </div>
-              <div className="space-y-1.5 text-sm text-[#07713c]">
+              <div className="space-y-1.5 text-sm text-black">
                 <p>
                   <span className="font-semibold">Created by:</span>{" "}
                   {editableEvent.created_by_username != null && String(editableEvent.created_by_username).trim() !== ""
@@ -1231,7 +1236,7 @@ export default function Events({ onLogout, onNavigate }) {
                   </span>
                 </p>
                 {eventModalMode === "edit" && (
-                  <p className="text-xs text-[#07713c]/70">Status is updated automatically by the system.</p>
+                  <p className="text-xs text-black/70">Status is updated automatically by the system.</p>
                 )}
               </div>
             </div>
@@ -1241,7 +1246,7 @@ export default function Events({ onLogout, onNavigate }) {
                   <button
                     type="button"
                     onClick={() => setShowDeleteConfirm(true)}
-                    className="px-4 py-2 text-sm rounded-lg border border-red-300 text-red-700 hover:bg-red-50"
+                    className="px-4 py-2 text-sm rounded-lg border border-red-300 text-black hover:bg-red-50"
                   >
                     Delete
                   </button>
@@ -1251,7 +1256,7 @@ export default function Events({ onLogout, onNavigate }) {
                     type="button"
                     onClick={saveEditableEvent}
                     disabled={editEventMutation.isPending}
-                    className="rounded-lg bg-[#07713c] px-4 py-2 text-sm text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-4 py-2 text-sm font-medium text-black hover:bg-[#07713c]/15 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {editEventMutation.isPending ? "Saving..." : "Save Changes"}
                   </button>
@@ -1270,20 +1275,20 @@ export default function Events({ onLogout, onNavigate }) {
               <h3 className="text-sm sm:text-base font-semibold text-white">Delete Event</h3>
             </div>
             <div className="p-6 space-y-3 text-sm">
-              <p className="text-gray-800">
+              <p className="text-black">
                 Delete <span className="font-semibold">{selectedEvent.name}</span>?
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-black/75">
                 This will permanently delete the event and its audience targets.
               </p>
-              {deleteError && <p className="text-xs text-red-700 bg-red-50 border border-red-200 p-2 rounded-lg">{deleteError}</p>}
+              {deleteError && <p className="text-xs text-black bg-red-50 border border-red-200 p-2 rounded-lg">{deleteError}</p>}
             </div>
             <div className="px-6 py-3 border-t border-gray-200 flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={deleteEventMutation.isPending}
-                className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-black hover:bg-gray-50"
               >
                 Cancel
               </button>
