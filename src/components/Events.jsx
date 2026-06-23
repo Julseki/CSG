@@ -659,32 +659,35 @@ export default function Events({ onLogout, onNavigate }) {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#07713c]/30 bg-white px-6 py-4">
-          <h1 className="font-[Inter,sans-serif] text-[28px] font-extrabold leading-tight text-[#07713c]">Events</h1>
-          <div className="flex items-center gap-4">
-            <div className="relative flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowLogout((prev) => !prev)}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-[#07713c] hover:bg-[#07713c]/10"
-                aria-label="Account menu"
-                aria-expanded={showLogout}
-                aria-haspopup="true"
-              >
-                <UserCircleIcon />
-              </button>
-              {showLogout && (
-                <div className="absolute right-0 top-full z-10 mt-1 min-w-[100px] rounded-lg border border-[#07713c]/30 bg-white py-1 shadow-lg">
-                  <button onClick={() => { setShowLogout(false); onLogout(); }} className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">
-                    Logout
-                  </button>
-                </div>
-              )}
+        <header className="border-b border-[#07713c]/30 bg-white px-6 py-4">
+          <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3">
+            <h1 className="font-[Inter,sans-serif] text-[30px] font-extrabold leading-tight text-[#07713c]">Events</h1>
+            <div className="flex items-center gap-4">
+              <div className="relative flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowLogout((prev) => !prev)}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-[#07713c] hover:bg-[#07713c]/10"
+                  aria-label="Account menu"
+                  aria-expanded={showLogout}
+                  aria-haspopup="true"
+                >
+                  <UserCircleIcon />
+                </button>
+                {showLogout && (
+                  <div className="absolute right-0 top-full z-10 mt-1 min-w-[100px] rounded-lg border border-[#07713c]/30 bg-white py-1 shadow-lg">
+                    <button onClick={() => { setShowLogout(false); onLogout(); }} className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
 
-        <main className={`flex-1 p-6 overflow-auto ${EVENTS_PAGE_TEXT} [&_th]:font-bold [&_th]:!text-black`}>
+        <main className={`flex-1 overflow-auto p-6 ${EVENTS_PAGE_TEXT} [&_th]:font-bold [&_th]:!text-black`}>
+          <div className="mx-auto w-full min-w-0 max-w-7xl space-y-4">
           {isEventsLoading && (
             <p className="mb-3 rounded-lg border border-[#07713c]/30 bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-black">Loading events…</p>
           )}
@@ -734,7 +737,7 @@ export default function Events({ onLogout, onNavigate }) {
               <option value="am">AM session</option>
               <option value="pm">PM session</option>
             </select>
-            <div className="flex overflow-hidden rounded-lg border border-[#07713c]/40">
+            <div className="hidden flex overflow-hidden rounded-lg border border-[#07713c]/40">
               <button
                 onClick={() => setViewMode("list")}
                 className={`px-3 py-2 text-sm ${viewMode === "list" ? "bg-[#07713c]/10 font-medium text-black" : "bg-white text-black/80 hover:bg-[#07713c]/10"}`}
@@ -802,21 +805,21 @@ export default function Events({ onLogout, onNavigate }) {
                             className="cursor-pointer border-b border-[#07713c]/15 hover:bg-[#07713c]/[0.04]"
                             onClick={() => openEventModal(ev, "view")}
                           >
-                            <td className="min-w-0 px-3 py-3 align-middle font-medium text-black">
+                            <td className="min-w-0 px-3 py-3 align-middle text-black">
                               <span className="block truncate">{ev.name}</span>
                             </td>
-                            <td className="whitespace-nowrap px-3 py-3 align-middle font-medium text-black">
+                            <td className="whitespace-nowrap px-3 py-3 align-middle text-black">
                               {formatEventDateForDisplay(ev.date)}
                             </td>
-                            <td className="px-3 py-3 align-middle font-medium text-black">
+                            <td className="px-3 py-3 align-middle text-black">
                               {formatDurationForEventsList(ev)}
                             </td>
-                            <td className="min-w-0 px-3 py-3 align-middle font-medium text-black">
+                            <td className="min-w-0 px-3 py-3 align-middle text-black">
                               <span className="line-clamp-2 break-words" title={ev.venue}>
                                 {ev.venue}
                               </span>
                             </td>
-                            <td className="align-middle py-3 px-3 text-right tabular-nums text-sm font-semibold text-black">
+                            <td className="align-middle py-3 px-3 text-right tabular-nums text-sm text-black">
                               ₱{Number(fineVal).toLocaleString("en-PH")}
                             </td>
                             <td className="align-middle py-3 px-3 text-center">
@@ -950,6 +953,7 @@ export default function Events({ onLogout, onNavigate }) {
               itemLabel="events"
               className="!text-black"
             />
+          </div>
           </div>
         </main>
       </div>

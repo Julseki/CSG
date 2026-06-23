@@ -118,38 +118,41 @@ export default function UsersPage({ onNavigate, onLogout }) {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#07713c] leading-tight">
-            User Management
-          </h1>
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowLogout((prev) => !prev)}
-              className="inline-flex h-11 w-11 items-center justify-center text-[#07713c] rounded-lg hover:bg-green-50"
-              aria-label="Account menu"
-            >
-              <UserCircleIcon />
-            </button>
-            {showLogout && (
-              <div className="absolute right-0 top-full mt-1 py-1 bg-white rounded-lg shadow-lg border border-gray-200 min-w-[100px] z-10">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowLogout(false);
-                    onLogout();
-                  }}
-                  className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                >
-                  Logout
-                </button>
-              </div>
-            )}
+        <header className="border-b border-[#07713c]/30 bg-white px-6 py-4">
+          <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
+            <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#07713c] leading-tight">
+              User Management
+            </h1>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowLogout((prev) => !prev)}
+                className="inline-flex h-11 w-11 items-center justify-center text-[#07713c] rounded-lg hover:bg-green-50"
+                aria-label="Account menu"
+              >
+                <UserCircleIcon />
+              </button>
+              {showLogout && (
+                <div className="absolute right-0 top-full mt-1 py-1 bg-white rounded-lg shadow-lg border border-gray-200 min-w-[100px] z-10">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLogout(false);
+                      onLogout();
+                    }}
+                    className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
-        <main className={`flex-1 p-6 overflow-auto ${USERS_PAGE_TEXT} [&_th]:font-bold [&_th]:!text-black`}>
-          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4">
+        <main className={`flex-1 overflow-auto p-6 ${USERS_PAGE_TEXT} [&_th]:font-bold [&_th]:!text-black`}>
+          <div className="mx-auto w-full min-w-0 max-w-7xl">
+            <div className="min-w-0 rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-medium text-black">
                 {isAdmin
@@ -172,7 +175,7 @@ export default function UsersPage({ onNavigate, onLogout }) {
             {actionError && <p className="text-sm text-black">{actionError}</p>}
             {actionSuccess && <p className="text-sm text-black">{actionSuccess}</p>}
 
-            <div className="overflow-x-auto rounded-lg border border-[#07713c]/20">
+            <div className="min-w-0 overflow-x-auto rounded-lg border border-[#07713c]/20">
               <table className="w-full min-w-[760px] text-sm font-[Inter,sans-serif]">
                 <thead className={`border-b border-[#07713c]/30 bg-[#07713c]/10 text-xs uppercase tracking-wide ${USERS_TH_TEXT}`}>
                   <tr>
@@ -202,8 +205,8 @@ export default function UsersPage({ onNavigate, onLogout }) {
                       const isEditing = editingUserId === user.id;
                       return (
                         <tr key={user.id} className="border-t border-[#07713c]/20 hover:bg-gray-50">
-                          <td className="px-3 py-1.5 text-left font-medium leading-snug text-black">{user.id}</td>
-                          <td className="px-3 py-1.5 text-left font-medium leading-snug text-black">
+                          <td className="px-3 py-1.5 text-left leading-snug text-black">{user.id}</td>
+                          <td className="px-3 py-1.5 text-left leading-snug text-black">
                             {isEditing ? (
                               <input
                                 type="text"
@@ -281,6 +284,7 @@ export default function UsersPage({ onNavigate, onLogout }) {
                 </tbody>
               </table>
             </div>
+          </div>
           </div>
         </main>
       </div>

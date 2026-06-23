@@ -6,7 +6,7 @@ export const DEFAULT_LOGGED_IN_ROUTE = SHOW_DASHBOARD_IN_NAV ? "/dashboard" : "/
 export function getAppNavItems({ isAdmin = false } = {}) {
   return [
     ...(SHOW_DASHBOARD_IN_NAV ? [{ id: "dashboard", label: "Dashboard" }] : []),
-    { id: "attendance", label: "Attendance" },
+    { id: "attendance", label: "Events" },
     { id: "attendance_students", label: "Students" },
     { id: "payment", label: "Payments" },
     { id: "events", label: "Manage Event" },

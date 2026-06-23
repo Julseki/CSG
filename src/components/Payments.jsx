@@ -14,6 +14,7 @@ import { downloadPdfTable } from "../utils/downloadPdfTable";
 /** Payments page main content text (sidebar nav excluded). */
 const PAYMENTS_PAGE_TEXT = "text-black";
 const PAYMENTS_TH_TEXT = "font-bold text-black";
+const TABLE_CELL_NOWRAP = "[&_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap";
 const TRANSACTIONS_PAGE_SIZE = 15;
 /** Wait for RFID wedge / typing to finish before auto-submit (same as Home attendance). */
 const AUTO_SUBMIT_DEBOUNCE_MS = 500;
@@ -631,7 +632,7 @@ export default function Payments({ onNavigate, onLogout }) {
         </header>
 
         <main className={`flex-1 p-6 overflow-auto ${PAYMENTS_PAGE_TEXT} [&_th]:font-bold [&_th]:!text-black`}>
-          <div className="mx-auto w-full max-w-7xl space-y-6">
+          <div className="mx-auto w-full min-w-0 max-w-7xl space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="relative bg-white rounded-lg border border-[#07713c]/30 p-4 shadow-sm">
               <button
@@ -704,7 +705,7 @@ export default function Payments({ onNavigate, onLogout }) {
             </div>
           ) : null}
 
-          <section className="bg-white rounded-lg border border-[#07713c]/30 shadow-sm overflow-hidden">
+          <section className="min-w-0 bg-white rounded-lg border border-[#07713c]/30 shadow-sm overflow-hidden">
             <div className="px-4 pt-4 pb-3 border-b border-[#07713c]/20 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-bold text-black">Payment Transactions</h2>
@@ -729,16 +730,16 @@ export default function Payments({ onNavigate, onLogout }) {
               />
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-0 table-fixed text-sm">
+            <div className="min-w-0 overflow-x-auto">
+              <table className={`w-full min-w-0 table-fixed text-sm ${TABLE_CELL_NOWRAP}`}>
                 <thead className={`border-b border-[#07713c]/30 bg-[#07713c]/10 text-xs uppercase tracking-wide ${PAYMENTS_TH_TEXT}`}>
                   <tr>
-                    <th className="w-[18%] px-3 py-3 text-left">Transaction Code</th>
-                    <th className="w-[12%] px-3 py-3 text-left">Date</th>
-                    <th className="w-[12%] px-3 py-3 text-left">Student ID</th>
-                    <th className="w-[22%] px-3 py-3 text-left">Student Name</th>
-                    <th className="px-3 py-3 text-center">Amount</th>
-                    <th className="px-3 py-3 text-center">Status</th>
+                    <th className="w-[18%] px-3 py-2.5 text-left align-middle">Transaction Code</th>
+                    <th className="w-[12%] px-3 py-2.5 text-left align-middle">Date</th>
+                    <th className="w-[12%] px-3 py-2.5 text-left align-middle">Student ID</th>
+                    <th className="w-[22%] px-3 py-2.5 text-left align-middle">Student Name</th>
+                    <th className="px-3 py-2.5 text-center align-middle">Amount</th>
+                    <th className="px-3 py-2.5 text-center align-middle">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -771,12 +772,12 @@ export default function Payments({ onNavigate, onLogout }) {
                         }}
                         className="border-b border-[#07713c]/15 hover:bg-[#07713c]/[0.08] cursor-pointer"
                       >
-                        <td className="px-3 py-3 font-mono text-xs font-semibold text-black">{row.transactionCode}</td>
-                        <td className="px-3 py-3 text-black whitespace-nowrap">{formatDateTimeShort(row.paidAt)}</td>
-                        <td className="px-3 py-3 text-black">{row.studentId}</td>
-                        <td className="px-3 py-3 text-black truncate" title={row.studentName}>{row.studentName}</td>
-                        <td className="px-3 py-3 text-center font-semibold tabular-nums text-black">{formatPhp(row.amountPaid)}</td>
-                        <td className="px-3 py-3 text-center">
+                        <td className="px-3 py-1.5 font-mono text-xs leading-snug text-black">{row.transactionCode}</td>
+                        <td className="px-3 py-1.5 leading-snug text-black whitespace-nowrap">{formatDateTimeShort(row.paidAt)}</td>
+                        <td className="px-3 py-1.5 leading-snug text-black">{row.studentId}</td>
+                        <td className="px-3 py-1.5 leading-snug text-black truncate" title={row.studentName}>{row.studentName}</td>
+                        <td className="px-3 py-1.5 text-center tabular-nums leading-snug text-black">{formatPhp(row.amountPaid)}</td>
+                        <td className="px-3 py-1.5 text-center">
                           <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${transactionStatusClass(row.status)}`}>
                             {row.status}
                           </span>
@@ -900,8 +901,8 @@ export default function Payments({ onNavigate, onLogout }) {
                         </div>
                       </div>
 
-                      <div className="overflow-x-auto rounded-lg border border-[#07713c]/30">
-                        <table className="w-full min-w-[640px] text-sm">
+                      <div className="min-w-0 overflow-x-auto rounded-lg border border-[#07713c]/30">
+                        <table className={`w-full text-sm ${TABLE_CELL_NOWRAP}`}>
                           <thead className={`border-b border-[#07713c]/30 bg-[#07713c]/10 text-xs uppercase ${PAYMENTS_TH_TEXT}`}>
                             <tr>
                               <th className="px-4 py-2 text-left">Event</th>
@@ -918,10 +919,10 @@ export default function Payments({ onNavigate, onLogout }) {
                             ) : (
                               deskEvents.map((event) => (
                                 <tr key={event.id} className="border-t border-[#07713c]/20">
-                                  <td className="px-4 py-2.5 text-black font-medium">{event.name}</td>
+                                  <td className="px-4 py-2.5 text-black">{event.name}</td>
                                   <td className="px-4 py-2.5 text-center text-black">{formatEventDateForDisplay(event.date)}</td>
                                   <td className="px-4 py-2.5 text-center text-black">{sessionLabel(event.sessionKind)}</td>
-                                  <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-black">{formatPhp(event.fine)}</td>
+                                  <td className="px-4 py-2.5 text-right tabular-nums text-black">{formatPhp(event.fine)}</td>
                                 </tr>
                               ))
                             )}

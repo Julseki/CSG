@@ -25,6 +25,7 @@ const EVENT_LIST_ROWS_PER_PAGE_OPTIONS = [5, 10, 15, 20, 50];
 /** Attendance page content text (excludes green sidebar nav). */
 const ATTENDANCE_TEXT = "text-black";
 const ATTENDANCE_TH_TEXT = "font-bold text-black";
+const TABLE_CELL_NOWRAP = "[&_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap";
 const ATTENDANCE_MAJOR_OPTIONS_BY_COURSE = {
   BSED: ["English", "Math", "Filipino"],
   BSBA: ["Financial Management", "Human Resource Development Management", "Marketing Management"],
@@ -296,6 +297,13 @@ export default function Attendance({ onLogout, onNavigate }) {
   useEffect(() => {
     setDetailEventId(eventId || null);
   }, [eventId]);
+
+  useEffect(() => {
+    if (!eventId) return;
+    if (!location.pathname.endsWith("/students")) {
+      navigate(`/attendance/event/${eventId}/students`, { replace: true });
+    }
+  }, [eventId, location.pathname, navigate]);
 
   useEffect(() => {
     setSelectedStudentId(null);
@@ -740,12 +748,11 @@ export default function Attendance({ onLogout, onNavigate }) {
 
   const openEventDetails = (id) => {
     if (!id) return;
-    navigate(`/attendance/event/${id}`);
+    navigate(`/attendance/event/${id}/students`);
   };
 
   const openEventStudents = (id) => {
-    if (!id) return;
-    navigate(`/attendance/event/${id}/students`);
+    openEventDetails(id);
   };
 
   const closeEventDetails = () => {
@@ -958,48 +965,51 @@ export default function Attendance({ onLogout, onNavigate }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#07713c]/30 bg-white px-6 py-4">
-          <div>
-            <h1 className="font-[Inter,sans-serif] text-[28px] font-extrabold leading-tight text-[#07713c]">
-              Attendance
-            </h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setExportOpen(true)}
-              className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/15"
-            >
-              Export / Reports
-            </button>
-            <div className="relative">
+        <header className="border-b border-[#07713c]/30 bg-white px-6 py-4">
+          <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 className="font-[Inter,sans-serif] text-[30px] font-extrabold leading-tight text-[#07713c]">
+                Attendance
+              </h1>
+            </div>
+            <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setShowLogout((p) => !p)}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-[#07713c] hover:bg-[#07713c]/10"
-                aria-label="Account menu"
+                onClick={() => setExportOpen(true)}
+                className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/15"
               >
-                <UserCircleIcon />
+                Export / Reports
               </button>
-              {showLogout && (
-                <div className="absolute right-0 top-full z-10 mt-1 min-w-[100px] rounded-lg border border-[#07713c]/30 bg-white py-1 shadow-lg">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowLogout(false);
-                      onLogout();
-                    }}
-                    className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                  >
-                    Logout
-                  </button>
-                </div>
-              )}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowLogout((p) => !p)}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-[#07713c] hover:bg-[#07713c]/10"
+                  aria-label="Account menu"
+                >
+                  <UserCircleIcon />
+                </button>
+                {showLogout && (
+                  <div className="absolute right-0 top-full z-10 mt-1 min-w-[100px] rounded-lg border border-[#07713c]/30 bg-white py-1 shadow-lg">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowLogout(false);
+                        onLogout();
+                      }}
+                      className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
 
-        <main className={`flex-1 space-y-6 overflow-auto p-6 ${ATTENDANCE_TEXT} [&_th]:font-bold [&_th]:text-black`}>
+        <main className={`flex-1 overflow-auto p-6 ${ATTENDANCE_TEXT} [&_th]:font-bold [&_th]:text-black`}>
+          <div className="mx-auto w-full min-w-0 max-w-7xl space-y-6">
           {isPageError && (
             <div
               className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-black"
@@ -1019,17 +1029,114 @@ export default function Attendance({ onLogout, onNavigate }) {
             <p className="text-sm font-medium text-black">Loading events…</p>
           )}
           {detailEvent && isStudentListPath ? (
-            <section className="rounded-xl border border-[#07713c]/30 bg-white p-5 shadow-sm">
+            <section className="min-w-0 rounded-xl border border-[#07713c]/30 bg-white p-5 shadow-sm">
               <button
                 type="button"
-                onClick={() => openEventDetails(detailEvent.id)}
+                onClick={closeEventDetails}
                 className="mb-3 rounded-lg border border-[#07713c]/40 bg-white px-3 py-1.5 text-sm font-medium text-black hover:bg-[#07713c]/10"
               >
-                ← Back to event details
+                ← Back to event list
               </button>
-              <h3 className="text-2xl font-semibold text-black">{detailEvent.name}</h3>
-              <p className="text-lg font-bold text-black">Students list</p>
-              <p className="mt-1 text-sm font-medium text-black">Total fines: {formatPhp(studentListTotalFine)}</p>
+
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-2xl font-semibold text-black sm:text-3xl">{detailEvent.name}</h3>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(detailEvent.status)}`}>
+                      {detailEvent.status === "ongoing" ? "Ongoing" : detailEvent.status === "completed" ? "Completed" : "Upcoming"}
+                    </span>
+                    <span className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-black">
+                      {detailEventMeta.type}
+                    </span>
+                    <span className="inline-flex rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-black">
+                      Fines: {formatPhp(detailEvent.finePerAbsence ?? MOCK_FINE_PER_ABSENCE_PHP)} per absence
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-xl border border-[#07713c]/30 bg-white p-4">
+                  <p className="text-xs uppercase tracking-wide text-black">Students</p>
+                  <p className="mt-1 text-3xl font-semibold text-black">{detailEvent.totalStudents}</p>
+                  <p className="mt-1 text-sm text-black">{detailEventMeta.audience}</p>
+                </div>
+                <div className="rounded-xl border border-[#07713c]/30 bg-white p-4">
+                  <p className="text-xs uppercase tracking-wide text-black">Attended</p>
+                  <p className="mt-1 text-3xl font-semibold text-black">{detailEvent.attended}</p>
+                  <p className="mt-1 text-sm text-black">{ratePct(detailEvent.attended, detailEvent.totalStudents)}% attendance</p>
+                </div>
+                <div className="rounded-xl border border-[#07713c]/30 bg-white p-4">
+                  <p className="text-xs uppercase tracking-wide text-black">Absent</p>
+                  <p className="mt-1 text-3xl font-semibold text-black">{detailEvent.absent}</p>
+                  <p className="mt-1 text-sm text-black">{ratePct(detailEvent.absent, detailEvent.totalStudents)}% of students</p>
+                </div>
+                <div className="rounded-xl border border-[#07713c]/30 bg-white p-4">
+                  <p className="text-xs uppercase tracking-wide text-black">Total fines</p>
+                  <p className="mt-1 text-3xl font-semibold text-black">{formatPhp(eventTotalFine(detailEvent))}</p>
+                  <p className="mt-1 text-sm text-black">
+                    {formatPhp(detailEvent.finePerAbsence ?? MOCK_FINE_PER_ABSENCE_PHP)} per absence
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 grid grid-cols-1 gap-3">
+                <div className="rounded-xl border border-[#07713c]/30 bg-white p-5">
+                  <h4 className="text-lg font-semibold text-black">Schedule</h4>
+                  <div className="mt-3 rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.06] px-3 py-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-black/75">Event date</p>
+                    <p className="mt-0.5 text-base font-semibold text-black">{formatEventDateForDisplay(detailEvent.date)}</p>
+                  </div>
+                  <div className="mt-4 space-y-4 text-sm">
+                    {detailEventMeta.scheduleAmRange && (
+                      <div className="rounded-lg border border-[#07713c]/20 bg-[#07713c]/5 p-3">
+                        <p className="font-semibold text-black">AM Session</p>
+                        <p className="mt-1 text-black">{detailEventMeta.scheduleAmRange}</p>
+                        <p className="mt-1 text-xs text-black">
+                          Late in:{" "}
+                          {detailEventMeta.lateAmIn != null
+                            ? formatGraceDurationLabel(detailEventMeta.lateAmIn)
+                            : "—"}
+                        </p>
+                      </div>
+                    )}
+                    {detailEventMeta.schedulePmRange && (
+                      <div className="rounded-lg border border-[#07713c]/20 bg-[#07713c]/5 p-3">
+                        <p className="font-semibold text-black">PM Session</p>
+                        <p className="mt-1 text-black">{detailEventMeta.schedulePmRange}</p>
+                        <p className="mt-1 text-xs text-black">
+                          Late in:{" "}
+                          {detailEventMeta.latePmIn != null
+                            ? formatGraceDurationLabel(detailEventMeta.latePmIn)
+                            : "—"}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2 border-t border-[#07713c]/20 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => exportCsvEvent(detailEvent)}
+                      className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-black hover:bg-[#07713c]/15"
+                    >
+                      Export Excel (CSV) — this event
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => exportPdfEvent(detailEvent)}
+                      className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-black hover:bg-[#07713c]/15"
+                    >
+                      Export PDF — this event
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 border-t border-[#07713c]/20 pt-5">
+                <h4 className="text-lg font-semibold text-black">Students</h4>
+                <p className="mt-1 text-sm text-black">Total fines (filtered): {formatPhp(studentListTotalFine)}</p>
+              </div>
+
               <div className="mt-3 flex flex-wrap items-end gap-3 rounded-lg border border-[#07713c]/30 bg-[#07713c]/[0.06] p-3">
                 <div className="relative min-w-[220px] flex-1">
                   <SearchMagnifierIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
@@ -1127,8 +1234,8 @@ export default function Attendance({ onLogout, onNavigate }) {
                   </select>
                 </label>
               </div>
-              <div className="mt-3 overflow-x-auto rounded-lg border border-[#07713c]/30">
-                <table className="w-full min-w-[1180px] border-collapse text-sm">
+              <div className="mt-3 min-w-0 overflow-x-auto rounded-lg border border-[#07713c]/30">
+                <table className={`w-full border-collapse text-sm ${TABLE_CELL_NOWRAP}`}>
                   <thead className={`bg-[#07713c]/5 text-center text-xs uppercase ${ATTENDANCE_TH_TEXT}`}>
                     <tr>
                       <th rowSpan={2} className="border-b border-x border-[#07713c]/30 px-3 py-2 align-middle">Student ID</th>
@@ -1194,11 +1301,11 @@ export default function Attendance({ onLogout, onNavigate }) {
                             }}
                             className={`cursor-pointer transition-colors ${rowSelected ? "bg-[#07713c]/12" : ""}`}
                           >
-                            <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center font-medium text-black">
+                            <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center text-black">
                               {String(s.id).toUpperCase()}
                             </td>
-                            <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center font-medium text-black">{s.name}</td>
-                            <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center font-medium text-black">
+                            <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center text-black">{s.name}</td>
+                            <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center text-black">
                               {getStudentDepartmentLabel(s)}
                             </td>
                             <td className="border-b border-x border-[#07713c]/30 px-3 py-1.5 text-center tabular-nums text-black">
@@ -1220,7 +1327,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                             {detailEventMeta.hasAmSession && (
                               <td className="border-b border-l border-[#07713c]/30 px-3 py-1.5 text-center text-xs">
                                 {rec.amIn === "No record" ? (
-                                  <span className="text-xs font-medium text-black">
+                                  <span className="text-xs text-black">
                                     No record
                                   </span>
                                 ) : (
@@ -1231,7 +1338,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                             {detailEventMeta.hasAmSession && (
                               <td className="border-b border-r border-[#07713c]/30 px-3 py-1.5 text-center text-xs">
                                 {rec.amOut === "No record" ? (
-                                  <span className="text-xs font-medium text-black">
+                                  <span className="text-xs text-black">
                                     No record
                                   </span>
                                 ) : (
@@ -1242,7 +1349,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                             {detailEventMeta.hasPmSession && (
                               <td className="border-b border-l border-[#07713c]/30 px-3 py-1.5 text-center text-xs">
                                 {rec.pmIn === "No record" ? (
-                                  <span className="text-xs font-medium text-black">
+                                  <span className="text-xs text-black">
                                     No record
                                   </span>
                                 ) : (
@@ -1253,7 +1360,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                             {detailEventMeta.hasPmSession && (
                               <td className="border-b border-r border-[#07713c]/30 px-3 py-1.5 text-center text-xs">
                                 {rec.pmOut === "No record" ? (
-                                  <span className="text-xs font-medium text-black">
+                                  <span className="text-xs text-black">
                                     No record
                                   </span>
                                 ) : (
@@ -1333,7 +1440,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                 </div>
               </div>
 
-              <div className="mt-5 grid grid-cols-1 gap-3 xl:grid-cols-2">
+              <div className="mt-5 grid grid-cols-1 gap-3">
                 <div className="rounded-xl border border-[#07713c]/30 bg-white p-5">
                   <h4 className="text-lg font-semibold text-black">Schedule</h4>
                   <div className="mt-3 rounded-lg border border-[#07713c]/25 bg-[#07713c]/[0.06] px-3 py-2.5">
@@ -1390,38 +1497,6 @@ export default function Attendance({ onLogout, onNavigate }) {
                     </button>
                   </div>
                 </div>
-
-                <div className="rounded-xl border border-[#07713c]/30 bg-white p-5">
-                  <h4 className="text-lg font-semibold text-black">Late thresholds</h4>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    {detailEventMeta.lateAmIn != null && (
-                      <div>
-                        <p className="text-sm text-black">AM late in</p>
-                        <p className="text-2xl font-semibold leading-tight text-black sm:text-3xl">
-                          {formatGraceDurationLabel(detailEventMeta.lateAmIn)}
-                        </p>
-                      </div>
-                    )}
-                    {detailEventMeta.latePmIn != null && (
-                      <div>
-                        <p className="text-sm text-black">PM late in</p>
-                        <p className="text-2xl font-semibold leading-tight text-black sm:text-3xl">
-                          {formatGraceDurationLabel(detailEventMeta.latePmIn)}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                  <div className="mt-4 grid grid-cols-1 gap-3 border-t border-[#07713c]/20 pt-4 sm:grid-cols-2">
-                    <div>
-                      <p className="text-sm text-black">Audience</p>
-                      <p className="text-2xl font-semibold text-black">{detailEventMeta.audience}</p>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <p className="text-sm text-black">Notes</p>
-                      <p className="whitespace-pre-wrap text-xl font-semibold text-black">{detailEventMeta.notes}</p>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               {detailEvent.status !== "upcoming" && (
@@ -1437,7 +1512,7 @@ export default function Attendance({ onLogout, onNavigate }) {
           ) : (
           <>
           {/* Search + event list */}
-          <section className="overflow-hidden rounded-xl border border-[#07713c]/30 bg-white shadow-sm">
+          <section className="min-w-0 overflow-hidden rounded-xl border border-[#07713c]/30 bg-white shadow-sm">
             <div className="border-b border-[#07713c]/20 px-4 py-3">
               <h2 className="text-sm font-semibold text-black">Event list</h2>
             </div>
@@ -1503,8 +1578,8 @@ export default function Attendance({ onLogout, onNavigate }) {
                 </div>
               </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1040px] text-sm">
+            <div className="min-w-0 overflow-x-auto">
+              <table className={`w-full text-sm ${TABLE_CELL_NOWRAP}`}>
                 <thead className={`border-b border-[#07713c]/30 bg-[#07713c]/10 text-left text-xs uppercase tracking-wide ${ATTENDANCE_TH_TEXT}`}>
                   <tr>
                     <th className="px-4 py-2.5 align-middle">Event name</th>
@@ -1513,7 +1588,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                     <th className="px-4 py-2.5 align-middle">Status</th>
                     <th className="px-4 py-2.5 text-right align-middle tabular-nums">Attended</th>
                     <th className="px-4 py-2.5 text-right align-middle tabular-nums">Absent</th>
-                    <th className="px-4 py-2.5 text-right align-middle tabular-nums">Rate</th>
+                    <th className="hidden px-4 py-2.5 text-right align-middle tabular-nums">Rate</th>
                     <th className="px-4 py-2.5 text-right align-middle tabular-nums">Fines</th>
                   </tr>
                 </thead>
@@ -1539,11 +1614,11 @@ export default function Attendance({ onLogout, onNavigate }) {
                       }}
                       className="cursor-pointer border-t border-[#07713c]/20 hover:bg-[#07713c]/10"
                     >
-                      <td className="px-4 py-2.5 font-medium text-black">{ev.name}</td>
-                      <td className="px-4 py-2.5 font-medium text-black">
+                      <td className="px-4 py-2.5 text-black">{ev.name}</td>
+                      <td className="px-4 py-2.5 text-black">
                         {formatEventDateForDisplay(ev.date)}
                       </td>
-                      <td className="px-4 py-2.5 font-medium text-black">
+                      <td className="px-4 py-2.5 text-black">
                         {formatDurationForEventsListWithSessionHint(ev)}
                       </td>
                       <td className="px-4 py-2.5">
@@ -1553,10 +1628,10 @@ export default function Attendance({ onLogout, onNavigate }) {
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums text-black">{ev.attended}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums text-black">{ev.absent}</td>
-                      <td className="px-4 py-2.5 text-right font-medium tabular-nums text-black">
+                      <td className="hidden px-4 py-2.5 text-right tabular-nums text-black">
                         {ev.status === "upcoming" ? "—" : `${ratePct(ev.attended, ev.totalStudents)}%`}
                       </td>
-                      <td className="px-4 py-2.5 text-right font-medium text-black">
+                      <td className="px-4 py-2.5 text-right text-black">
                         {formatPhp(ev.finePerAbsence ?? MOCK_FINE_PER_ABSENCE_PHP)}
                       </td>
                     </tr>
@@ -1576,6 +1651,7 @@ export default function Attendance({ onLogout, onNavigate }) {
           </section>
           </>
           )}
+          </div>
         </main>
       </div>
 
@@ -1733,7 +1809,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                     <tbody>
                       {(detailEvent.students || []).map((s) => (
                         <tr key={s.id} className="border-t border-[#07713c]/20">
-                          <td className="px-3 py-1.5 font-medium text-black">{s.name}</td>
+                          <td className="px-3 py-1.5 text-black">{s.name}</td>
                           <td className="px-3 py-1.5 capitalize text-black">{s.status}</td>
                           <td className="px-3 py-1.5 text-right tabular-nums">{s.finePhp ? formatPhp(s.finePhp) : "—"}</td>
                         </tr>

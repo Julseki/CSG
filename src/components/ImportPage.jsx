@@ -60,6 +60,7 @@ function parseCsvPreview(text) {
 /** Import page main content text (sidebar + top header excluded). */
 const IMPORT_PAGE_TEXT = "text-black";
 const IMPORT_TH_TEXT = "font-bold text-black";
+const TABLE_CELL_NOWRAP = "[&_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap";
 
 export default function ImportPage({ onNavigate, onLogout }) {
   const { role, isGovernor, governorScope } = useGovernorScope();
@@ -210,64 +211,66 @@ export default function ImportPage({ onNavigate, onLogout }) {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#07713c] leading-tight">
-            Import Students CSV
-          </h1>
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowLogout((prev) => !prev)}
-                className="inline-flex h-11 w-11 items-center justify-center text-[#07713c] rounded-lg hover:bg-green-50"
-                aria-label="Account menu"
-              >
-                <UserCircleIcon />
-              </button>
-              {showLogout && (
-                <div className="absolute right-0 top-full mt-1 py-1 bg-white rounded-lg shadow-lg border border-gray-200 min-w-[100px] z-10">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowLogout(false);
-                      onLogout();
-                    }}
-                    className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                  >
-                    Logout
-                  </button>
-                </div>
-              )}
+        <header className="border-b border-[#07713c]/30 bg-white px-6 py-4">
+          <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
+            <h1 className="text-[30px] font-extrabold font-[Inter,sans-serif] text-[#07713c] leading-tight">
+              Import Students CSV
+            </h1>
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowLogout((prev) => !prev)}
+                  className="inline-flex h-11 w-11 items-center justify-center text-[#07713c] rounded-lg hover:bg-green-50"
+                  aria-label="Account menu"
+                >
+                  <UserCircleIcon />
+                </button>
+                {showLogout && (
+                  <div className="absolute right-0 top-full mt-1 py-1 bg-white rounded-lg shadow-lg border border-gray-200 min-w-[100px] z-10">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowLogout(false);
+                        onLogout();
+                      }}
+                      className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
 
-        <main className={`flex-1 p-6 overflow-auto ${IMPORT_PAGE_TEXT} [&_th]:font-bold [&_th]:!text-black`}>
-          <div className="space-y-6">
+        <main className={`flex-1 overflow-auto p-6 ${IMPORT_PAGE_TEXT} [&_th]:font-bold [&_th]:!text-black`}>
+          <div className="mx-auto w-full min-w-0 max-w-7xl space-y-6">
             <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4">
               <p className="text-sm text-black">
                 Upload a student CSV (export from Excel as CSV UTF-8). Use the 5-column format below to link each
                 student to a college department.
               </p>
-              <div className="rounded-lg border border-green-100 bg-green-50/60 px-3 py-2 text-xs text-black space-y-1">
+              <div className="rounded-lg border border-green-100 bg-green-50/60 px-3 py-2 text-sm text-black space-y-1">
                 <p>
-                  <span className="font-semibold text-black">Imports all rows</span> — duplicates are updated, and
+                  <span className="text-black">Imports all rows</span> — duplicates are updated, and
                   missing fields are left empty when not provided.
                 </p>
                 <p>
-                  <span className="font-semibold text-black">Typical columns:</span>{" "}
-                  <code className="text-[11px]">id_number</code>, <code className="text-[11px]">rfid</code>,{" "}
-                  <code className="text-[11px]">full_name</code>, <code className="text-[11px]">level</code>,{" "}
-                  <code className="text-[11px]">department</code>
+                  <span className="text-black">Typical columns:</span>{" "}
+                  <code className="text-sm">id_number</code>, <code className="text-sm">rfid</code>,{" "}
+                  <code className="text-sm">full_name</code>, <code className="text-sm">level</code>,{" "}
+                  <code className="text-sm">department</code>
                 </p>
               </div>
               {preview.headers.length > 0 && headerValidation.valid && (
-                <p className="text-xs text-black">
+                <p className="text-sm text-black">
                   Ready to import {preview.rows.length} row(s) ({detectedFormat} mapping).
                 </p>
               )}
               {preview.headers.length > 0 && !headerValidation.valid && (
-                <p className="text-xs text-black">{headerValidation.message}</p>
+                <p className="text-sm text-black">{headerValidation.message}</p>
               )}
               <input
                 ref={fileInputRef}
@@ -286,21 +289,21 @@ export default function ImportPage({ onNavigate, onLogout }) {
                   {importMutation.isPending ? "Importing..." : "Start Import"}
                 </button>
                 {selectedFile && (
-                  <p className="text-xs text-black/75">
-                    Selected: <span className="font-medium">{selectedFile.name}</span>
+                  <p className="text-sm text-black/75">
+                    Selected: <span className="text-black">{selectedFile.name}</span>
                   </p>
                 )}
               </div>
               {error && <p className="text-sm text-black">{error}</p>}
-              <p className="text-xs text-black/75">Role: {roleLabel}</p>
+              <p className="text-sm text-black/75">Role: {roleLabel}</p>
             </div>
 
             {preview.headers.length > 0 && (
-              <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-                <h3 className="text-sm font-semibold text-black mb-3">CSV Preview</h3>
-                <p className="mb-3 text-xs text-black">Total students in CSV: {preview.rows.length}</p>
-                <div className="overflow-auto">
-                  <table className="min-w-full text-xs border-collapse">
+              <div className="min-w-0 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                <h3 className="text-sm text-black mb-3">CSV Preview</h3>
+                <p className="mb-3 text-sm text-black">Total students in CSV: {preview.rows.length}</p>
+                <div className="min-w-0 overflow-auto">
+                  <table className={`min-w-full text-sm border-collapse ${TABLE_CELL_NOWRAP}`}>
                     <thead className={`bg-[#07713c]/10 ${IMPORT_TH_TEXT}`}>
                       <tr>
                         {preview.headers.map((header, idx) => (
@@ -327,17 +330,17 @@ export default function ImportPage({ onNavigate, onLogout }) {
             )}
 
             {isAdmin && (
-              <div className="rounded-xl border border-red-300 bg-red-50/40 p-5 shadow-sm space-y-4">
+              <div className="min-w-0 rounded-xl border border-red-300 bg-red-50/40 p-5 shadow-sm space-y-4">
                 <div>
-                  <h3 className="text-sm font-semibold text-black">Reset all data</h3>
-                  <p className="mt-1 text-xs text-black">
+                  <h3 className="text-sm font-bold text-black">Reset all data</h3>
+                  <p className="mt-1 text-sm text-black">
                     Deletes all students, colleges, courses, events, attendance, fines, payments, and
-                    non-admin users. <span className="font-semibold">Admin account(s) are kept.</span> This
+                    non-admin users. <span className="font-bold text-black">Admin account(s) are kept.</span> This
                     cannot be undone.
                   </p>
                 </div>
-                <div className="rounded-lg border border-red-200 bg-white p-3 text-xs text-black">
-                  <p className="mb-2 font-semibold text-black">Records that will be removed</p>
+                <div className="rounded-lg border border-red-200 bg-white p-3 text-sm text-black">
+                  <p className="mb-2 font-bold text-black">Records that will be removed</p>
                   {isResetPreviewLoading && !resetPreview ? (
                     <p className="text-black/75">Loading counts…</p>
                   ) : resetPreview ? (
@@ -356,7 +359,7 @@ export default function ImportPage({ onNavigate, onLogout }) {
                     <p className="text-black/75">Could not load preview.</p>
                   )}
                   {resetPreview && (
-                    <p className="mt-2 text-[11px] text-black">
+                    <p className="mt-2 text-sm text-black">
                       Admin accounts kept: {resetPreview.adminUsers}
                     </p>
                   )}
@@ -364,12 +367,12 @@ export default function ImportPage({ onNavigate, onLogout }) {
                     type="button"
                     onClick={() => refetchResetPreview()}
                     disabled={isResetPreviewLoading}
-                    className="mt-2 text-[11px] font-medium text-black underline disabled:opacity-60"
+                    className="mt-2 text-sm text-black underline disabled:opacity-60"
                   >
                     Refresh counts
                   </button>
                 </div>
-                <label className="flex items-start gap-2 text-xs text-black">
+                <label className="flex items-start gap-2 text-sm text-black">
                   <input
                     type="checkbox"
                     checked={resetAcknowledged}
@@ -379,8 +382,8 @@ export default function ImportPage({ onNavigate, onLogout }) {
                   <span>I understand all data above will be permanently deleted (admin kept).</span>
                 </label>
                 <div>
-                  <label htmlFor="reset-confirmation" className="block text-xs font-medium text-black mb-1">
-                    Type <code className="text-[11px]">{DATA_RESET_CONFIRMATION_PHRASE}</code> to confirm
+                  <label htmlFor="reset-confirmation" className="block text-sm text-black mb-1">
+                    Type <code className="text-sm font-bold">{DATA_RESET_CONFIRMATION_PHRASE}</code> to confirm
                   </label>
                   <input
                     id="reset-confirmation"
@@ -401,13 +404,13 @@ export default function ImportPage({ onNavigate, onLogout }) {
                   {resetMutation.isPending ? "Resetting…" : "Reset all data"}
                 </button>
                 {resetError && <p className="text-sm text-black">{resetError}</p>}
-                {resetMessage && <p className="text-sm font-medium text-black">{resetMessage}</p>}
+                {resetMessage && <p className="text-sm text-black">{resetMessage}</p>}
               </div>
             )}
 
             {result && (
-              <div className="rounded-xl border border-green-200 bg-green-50 p-5 text-black">
-                <h3 className="text-sm font-semibold text-black mb-2">Import Summary</h3>
+              <div className="min-w-0 rounded-xl border border-green-200 bg-green-50 p-5 text-black">
+                <h3 className="text-sm text-black mb-2">Import Summary</h3>
                 <p className="text-sm text-black">Processed: {result.processedRows}</p>
                 <p className="text-sm text-black">Imported: {result.importedRows}</p>
                 <p className="text-sm text-black">Skipped: {result.skippedRows}</p>
@@ -417,8 +420,8 @@ export default function ImportPage({ onNavigate, onLogout }) {
                 </p>
                 {(result.errors?.length ?? 0) > 0 && (
                   <div className="mt-2">
-                    <p className="text-xs font-semibold text-black">Row Errors</p>
-                    <ul className="text-xs text-black list-disc pl-5">
+                    <p className="text-sm text-black">Row Errors</p>
+                    <ul className="text-sm text-black list-disc pl-5">
                       {result.errors.slice(0, 15).map((item, idx) => (
                         <li key={`${item.row}-${idx}`}>Row {item.row}: {item.message}</li>
                       ))}
@@ -427,22 +430,22 @@ export default function ImportPage({ onNavigate, onLogout }) {
                 )}
                 {(result.skipped?.length ?? 0) > 0 && (
                   <div className="mt-3">
-                    <p className="text-xs font-semibold text-black">Skipped Rows and Reasons</p>
-                    <ul className="text-xs text-black list-disc pl-5">
+                    <p className="text-sm text-black">Skipped Rows and Reasons</p>
+                    <ul className="text-sm text-black list-disc pl-5">
                       {result.skipped.slice(0, 50).map((item, idx) => (
                         <li key={`skip-${item.row}-${idx}`}>Row {item.row}: {item.reason}</li>
                       ))}
                     </ul>
                     {result.skipped.length > 50 && (
-                      <p className="mt-1 text-[11px] text-black">Showing first 50 skipped rows.</p>
+                      <p className="mt-1 text-sm text-black">Showing first 50 skipped rows.</p>
                     )}
                   </div>
                 )}
                 {(result.existingStudents?.length ?? 0) > 0 && (
                   <div className="mt-3">
-                    <p className="text-xs font-semibold text-black">Updated Existing Students (still imported)</p>
-                    <div className="mt-2 overflow-auto rounded-lg border border-[#07713c]/20 bg-white">
-                      <table className="min-w-full border-collapse text-[11px] text-black">
+                    <p className="text-sm text-black">Updated Existing Students (still imported)</p>
+                    <div className="mt-2 min-w-0 overflow-auto rounded-lg border border-[#07713c]/20 bg-white">
+                      <table className={`min-w-full border-collapse text-sm text-black ${TABLE_CELL_NOWRAP}`}>
                         <thead className={`bg-[#07713c]/10 ${IMPORT_TH_TEXT}`}>
                           <tr>
                             <th className="border border-[#07713c]/20 px-2 py-1 text-left">Row</th>
@@ -458,7 +461,7 @@ export default function ImportPage({ onNavigate, onLogout }) {
                           {paginatedExistingStudents.map((item, idx) => (
                             <tr key={`existing-${item.row}-${item.studentId}-${idx}`} className="odd:bg-white even:bg-[#07713c]/[0.04]">
                               <td className="border border-[#07713c]/15 px-2 py-1 align-top">{item.row}</td>
-                              <td className="border border-[#07713c]/15 px-2 py-1 align-top font-medium">{item.studentId}</td>
+                              <td className="border border-[#07713c]/15 px-2 py-1 align-top">{item.studentId}</td>
                               <td className="border border-[#07713c]/15 px-2 py-1 align-top">{item.fullName}</td>
                               <td className="border border-[#07713c]/15 px-2 py-1 align-top">{item.rfid || "—"}</td>
                               <td className="border border-[#07713c]/15 px-2 py-1 align-top">{item.yearLevelLabel || item.yearLevel || "—"}</td>
