@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SidebarNavIcon from "./SidebarNavIcon";
 import UserCircleIcon from "./UserCircleIcon";
+import SidebarUserFullName from "./SidebarUserFullName";
 import PaginationBar from "./PaginationBar";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { getDashboardRoleLabel } from "../utils/roles";
@@ -586,6 +587,7 @@ export default function Payments({ onNavigate, onLogout }) {
             </button>
           ))}
         </nav>
+        <SidebarUserFullName />
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -709,14 +711,14 @@ export default function Payments({ onNavigate, onLogout }) {
             <div className="px-4 pt-4 pb-3 border-b border-[#07713c]/20 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-bold text-black">Payment Transactions</h2>
-                <p className="text-sm text-black/75">Recorded payments only. Click a row to view details or print a receipt. Use Add Student to post a new transaction.</p>
+                <p className="text-sm text-black/75">Recorded payments only. Click a row to view details or print a receipt. Use New Payment to post a new transaction.</p>
               </div>
               <button
                 type="button"
                 onClick={openPayStudentModal}
                 className="rounded-lg border border-[#07713c] bg-[#07713c] px-4 py-2 text-sm font-semibold text-white hover:bg-[#055a2e]"
               >
-                Add Student
+                New Payment
               </button>
             </div>
 
@@ -754,7 +756,7 @@ export default function Payments({ onNavigate, onLogout }) {
                   ) : filteredTransactions.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-10 px-4 text-center text-black/85">
-                        No payment transactions yet. Click <span className="font-semibold">Add Student</span> to record a payment.
+                        No payment transactions yet. Click <span className="font-semibold">New Payment</span> to record a payment.
                       </td>
                     </tr>
                   ) : (
@@ -807,7 +809,7 @@ export default function Payments({ onNavigate, onLogout }) {
           <div className="w-full max-w-4xl max-h-[90vh] rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col">
             <div className="flex items-center justify-between border-b border-[#07713c]/30 bg-[#07713c]/10 px-5 py-3 shrink-0">
               <h3 className="text-lg font-semibold text-black">
-                {payFlowStep === "search" ? "Add Student" : "Review Fines & Pay"}
+                {payFlowStep === "search" ? "New Payment" : "Review Fines & Pay"}
               </h3>
               <button
                 type="button"

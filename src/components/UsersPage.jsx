@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import SidebarNavIcon from "./SidebarNavIcon";
+import SidebarUserFullName from "./SidebarUserFullName";
 import UserCircleIcon from "./UserCircleIcon";
 import CreateUserModal from "./CreateUserModal";
 import { getAppNavItems } from "../utils/appNav";
@@ -18,7 +19,7 @@ export default function UsersPage({ onNavigate, onLogout }) {
   const [showLogout, setShowLogout] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingUserId, setEditingUserId] = useState(null);
-  const [editForm, setEditForm] = useState({ username: "", password: "" });
+  const [editForm, setEditForm] = useState({ fullName: "", username: "", password: "" });
   const [actionError, setActionError] = useState("");
   const [actionSuccess, setActionSuccess] = useState("");
 
@@ -52,7 +53,7 @@ export default function UsersPage({ onNavigate, onLogout }) {
     setActionError("");
     setActionSuccess("");
     setEditingUserId(user.id);
-    setEditForm({ username: user.username || "", password: "" });
+    setEditForm({ fullName: user.full_name || "", username: user.username || "", password: "" });
   };
 
   const saveEdit = () => {
@@ -60,10 +61,11 @@ export default function UsersPage({ onNavigate, onLogout }) {
     setActionSuccess("");
     if (!editingUserId) return;
     const payload = {};
+    if (editForm.fullName.trim()) payload.fullName = editForm.fullName.trim();
     if (editForm.username.trim()) payload.username = editForm.username.trim();
     if (editForm.password.trim()) payload.password = editForm.password.trim();
-    if (!payload.username && !payload.password) {
-      setActionError("Provide a username or password to update.");
+    if (!payload.fullName && !payload.username && !payload.password) {
+      setActionError("Provide a full name, username, or password to update.");
       return;
     }
     updateUserMutation.mutate(
@@ -72,7 +74,7 @@ export default function UsersPage({ onNavigate, onLogout }) {
         onSuccess: () => {
           setActionSuccess("User updated successfully.");
           setEditingUserId(null);
-          setEditForm({ username: "", password: "" });
+          setEditForm({ fullName: "", username: "", password: "" });
         },
         onError: (err) => {
           setActionError(err?.response?.data?.message || "Failed to update user.");
@@ -115,6 +117,7 @@ export default function UsersPage({ onNavigate, onLogout }) {
             </button>
           ))}
         </nav>
+        <SidebarUserFullName />
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -180,6 +183,7 @@ export default function UsersPage({ onNavigate, onLogout }) {
                 <thead className={`border-b border-[#07713c]/30 bg-[#07713c]/10 text-xs uppercase tracking-wide ${USERS_TH_TEXT}`}>
                   <tr>
                     <th className="px-3 py-2.5 text-left align-middle">ID</th>
+                    <th className="px-3 py-2.5 text-left align-middle">Full Name</th>
                     <th className="px-3 py-2.5 text-left align-middle">Username</th>
                     <th className="px-3 py-2.5 text-left align-middle">Password</th>
                     <th className="px-3 py-2.5 text-left align-middle">Role</th>
@@ -190,13 +194,13 @@ export default function UsersPage({ onNavigate, onLogout }) {
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td className="px-3 py-3 text-sm text-black/85" colSpan={6}>
+                      <td className="px-3 py-3 text-sm text-black/85" colSpan={7}>
                         Loading users...
                       </td>
                     </tr>
                   ) : sortedUsers.length === 0 ? (
                     <tr>
-                      <td className="px-3 py-3 text-sm text-black/85" colSpan={6}>
+                      <td className="px-3 py-3 text-sm text-black/85" colSpan={7}>
                         No users found.
                       </td>
                     </tr>
@@ -206,6 +210,19 @@ export default function UsersPage({ onNavigate, onLogout }) {
                       return (
                         <tr key={user.id} className="border-t border-[#07713c]/20 hover:bg-gray-50">
                           <td className="px-3 py-1.5 text-left leading-snug text-black">{user.id}</td>
+                          <td className="px-3 py-1.5 text-left leading-snug text-black">
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={editForm.fullName}
+                                onChange={(e) => setEditForm((prev) => ({ ...prev, fullName: e.target.value }))}
+                                className="w-full rounded-lg border border-[#07713c]/40 bg-white px-2.5 py-1.5 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]/30"
+                                placeholder="Enter full name"
+                              />
+                            ) : (
+                              user.full_name || "-"
+                            )}
+                          </td>
                           <td className="px-3 py-1.5 text-left leading-snug text-black">
                             {isEditing ? (
                               <input
@@ -250,7 +267,7 @@ export default function UsersPage({ onNavigate, onLogout }) {
                                   type="button"
                                   onClick={() => {
                                     setEditingUserId(null);
-                                    setEditForm({ username: "", password: "" });
+                                    setEditForm({ fullName: "", username: "", password: "" });
                                   }}
                                   className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-black"
                                 >

@@ -6,6 +6,7 @@ import PaginationBar from "./PaginationBar";
 import SearchMagnifierIcon from "./SearchMagnifierIcon";
 import SidebarNavIcon from "./SidebarNavIcon";
 import UserCircleIcon from "./UserCircleIcon";
+import SidebarUserFullName from "./SidebarUserFullName";
 import { getAppNavItems } from "../utils/appNav";
 import { getDashboardRoleLabel } from "../utils/roles";
 import { useGovernorScope } from "../hooks/useGovernorScope";
@@ -962,6 +963,7 @@ export default function Attendance({ onLogout, onNavigate }) {
             </button>
           ))}
         </nav>
+        <SidebarUserFullName />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">

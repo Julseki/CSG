@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SidebarNavIcon from "./SidebarNavIcon";
 import UserCircleIcon from "./UserCircleIcon";
+import SidebarUserFullName from "./SidebarUserFullName";
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { getAppNavItems } from "../utils/appNav";
 import { getDashboardRoleLabel } from "../utils/roles";
@@ -66,6 +67,7 @@ export default function StudentAttendancePage({ onLogout, onNavigate }) {
             </button>
           ))}
         </nav>
+        <SidebarUserFullName />
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">

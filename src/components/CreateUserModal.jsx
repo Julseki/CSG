@@ -10,6 +10,7 @@ function useCreateUserDebugMutation() {
   return useMutation({
     mutationFn: async ({
       username,
+      fullName,
       password,
       department,
       major,
@@ -17,6 +18,7 @@ function useCreateUserDebugMutation() {
     }) => {
       const requestBody = {
         username,
+        fullName,
         password,
         department,
         major,
@@ -103,6 +105,7 @@ export default function CreateUserModal({ open, onClose }) {
   const [createdAccount, setCreatedAccount] = useState(null);
 
   const [createUserForm, setCreateUserForm] = useState({
+    fullName: "",
     department: "",
     major: "",
     username: "",
@@ -143,6 +146,7 @@ export default function CreateUserModal({ open, onClose }) {
     setShowCreatePassword(false);
     setShowCreateConfirmPassword(false);
     setCreateUserForm({
+      fullName: "",
       department: "",
       major: "",
       username: "",
@@ -207,6 +211,7 @@ export default function CreateUserModal({ open, onClose }) {
 
   const isCreateDisabled =
     isCreatingUser ||
+    !createUserForm.fullName.trim() ||
     !createUserForm.username.trim() ||
     !passwordValue ||
     !doPasswordsMatch ||
@@ -234,6 +239,7 @@ export default function CreateUserModal({ open, onClose }) {
     setCreateUserError("");
     setCreatedAccount(null);
     setCreateUserForm({
+      fullName: "",
       department: "",
       major: "",
       username: "",
@@ -259,7 +265,7 @@ export default function CreateUserModal({ open, onClose }) {
           <h3 className="font-semibold text-black">Create User</h3>
         </div>
         <form
-          className={CREATE_USER_TEXT}
+          className={`${CREATE_USER_TEXT} p-5 space-y-4 text-sm`}
           onSubmit={(e) => {
             e.preventDefault();
             setCreateUserError("");
@@ -276,6 +282,11 @@ export default function CreateUserModal({ open, onClose }) {
                 );
                 return;
               }
+            }
+
+            if (!createUserForm.fullName.trim()) {
+              setCreateUserError("Full name is required.");
+              return;
             }
 
             if (!usernameValue) {
@@ -299,6 +310,7 @@ export default function CreateUserModal({ open, onClose }) {
             createUser(
               {
                 username: usernameValue,
+                fullName: createUserForm.fullName.trim(),
                 password: createUserForm.password,
                 department:
                   createUserForm.accountType === "csg_president"
@@ -334,7 +346,6 @@ export default function CreateUserModal({ open, onClose }) {
               },
             );
           }}
-          className="p-5 space-y-4 text-sm"
         >
           {createUserError && (
             <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-xs text-black">
@@ -513,6 +524,23 @@ export default function CreateUserModal({ open, onClose }) {
           </div>
 
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
+            <div>
+              <label className="block text-xs font-medium text-black mb-1">
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={createUserForm.fullName}
+                onChange={(e) =>
+                  setCreateUserForm((prev) => ({
+                    ...prev,
+                    fullName: e.target.value,
+                  }))
+                }
+                className="w-full rounded-lg border border-[#07713c]/40 px-3 py-2 text-sm text-black placeholder:text-black/45 bg-white focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]"
+                placeholder="Enter full name"
+              />
+            </div>
             <div>
               <label className="block text-xs font-medium text-black mb-1">
                 Username

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import settingsIcon from "../assets/material-symbols_settings.svg";
 
 export default function Navbar({ showSettings = false }) {
@@ -22,7 +22,11 @@ export default function Navbar({ showSettings = false }) {
     <nav className="fixed inset-x-0 top-0 w-screen z-50 transition-all duration-300 bg-white/90 backdrop-blur-sm border-b border-gray-200">
       <div className="relative w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-center h-16 sm:h-18 md:h-20">
-          <div className="flex items-center gap-3">
+          <Link
+            to="/"
+            className="flex items-center gap-3 rounded-lg hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#07713c]/40"
+            aria-label="Go to home page"
+          >
             <img
               src="/logo.png"
               alt="Northern Mindanao Colleges, Inc."
@@ -31,7 +35,7 @@ export default function Navbar({ showSettings = false }) {
             <span className="text-base sm:text-lg md:text-xl font-semibold text-green-800 whitespace-nowrap font-[Inter,sans-serif]">
               Northern Mindanao Colleges, Inc.
             </span>
-          </div>
+          </Link>
           {showSettings && (
             <div className="absolute right-4 sm:right-6 lg:right-8 top-1/2 -translate-y-1/2" ref={settingsMenuRef}>
               <button

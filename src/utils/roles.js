@@ -27,6 +27,34 @@ export function getRoleFromSession(session) {
   return String(rawRole).toLowerCase().trim();
 }
 
+export function getFullNameFromSession(session) {
+  if (!session || typeof session !== "object") return "";
+  const raw =
+    session.full_name ??
+    session.fullName ??
+    session.user?.full_name ??
+    session.user?.fullName ??
+    session.data?.full_name ??
+    session.data?.user?.full_name ??
+    session.profile?.full_name ??
+    "";
+  return String(raw ?? "").trim();
+}
+
+/** Navbar label: prefer full name, fall back to username. */
+export function getNavDisplayNameFromSession(session) {
+  const fullName = getFullNameFromSession(session);
+  if (fullName) return fullName;
+  if (!session || typeof session !== "object") return "";
+  const username =
+    session.username ??
+    session.user?.username ??
+    session.data?.username ??
+    session.data?.user?.username ??
+    "";
+  return String(username ?? "").trim();
+}
+
 /** Normalize for comparisons: spaces/underscores/hyphens collapsed. */
 export function normalizeRoleKey(role) {
   return String(role ?? "")

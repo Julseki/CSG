@@ -3,6 +3,7 @@ import AddEvent from "./AddEvent";
 import PaginationBar from "./PaginationBar";
 import SearchMagnifierIcon from "./SearchMagnifierIcon";
 import SidebarNavIcon from "./SidebarNavIcon";
+import SidebarUserFullName from "./SidebarUserFullName";
 import UserCircleIcon from "./UserCircleIcon";
 import { useGetAllEvents } from "../hooks/useGetAllEvents";
 import { useEditEvent } from "../hooks/useEditEvent";
@@ -654,6 +655,7 @@ export default function Events({ onLogout, onNavigate }) {
             </button>
           ))}
         </nav>
+        <SidebarUserFullName />
       </aside>
 
       {/* Main content */}

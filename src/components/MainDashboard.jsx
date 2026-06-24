@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import SidebarNavIcon from "./SidebarNavIcon";
+import SidebarUserFullName from "./SidebarUserFullName";
 import UserCircleIcon from "./UserCircleIcon";
 import { getAppNavItems, SHOW_DASHBOARD_IN_NAV } from "../utils/appNav";
 import { getDashboardRoleLabel } from "../utils/roles";
@@ -413,6 +414,7 @@ export default function MainDashboard({ onLogout, onNavigate }) {
             </button>
           ))}
         </nav>
+        <SidebarUserFullName />
       </aside>
 
       {/* Main content */}

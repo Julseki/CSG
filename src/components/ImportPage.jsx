@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import SidebarNavIcon from "./SidebarNavIcon";
+import SidebarUserFullName from "./SidebarUserFullName";
 import UserCircleIcon from "./UserCircleIcon";
 import PaginationBar from "./PaginationBar";
 import { getAppNavItems } from "../utils/appNav";
@@ -208,6 +209,7 @@ export default function ImportPage({ onNavigate, onLogout }) {
             </button>
           ))}
         </nav>
+        <SidebarUserFullName />
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
