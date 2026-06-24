@@ -5,6 +5,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import PaginationBar from "./PaginationBar";
 import SearchMagnifierIcon from "./SearchMagnifierIcon";
 import SidebarNavIcon from "./SidebarNavIcon";
+import SidebarBrand from "./SidebarBrand";
 import UserCircleIcon from "./UserCircleIcon";
 import SidebarUserFullName from "./SidebarUserFullName";
 import { getAppNavItems } from "../utils/appNav";
@@ -942,12 +943,7 @@ export default function Attendance({ onLogout, onNavigate }) {
   return (
     <div className="flex min-h-screen bg-[#07713c]/[0.04] [&_button]:cursor-pointer">
       <aside className="sticky top-0 flex h-screen max-h-screen w-64 shrink-0 flex-col self-start overflow-y-auto bg-[#07713c] text-white [&_p]:text-white">
-        <div className="space-y-4 p-6">
-          <img src="/logo.png" alt="NMCI" className="mx-auto h-16 w-16 rounded-full bg-white/10 object-contain" />
-          <p className="text-center text-xs font-medium uppercase tracking-wider font-[Inter,sans-serif] text-white">
-            Northern Mindanao Colleges, Inc.
-          </p>
-        </div>
+        <SidebarBrand />
         <nav className="flex-1 space-y-1 px-4">
           {navItems.map((item) => (
             <button
@@ -978,7 +974,7 @@ export default function Attendance({ onLogout, onNavigate }) {
               <button
                 type="button"
                 onClick={() => setExportOpen(true)}
-                className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/15"
+                className="rounded-lg border border-[#e6a100] bg-[#ffb300] px-3 py-2 text-sm font-medium text-black hover:bg-[#e6a100]"
               >
                 Export / Reports
               </button>
@@ -1238,7 +1234,7 @@ export default function Attendance({ onLogout, onNavigate }) {
               </div>
               <div className="mt-3 min-w-0 overflow-x-auto rounded-lg border border-[#07713c]/30">
                 <table className={`w-full border-collapse text-sm ${TABLE_CELL_NOWRAP}`}>
-                  <thead className={`bg-[#07713c]/5 text-center text-xs uppercase ${ATTENDANCE_TH_TEXT}`}>
+                  <thead className={`border-b border-[#07713c]/30 bg-[#ffb300] text-center text-xs uppercase ${ATTENDANCE_TH_TEXT}`}>
                     <tr>
                       <th rowSpan={2} className="border-b border-x border-[#07713c]/30 px-3 py-2 align-middle">Student ID</th>
                       <th rowSpan={2} className="border-b border-x border-[#07713c]/30 px-3 py-2 align-middle">Name</th>
@@ -1582,7 +1578,7 @@ export default function Attendance({ onLogout, onNavigate }) {
             </div>
             <div className="min-w-0 overflow-x-auto">
               <table className={`w-full text-sm ${TABLE_CELL_NOWRAP}`}>
-                <thead className={`border-b border-[#07713c]/30 bg-[#07713c]/10 text-left text-xs uppercase tracking-wide ${ATTENDANCE_TH_TEXT}`}>
+                <thead className={`border-b border-[#07713c]/30 bg-[#ffb300] text-left text-xs uppercase tracking-wide ${ATTENDANCE_TH_TEXT}`}>
                   <tr>
                     <th className="px-4 py-2.5 align-middle">Event name</th>
                     <th className="px-4 py-2.5 align-middle">Date</th>
@@ -1801,7 +1797,7 @@ export default function Attendance({ onLogout, onNavigate }) {
                 <h4 className="mt-4 text-sm font-semibold text-black">Student list</h4>
                 <div className="mt-2 overflow-x-auto rounded-lg border border-[#07713c]/30">
                   <table className="w-full min-w-[420px] text-sm">
-                    <thead className="bg-[#07713c]/5 text-left text-xs font-semibold uppercase text-black">
+                    <thead className="border-b border-[#07713c]/30 bg-[#ffb300] text-left text-xs font-semibold uppercase text-black">
                       <tr>
                         <th className="px-3 py-2">Name</th>
                         <th className="px-3 py-2">Status</th>

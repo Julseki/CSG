@@ -298,7 +298,7 @@ export default function AddEvent({ onBack, onNext }) {
           <button
             type="button"
             onClick={onBack}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-black transition-colors outline-none hover:bg-yellow-300 focus-visible:ring-2 focus-visible:ring-[#07713c]/30"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-[#ffb300] text-black transition-colors outline-none hover:bg-[#e6a100] focus-visible:ring-2 focus-visible:ring-[#07713c]/30"
           >
             <span className="text-lg font-bold">×</span>
           </button>

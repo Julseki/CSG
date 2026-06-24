@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import SidebarNavIcon from "./SidebarNavIcon";
+import SidebarBrand from "./SidebarBrand";
 import SidebarUserFullName from "./SidebarUserFullName";
 import UserCircleIcon from "./UserCircleIcon";
 import { getAppNavItems, SHOW_DASHBOARD_IN_NAV } from "../utils/appNav";
@@ -396,10 +397,7 @@ export default function MainDashboard({ onLogout, onNavigate }) {
     <div className="flex min-h-screen bg-gray-50 [&_button]:cursor-pointer">
       {/* Sidebar */}
       <aside className="sticky top-0 h-screen max-h-screen w-64 shrink-0 self-start overflow-y-auto bg-[#07713C] text-white flex flex-col">
-        <div className="p-6 space-y-4">
-          <img src="/logo.png" alt="NMCI" className="w-16 h-16 rounded-full bg-white/10 object-contain mx-auto" />
-          <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif]">Northern Mindanao Colleges, Inc.</p>
-        </div>
+        <SidebarBrand />
         <nav className="flex-1 px-4 space-y-1">
           {navItems.map((item) => (
             <button

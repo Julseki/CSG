@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SidebarNavIcon from "./SidebarNavIcon";
+import SidebarBrand from "./SidebarBrand";
 import UserCircleIcon from "./UserCircleIcon";
 import SidebarUserFullName from "./SidebarUserFullName";
 import { useGovernorScope } from "../hooks/useGovernorScope";
@@ -46,12 +47,7 @@ export default function StudentAttendancePage({ onLogout, onNavigate }) {
   return (
     <div className="flex min-h-screen bg-gray-50 [&_button]:cursor-pointer">
       <aside className="sticky top-0 h-screen max-h-screen w-64 shrink-0 self-start overflow-y-auto bg-[#07713C] text-white flex flex-col [&_p]:text-white">
-        <div className="p-6 space-y-4">
-          <img src="/logo.png" alt="NMCI" className="w-16 h-16 rounded-full bg-white/10 object-contain mx-auto" />
-          <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif] text-white">
-            Northern Mindanao Colleges, Inc.
-          </p>
-        </div>
+        <SidebarBrand />
         <nav className="flex-1 px-4 space-y-1">
           {navItems.map((item) => (
             <button
@@ -78,7 +74,7 @@ export default function StudentAttendancePage({ onLogout, onNavigate }) {
               <button
                 type="button"
                 onClick={() => openStudentsExport?.()}
-                className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/15"
+                className="rounded-lg border border-[#e6a100] bg-[#ffb300] px-3 py-2 text-sm font-medium text-black hover:bg-[#e6a100]"
               >
                 Export / Reports
               </button>

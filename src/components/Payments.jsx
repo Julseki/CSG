@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SidebarNavIcon from "./SidebarNavIcon";
+import SidebarBrand from "./SidebarBrand";
 import UserCircleIcon from "./UserCircleIcon";
 import SidebarUserFullName from "./SidebarUserFullName";
 import PaginationBar from "./PaginationBar";
@@ -568,10 +569,7 @@ export default function Payments({ onNavigate, onLogout }) {
   return (
     <div className="flex min-h-screen bg-gray-50 [&_button]:cursor-pointer">
       <aside className="sticky top-0 h-screen max-h-screen w-64 shrink-0 self-start overflow-y-auto bg-[#07713C] text-white flex flex-col [&_p]:text-white">
-        <div className="p-6 space-y-4">
-          <img src="/logo.png" alt="NMCI" className="w-16 h-16 rounded-full bg-white/10 object-contain mx-auto" />
-          <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif] text-white">Northern Mindanao Colleges, Inc.</p>
-        </div>
+        <SidebarBrand />
         <nav className="flex-1 px-4 space-y-1">
           {navItems.map((item) => (
             <button
@@ -598,7 +596,7 @@ export default function Payments({ onNavigate, onLogout }) {
               <button
                 type="button"
                 onClick={() => setExportOpen(true)}
-                className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-3 py-2 text-sm font-medium text-[#07713c] hover:bg-[#07713c]/15"
+                className="rounded-lg border border-[#e6a100] bg-[#ffb300] px-3 py-2 text-sm font-medium text-black hover:bg-[#e6a100]"
               >
                 Export / Reports
               </button>
@@ -711,14 +709,14 @@ export default function Payments({ onNavigate, onLogout }) {
             <div className="px-4 pt-4 pb-3 border-b border-[#07713c]/20 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-bold text-black">Payment Transactions</h2>
-                <p className="text-sm text-black/75">Recorded payments only. Click a row to view details or print a receipt. Use New Payment to post a new transaction.</p>
+                <p className="text-sm text-black/75">Recorded payments only. Click a row to view details or print a receipt. Use + New Payment to post a new transaction.</p>
               </div>
               <button
                 type="button"
                 onClick={openPayStudentModal}
-                className="rounded-lg border border-[#07713c] bg-[#07713c] px-4 py-2 text-sm font-semibold text-white hover:bg-[#055a2e]"
+                className="rounded-lg border border-[#e6a100] bg-[#ffb300] px-4 py-2 text-sm font-semibold text-black hover:bg-[#e6a100]"
               >
-                New Payment
+                + New Payment
               </button>
             </div>
 
@@ -734,7 +732,7 @@ export default function Payments({ onNavigate, onLogout }) {
 
             <div className="min-w-0 overflow-x-auto">
               <table className={`w-full min-w-0 table-fixed text-sm ${TABLE_CELL_NOWRAP}`}>
-                <thead className={`border-b border-[#07713c]/30 bg-[#07713c]/10 text-xs uppercase tracking-wide ${PAYMENTS_TH_TEXT}`}>
+                <thead className={`border-b border-[#07713c]/30 bg-[#ffb300] text-xs uppercase tracking-wide ${PAYMENTS_TH_TEXT}`}>
                   <tr>
                     <th className="w-[18%] px-3 py-2.5 text-left align-middle">Transaction Code</th>
                     <th className="w-[12%] px-3 py-2.5 text-left align-middle">Date</th>
@@ -756,7 +754,7 @@ export default function Payments({ onNavigate, onLogout }) {
                   ) : filteredTransactions.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-10 px-4 text-center text-black/85">
-                        No payment transactions yet. Click <span className="font-semibold">New Payment</span> to record a payment.
+                        No payment transactions yet. Click <span className="font-semibold">+ New Payment</span> to record a payment.
                       </td>
                     </tr>
                   ) : (
@@ -814,7 +812,7 @@ export default function Payments({ onNavigate, onLogout }) {
               <button
                 type="button"
                 onClick={closePayStudentModal}
-                className="w-7 h-7 rounded-full bg-yellow-300 flex items-center justify-center text-black hover:bg-yellow-400"
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-[#ffb300] text-black hover:bg-[#e6a100]"
                 aria-label="Close"
               >
                 ✕
@@ -905,7 +903,7 @@ export default function Payments({ onNavigate, onLogout }) {
 
                       <div className="min-w-0 overflow-x-auto rounded-lg border border-[#07713c]/30">
                         <table className={`w-full text-sm ${TABLE_CELL_NOWRAP}`}>
-                          <thead className={`border-b border-[#07713c]/30 bg-[#07713c]/10 text-xs uppercase ${PAYMENTS_TH_TEXT}`}>
+                          <thead className={`border-b border-[#07713c]/30 bg-[#ffb300] text-xs uppercase ${PAYMENTS_TH_TEXT}`}>
                             <tr>
                               <th className="px-4 py-2 text-left">Event</th>
                               <th className="px-4 py-2 text-center">Date</th>
@@ -1154,7 +1152,7 @@ export default function Payments({ onNavigate, onLogout }) {
               <button
                 type="button"
                 onClick={() => setSelectedTransaction(null)}
-                className="w-7 h-7 rounded-full bg-yellow-300 flex items-center justify-center text-black hover:bg-yellow-400"
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-[#ffb300] text-black hover:bg-[#e6a100]"
                 aria-label="Close"
               >
                 ✕

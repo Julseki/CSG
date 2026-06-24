@@ -3,6 +3,7 @@ import AddEvent from "./AddEvent";
 import PaginationBar from "./PaginationBar";
 import SearchMagnifierIcon from "./SearchMagnifierIcon";
 import SidebarNavIcon from "./SidebarNavIcon";
+import SidebarBrand from "./SidebarBrand";
 import SidebarUserFullName from "./SidebarUserFullName";
 import UserCircleIcon from "./UserCircleIcon";
 import { useGetAllEvents } from "../hooks/useGetAllEvents";
@@ -636,10 +637,7 @@ export default function Events({ onLogout, onNavigate }) {
     <div className="flex min-h-screen bg-[#07713c]/[0.04] [&_button]:cursor-pointer">
       {/* Sidebar — same green as Attendance */}
       <aside className="sticky top-0 h-screen max-h-screen w-64 shrink-0 self-start overflow-y-auto bg-[#07713c] text-white flex flex-col [&_p]:text-white">
-        <div className="p-6 space-y-4">
-          <img src="/logo.png" alt="NMCI" className="w-16 h-16 rounded-full bg-white/10 object-contain mx-auto" />
-          <p className="text-xs text-center font-medium uppercase tracking-wider font-[Inter,sans-serif] text-white">Northern Mindanao Colleges, Inc.</p>
-        </div>
+        <SidebarBrand />
         <nav className="flex-1 px-4 space-y-1">
           {navItems.map((item) => (
             <button
@@ -757,7 +755,7 @@ export default function Events({ onLogout, onNavigate }) {
               <button
                 type="button"
                 onClick={() => setShowAddEvent(true)}
-                className="rounded-lg border border-[#07713c] bg-[#07713c]/10 px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-[#07713c]/15"
+                className="rounded-lg border border-[#e6a100] bg-[#ffb300] px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-[#e6a100]"
               >
                 + Add Event
               </button>
@@ -778,7 +776,7 @@ export default function Events({ onLogout, onNavigate }) {
                     <col className="w-[11%]" />
                     <col className="w-[20%]" />
                   </colgroup>
-                  <thead className={`border-b border-[#07713c]/30 bg-[#07713c]/10 text-xs uppercase tracking-wide ${EVENTS_TH_TEXT}`}>
+                  <thead className={`border-b border-[#07713c]/30 bg-[#ffb300] text-xs uppercase tracking-wide ${EVENTS_TH_TEXT}`}>
                     <tr>
                       <th className="align-middle px-3 py-3 text-left">Event Name</th>
                       <th className="align-middle px-3 py-3 text-left">Date</th>
@@ -1076,7 +1074,7 @@ export default function Events({ onLogout, onNavigate }) {
               <button
                 type="button"
                 onClick={closeEventModal}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-black transition-colors hover:bg-yellow-300"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-[#ffb300] text-black transition-colors hover:bg-[#e6a100]"
                 aria-label="Close event modal"
               >
                 <span className="text-lg font-bold">×</span>
