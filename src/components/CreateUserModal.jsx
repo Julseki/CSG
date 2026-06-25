@@ -1,10 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import api from "../api/axiosInstance";
-import { useAuthSession } from "../hooks/auth";
+import { useDepartmentsList } from "../hooks/useUsersManagement";
+import { useGovernorScope } from "../hooks/useGovernorScope";
+import { normalizeRoleKey } from "../utils/roles";
+import {
+  DEPARTMENT_CODE_TO_GOVERNOR_ROLE,
+  departmentCodeMatchesGovernorRole,
+  formatDepartmentSelectLabel,
+  isDepartmentExcludedFromSelect,
+} from "../utils/departmentFilter";
 
 /** Create User modal content text. */
 const CREATE_USER_TEXT = "text-black";
+
+/** Optional majors when creating users under colleges that require a major. */
+const MAJORS_BY_DEPARTMENT_CODE = {
+  CBA: ["Marketing Management", "Financial Management", "Human Resource Management"],
+  CEAS: ["English", "Filipino", "Mathematics", "BEED"],
+};
 
 function useCreateUserDebugMutation() {
   return useMutation({
@@ -25,7 +39,6 @@ function useCreateUserDebugMutation() {
         role,
       };
 
-      // Debug logging: show exactly what we're sending (mask password for safety).
       console.log("[CreateUserModal] POST /signup request body:", {
         ...requestBody,
         password: requestBody.password ? "[REDACTED]" : requestBody.password,
@@ -41,68 +54,11 @@ function useCreateUserDebugMutation() {
   });
 }
 
-const DEPARTMENT_OPTIONS = [
-  {
-    value: "College of Information Technology",
-    code: "BSIT",
-    majors: [],
-  },
-  {
-    value: "College of Business Administration",
-    code: "CBA",
-    majors: [
-      "Marketing Management",
-      "Financial Management",
-      "Human Resource Management",
-    ],
-  },
-  {
-    value: "College of Education, Arts and Sciences",
-    code: "CEAS",
-    majors: ["English", "Filipino", "Mathematics", "BEED"],
-  },
-  {
-    value: "College of Criminal Justice Education",
-    code: "CCJE",
-    majors: [],
-  },
-  {
-    value: "College of Hospitality Management",
-    code: "CHM",
-    majors: [],
-  },
-];
-
-/** Governor role sent to API — keyed by `code` on each DEPARTMENT_OPTIONS row (avoids label typos). */
-const DEPARTMENT_CODE_TO_GOVERNOR_ROLE = {
-  BSIT: "it_governor",
-  CBA: "cba_governor",
-  CEAS: "ceas_governor",
-  CCJE: "coc_governor",
-  CHM: "chm_governor",
-};
-
-const DEPARTMENT_USERNAME_BASE = {
-  "College of Information Technology": "gov-IT",
-  "College of Business Administration": "gov-CBA",
-  "College of Education, Arts and Sciences": "gov-CEAS",
-  "College of Criminology": "gov-CRIM",
-  "College of Criminal Justice Education": "gov-CRIM",
-  "College of Hospitality Management": "gov-CHM",
-};
-
-const ROLE_DEPARTMENT_MAP = {
-  it_governor: "College of Information Technology",
-  cba_governor: "College of Business Administration",
-  ceas_governor: "College of Education, Arts and Sciences",
-  coc_governor: "College of Criminal Justice Education",
-  chm_governor: "College of Hospitality Management",
-};
-
 export default function CreateUserModal({ open, onClose }) {
-  const { data: session } = useAuthSession();
+  const { role, isGovernor } = useGovernorScope();
+  const roleKey = normalizeRoleKey(role);
   const [createUserError, setCreateUserError] = useState("");
-  const [createdAccount, setCreatedAccount] = useState(null);
+  const { data: departments = [], isLoading: departmentsLoading } = useDepartmentsList(open);
 
   const [createUserForm, setCreateUserForm] = useState({
     fullName: "",
@@ -118,31 +74,38 @@ export default function CreateUserModal({ open, onClose }) {
   const [showCreateConfirmPassword, setShowCreateConfirmPassword] =
     useState(false);
 
-  const selectedDepartment = useMemo(
+  const departmentSelectOptions = useMemo(
     () =>
-      DEPARTMENT_OPTIONS.find(
-        (item) => item.value === createUserForm.department,
-      ),
-    [createUserForm.department],
+      departments
+        .filter((dept) => !isDepartmentExcludedFromSelect(dept.name))
+        .map((dept) => {
+          const code = String(dept.code ?? "").trim().toUpperCase();
+          return {
+            value: dept.name,
+            code,
+            label: formatDepartmentSelectLabel(dept.name, code),
+            majors: MAJORS_BY_DEPARTMENT_CODE[code] ?? [],
+          };
+        }),
+    [departments],
   );
 
-  const majorOptions = selectedDepartment?.majors || [];
+  const governorDepartmentOptions = useMemo(() => {
+    if (!isGovernor) return [];
+    return departmentSelectOptions.filter((dept) =>
+      departmentCodeMatchesGovernorRole(dept.code, roleKey),
+    );
+  }, [departmentSelectOptions, isGovernor, roleKey]);
 
-  const currentRole = String(
-    session?.role ??
-      session?.user?.role ??
-      session?.data?.role ??
-      session?.profile?.role ??
-      "",
-  )
-    .toLowerCase()
-    .trim();
-  const governorDepartmentFromRole = ROLE_DEPARTMENT_MAP[currentRole] ?? "";
-  const isGovernorLoggedIn = !!governorDepartmentFromRole;
+  const selectedDepartment = useMemo(
+    () => departmentSelectOptions.find((item) => item.value === createUserForm.department),
+    [departmentSelectOptions, createUserForm.department],
+  );
+
+  const majorOptions = selectedDepartment?.majors ?? [];
 
   const resetForOpen = () => {
     setCreateUserError("");
-    setCreatedAccount(null);
     setShowCreatePassword(false);
     setShowCreateConfirmPassword(false);
     setCreateUserForm({
@@ -162,15 +125,16 @@ export default function CreateUserModal({ open, onClose }) {
   }, [open]);
 
   useEffect(() => {
-    if (!open || !isGovernorLoggedIn) return;
+    if (!open || !isGovernor || !governorDepartmentOptions.length) return;
+    const governorDepartment = governorDepartmentOptions[0].value;
     setCreateUserForm((prev) => ({
       ...prev,
       accountType: "department",
-      department: governorDepartmentFromRole,
+      department: governorDepartment,
       major: "",
       username: "",
     }));
-  }, [open, isGovernorLoggedIn, governorDepartmentFromRole]);
+  }, [open, isGovernor, governorDepartmentOptions]);
 
   const isPasswordValid = !createUserForm.password
     ? false
@@ -180,64 +144,36 @@ export default function CreateUserModal({ open, onClose }) {
     !createUserForm.confirmPassword ||
     createUserForm.password === createUserForm.confirmPassword;
 
-  const normalizedDepartment = createUserForm.department
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-  const normalizedMajor = createUserForm.major
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-
   const usernameValue = createUserForm.username.trim();
-
-  const generatedPassword = useMemo(() => {
-    // For consistency with your current backend signup flow, admin can set password manually.
-    return "";
-  }, []);
-
   const passwordValue = createUserForm.password || "";
 
   const requiresMajor = useMemo(() => {
     if (createUserForm.accountType === "csg_president") return false;
-    if (!isGovernorLoggedIn) return false;
+    if (!isGovernor) return false;
     return majorOptions.length > 0;
-  }, [createUserForm.accountType, majorOptions.length, isGovernorLoggedIn]);
+  }, [createUserForm.accountType, isGovernor, majorOptions.length]);
 
   const { mutate: createUser, isPending: isCreatingUser } =
     useCreateUserDebugMutation();
 
+  const roleToSend =
+    createUserForm.accountType === "csg_president"
+      ? "csg_president"
+      : DEPARTMENT_CODE_TO_GOVERNOR_ROLE[selectedDepartment?.code] || "department";
+
   const isCreateDisabled =
     isCreatingUser ||
+    departmentsLoading ||
     !createUserForm.fullName.trim() ||
     !createUserForm.username.trim() ||
     !passwordValue ||
     !doPasswordsMatch ||
     !isPasswordValid ||
+    (createUserForm.accountType !== "csg_president" && !createUserForm.department.trim()) ||
     (requiresMajor && !createUserForm.major.trim());
-
-  const DEPARTMENT_ROLE_MAP = {
-    "College of Information Technology": "it_governor",
-    "College of Business Administration": "cba_governor",
-    "College of Education, Arts and Sciences": "ceas_governor",
-    "College of Criminology": "coc_governor",
-    "College of Criminal Justice Education": "coc_governor",
-    "College of Hospitality Management": "chm_governor",
-  };
-
-  const roleToSend =
-    createUserForm.accountType === "csg_president"
-      ? "csg_president"
-      : (selectedDepartment?.code &&
-          DEPARTMENT_CODE_TO_GOVERNOR_ROLE[selectedDepartment.code]) ||
-        DEPARTMENT_ROLE_MAP[createUserForm.department] ||
-        "department";
 
   const resetForm = () => {
     setCreateUserError("");
-    setCreatedAccount(null);
     setCreateUserForm({
       fullName: "",
       department: "",
@@ -269,7 +205,6 @@ export default function CreateUserModal({ open, onClose }) {
           onSubmit={(e) => {
             e.preventDefault();
             setCreateUserError("");
-            setCreatedAccount(null);
 
             if (createUserForm.accountType !== "csg_president") {
               if (!createUserForm.department.trim()) {
@@ -319,24 +254,14 @@ export default function CreateUserModal({ open, onClose }) {
                 major:
                   createUserForm.accountType === "csg_president"
                     ? ""
-                    : isGovernorLoggedIn && requiresMajor
+                    : isGovernor && requiresMajor
                       ? createUserForm.major.trim()
                       : "",
                 role: roleToSend,
               },
               {
                 onSuccess: () => {
-                  setCreatedAccount({
-                    username: usernameValue,
-                    role: roleToSend,
-                  });
-                  setCreateUserForm((prev) => ({
-                    ...prev,
-                    password: "",
-                    confirmPassword: "",
-                  }));
-                  setShowCreatePassword(false);
-                  setShowCreateConfirmPassword(false);
+                  onClose?.();
                 },
                 onError: (err) => {
                   setCreateUserError(
@@ -360,7 +285,7 @@ export default function CreateUserModal({ open, onClose }) {
               </label>
               <select
                 value={createUserForm.accountType}
-                disabled={isGovernorLoggedIn}
+                disabled={isGovernor}
                 onChange={(e) => {
                   const nextType = e.target.value;
                   setCreateUserForm((prev) => ({
@@ -384,9 +309,9 @@ export default function CreateUserModal({ open, onClose }) {
                   <label className="block text-xs font-medium text-black mb-1">
                     Department
                   </label>
-                  {isGovernorLoggedIn ? (
+                  {isGovernor ? (
                     <div className="w-full rounded-lg border border-[#07713c]/30 bg-gray-100 px-3 py-2 text-sm text-black/70">
-                      {governorDepartmentFromRole}
+                      {createUserForm.department || governorDepartmentOptions[0]?.label || "—"}
                     </div>
                   ) : (
                     <select
@@ -398,19 +323,26 @@ export default function CreateUserModal({ open, onClose }) {
                           major: "",
                         }))
                       }
-                      className="w-full rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c]"
+                      disabled={departmentsLoading || departmentSelectOptions.length === 0}
+                      className="w-full rounded-lg border border-[#07713c]/40 bg-white px-3 py-2 text-sm text-black focus:border-[#07713c] focus:outline-none focus:ring-1 focus:ring-[#07713c] disabled:bg-gray-100"
                     >
-                      <option value="">Select Department</option>
-                      {DEPARTMENT_OPTIONS.map((option) => (
+                      <option value="">
+                        {departmentsLoading
+                          ? "Loading departments..."
+                          : departmentSelectOptions.length
+                            ? "Select Department"
+                            : "No departments found"}
+                      </option>
+                      {departmentSelectOptions.map((option) => (
                         <option key={option.value} value={option.value}>
-                          {option.value}
+                          {option.label}
                         </option>
                       ))}
                     </select>
                   )}
                 </div>
 
-                {isGovernorLoggedIn && (
+                {isGovernor && (
                   <div>
                     <label className="block text-xs font-medium text-black mb-1">
                       Major
@@ -563,19 +495,6 @@ export default function CreateUserModal({ open, onClose }) {
               <p className="text-[11px] text-black">Username is required.</p>
             ) : null}
           </div>
-
-          {createdAccount && (
-            <div className="rounded-lg border border-[#07713c]/30 bg-[#07713c]/10 p-3 space-y-1">
-              <p className="text-xs font-semibold text-black">
-                {createdAccount.role === "csg_president"
-                  ? "CSG President created successfully."
-                  : "User created successfully."}
-              </p>
-              <p className="text-xs text-black">
-                Username: {createdAccount.username}
-              </p>
-            </div>
-          )}
 
           <div className="px-1 pt-1 flex justify-end gap-2">
             <button

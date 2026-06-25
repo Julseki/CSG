@@ -7,6 +7,11 @@ import { useStudentDashboardDetail, useStudentDashboardList } from "../hooks/use
 import { useGovernorScope } from "../hooks/useGovernorScope";
 import { normalizeRoleKey } from "../utils/roles";
 import { formatEventDateForDisplay } from "../hooks/useGetEvents";
+import {
+  buildCollegeFilterOptionsFromStudents,
+  departmentMatchesFilter,
+  studentMatchesDepartmentCodes,
+} from "../utils/departmentFilter";
 
 void ChartJS;
 
@@ -200,15 +205,6 @@ function downloadTextFile(filename, text, mime = "text/csv;charset=utf-8") {
   URL.revokeObjectURL(url);
 }
 
-const ROSTER_COLLEGE_FILTER_OPTIONS = [
-  { value: "all", label: "All colleges" },
-  { value: "College of Education, Arts and Sciences", label: "CEAS — College of Education, Arts and Sciences" },
-  { value: "College of Information Technology", label: "CIT — College of Information Technology" },
-  { value: "College of Criminal Justice Education", label: "CCJE — College of Criminal Justice Education" },
-  { value: "College of Hospitality Management", label: "CHM — College of Hospitality Management" },
-  { value: "College of Business Administration", label: "CBA — College of Business Administration" },
-];
-
 function normalizeGovernorCourseCodeKey(code) {
   return String(code ?? "")
     .trim()
@@ -223,9 +219,9 @@ function rosterCatalogEntriesForGovernorCourses(courseCodes) {
   return ROSTER_COURSE_CATALOG.filter((entry) => wanted.has(normalizeGovernorCourseCodeKey(entry.code)));
 }
 
-function rosterCollegeNamesForGovernorCourses(courseCodes) {
+function rosterDepartmentCodesForGovernorCourses(courseCodes) {
   const rows = rosterCatalogEntriesForGovernorCourses(courseCodes);
-  return Array.from(new Set(rows.map((r) => r.college))).sort((a, b) => a.localeCompare(b));
+  return Array.from(new Set(rows.map((r) => r.collegeCode))).filter(Boolean);
 }
 
 function rosterCourseMatchesSearchQuery(student, qLower) {
@@ -395,43 +391,46 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
     setIsStudentDetailModalOpen(true);
   };
 
-  const governorCollegeNames = useMemo(() => {
+  const governorDepartmentCodes = useMemo(() => {
     if (!isGovernor || !governorScope?.courses?.length) return null;
-    return rosterCollegeNamesForGovernorCourses(governorScope.courses);
+    return rosterDepartmentCodesForGovernorCourses(governorScope.courses);
   }, [isGovernor, governorScope]);
 
   const rosterCollegeSelectOptions = useMemo(() => {
-    if (!isGovernor || !governorCollegeNames?.length) return ROSTER_COLLEGE_FILTER_OPTIONS;
-    return [
-      { value: "all", label: "All (my department)" },
-      ...ROSTER_COLLEGE_FILTER_OPTIONS.filter(
-        (o) => o.value !== "all" && governorCollegeNames.includes(o.value),
-      ),
-    ];
-  }, [isGovernor, governorCollegeNames]);
+    const scopedStudents =
+      isGovernor && governorDepartmentCodes?.length
+        ? rosterList.filter((s) =>
+            studentMatchesDepartmentCodes(getStudentDepartmentName(s), governorDepartmentCodes),
+          )
+        : rosterList;
+    return buildCollegeFilterOptionsFromStudents(scopedStudents, getStudentDepartmentName, {
+      allLabel: isGovernor && governorDepartmentCodes?.length ? "All (my department)" : "All colleges",
+    });
+  }, [rosterList, isGovernor, governorDepartmentCodes]);
 
   const showCollegeFilterSelect = SHOW_COLLEGE_MAJOR_FILTER_DROPDOWNS;
 
   useEffect(() => {
-    if (!isGovernor || governorCollegeNames?.length !== 1) return;
-    const only = governorCollegeNames[0];
+    if (!isGovernor || rosterCollegeSelectOptions.length !== 2) return;
+    const only = rosterCollegeSelectOptions[1]?.value;
+    if (!only || only === "all") return;
     setRosterCollegeFilter((prev) => (prev === only ? prev : only));
     setExportCollegeFilter((prev) => (prev === only ? prev : only));
-  }, [isGovernor, governorCollegeNames]);
+  }, [isGovernor, rosterCollegeSelectOptions]);
 
   useEffect(() => {
-    if (!isGovernor || !governorCollegeNames || governorCollegeNames.length <= 1) return;
-    if (rosterCollegeFilter !== "all" && !governorCollegeNames.includes(rosterCollegeFilter)) {
+    if (rosterCollegeFilter === "all") return;
+    if (!rosterCollegeSelectOptions.some((o) => o.value === rosterCollegeFilter)) {
       setRosterCollegeFilter("all");
     }
-  }, [isGovernor, governorCollegeNames, rosterCollegeFilter]);
+  }, [rosterCollegeFilter, rosterCollegeSelectOptions]);
 
   useEffect(() => {
-    if (!isGovernor || !governorCollegeNames || governorCollegeNames.length <= 1) return;
-    if (exportCollegeFilter !== "all" && !governorCollegeNames.includes(exportCollegeFilter)) {
+    if (exportCollegeFilter === "all") return;
+    if (!rosterCollegeSelectOptions.some((o) => o.value === exportCollegeFilter)) {
       setExportCollegeFilter("all");
     }
-  }, [isGovernor, governorCollegeNames, exportCollegeFilter]);
+  }, [exportCollegeFilter, rosterCollegeSelectOptions]);
 
   useEffect(() => {
     const ms = 280;
@@ -469,13 +468,11 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
     const q = search.toLowerCase().trim();
     return rosterList.filter((s) => {
       const college = getStudentDepartmentName(s);
-      if (isGovernor && governorCollegeNames?.length) {
-        if (!governorCollegeNames.includes(college)) return false;
+      if (isGovernor && governorDepartmentCodes?.length) {
+        if (!studentMatchesDepartmentCodes(college, governorDepartmentCodes)) return false;
       }
       if (!studentMatchesRosterCourseFilter(s.course, rosterCourseFilter)) return false;
-      if (rosterCollegeFilter !== "all") {
-        if (college !== rosterCollegeFilter) return false;
-      }
+      if (!departmentMatchesFilter(college, rosterCollegeFilter)) return false;
       if (rosterYearLevelFilter !== "all") {
         const want = Number(rosterYearLevelFilter);
         const yl = getRosterYearLevel(s);
@@ -490,7 +487,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
     rosterCollegeFilter,
     rosterYearLevelFilter,
     isGovernor,
-    governorCollegeNames,
+    governorDepartmentCodes,
   ]);
 
   useEffect(() => {
@@ -502,27 +499,27 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
 
   const availableCourseOptions = useMemo(() => {
     let catalog = ROSTER_COURSE_CATALOG;
-    if (isGovernor && governorCollegeNames?.length) {
-      catalog = catalog.filter((c) => governorCollegeNames.includes(c.college));
+    if (isGovernor && governorDepartmentCodes?.length) {
+      catalog = catalog.filter((c) => governorDepartmentCodes.includes(c.collegeCode));
     }
     if (rosterCollegeFilter === "all") {
       return withCeasBsedAllCourseOption(catalog, isCeasGovernor);
     }
-    const narrowed = catalog.filter((course) => course.college === rosterCollegeFilter);
+    const narrowed = catalog.filter((course) => departmentMatchesFilter(course.college, rosterCollegeFilter));
     return withCeasBsedAllCourseOption(narrowed, isCeasGovernor);
-  }, [isGovernor, governorCollegeNames, rosterCollegeFilter, isCeasGovernor]);
+  }, [isGovernor, governorDepartmentCodes, rosterCollegeFilter, isCeasGovernor]);
 
   const exportCourseOptions = useMemo(() => {
     let catalog = ROSTER_COURSE_CATALOG;
-    if (isGovernor && governorCollegeNames?.length) {
-      catalog = catalog.filter((c) => governorCollegeNames.includes(c.college));
+    if (isGovernor && governorDepartmentCodes?.length) {
+      catalog = catalog.filter((c) => governorDepartmentCodes.includes(c.collegeCode));
     }
     if (exportCollegeFilter === "all") {
       return withCeasBsedAllCourseOption(catalog, isCeasGovernor);
     }
-    const narrowed = catalog.filter((course) => course.college === exportCollegeFilter);
+    const narrowed = catalog.filter((course) => departmentMatchesFilter(course.college, exportCollegeFilter));
     return withCeasBsedAllCourseOption(narrowed, isCeasGovernor);
-  }, [isGovernor, governorCollegeNames, exportCollegeFilter, isCeasGovernor]);
+  }, [isGovernor, governorDepartmentCodes, exportCollegeFilter, isCeasGovernor]);
 
   const rosterTotal = filteredRoster.length;
   const rosterTotalPages = Math.max(1, Math.ceil(rosterTotal / rosterPageSize) || 1);
@@ -594,12 +591,10 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
     const q = exportSearch.toLowerCase().trim();
     return rosterList.filter((s) => {
       const college = getStudentDepartmentName(s);
-      if (isGovernor && governorCollegeNames?.length) {
-        if (!governorCollegeNames.includes(college)) return false;
+      if (isGovernor && governorDepartmentCodes?.length) {
+        if (!studentMatchesDepartmentCodes(college, governorDepartmentCodes)) return false;
       }
-      if (exportCollegeFilter !== "all") {
-        if (college !== exportCollegeFilter) return false;
-      }
+      if (!departmentMatchesFilter(college, exportCollegeFilter)) return false;
       if (!studentMatchesRosterCourseFilter(s.course, exportCourseFilter)) return false;
       if (exportYearLevelFilter !== "all") {
         const want = Number(exportYearLevelFilter);
@@ -617,7 +612,7 @@ export default function StudentAttendanceDashboard({ onRegisterExportOpen }) {
     exportYearLevelFilter,
     exportStatusFilter,
     isGovernor,
-    governorCollegeNames,
+    governorDepartmentCodes,
   ]);
 
   const exportRosterCsv = () => {

@@ -5,13 +5,15 @@ import UserCircleIcon from "./UserCircleIcon";
 import SidebarUserFullName from "./SidebarUserFullName";
 import PaginationBar from "./PaginationBar";
 import { useGovernorScope } from "../hooks/useGovernorScope";
-import { getDashboardRoleLabel } from "../utils/roles";
-import { formatDateTimeShort, formatEventDateForDisplay } from "../hooks/useGetEvents";
+import { getDashboardRoleLabel, getFullNameFromSession, getNavDisplayNameFromSession } from "../utils/roles";
+import { useAuthSession } from "../hooks/auth";
+import { formatEventDateForDisplay } from "../hooks/useGetEvents";
 import { lookupPaymentStudent, useGetPaymentStudent, useGetPaymentSummary, useGetPayments, useGetPaymentTransactions } from "../hooks/useGetPayments";
 import { useRecordPayment } from "../hooks/useRecordPayment";
 import { getAppNavItems } from "../utils/appNav";
 import { formatCourseWithMajor } from "../utils/courseMajorDisplay";
 import { downloadPdfTable } from "../utils/downloadPdfTable";
+import csgLogo from "../assets/CSG LOGO.jpg";
 
 /** Payments page main content text (sidebar nav excluded). */
 const PAYMENTS_PAGE_TEXT = "text-black";
@@ -158,16 +160,16 @@ function buildReceiptHtml(receipt, logoUrl) {
   <body>
     <div class="page">
       <div class="header">
-        <img class="logo" src="${logoUrl}" alt="Normi logo" />
+        <img class="logo" src="${logoUrl}" alt="Central Student Government" />
         <div>
           <p class="title">Payment Receipt</p>
-          <p class="subtitle">Northern Mindanao Colleges, Inc.</p>
+          <p class="subtitle">CENTRAL STUDENT GOVERNMENT</p>
         </div>
       </div>
       <div class="content">
         <div class="grid">
           <div><span class="label">Transaction Code:</span> <span class="value">${receipt.transactionCode || receipt.receiptNo}</span></div>
-          <div><span class="label">Date:</span> <span class="value">${formatDateTimeShort(receipt.createdAt)}</span></div>
+          <div><span class="label">Date:</span> <span class="value">${formatEventDateForDisplay(receipt.createdAt)}</span></div>
           <div><span class="label">Student ID:</span> <span class="value">${receipt.studentId}</span></div>
           <div><span class="label">Student Name:</span> <span class="value">${receipt.studentName}</span></div>
           <div><span class="label">Department / Year:</span> <span class="value">${receipt.department} · ${receipt.year}</span></div>
@@ -213,8 +215,11 @@ function transactionToReceipt(tx) {
 }
 
 export default function Payments({ onNavigate, onLogout }) {
+  const { data: session } = useAuthSession();
   const { role, isGovernor, governorScope } = useGovernorScope();
   const roleLabel = getDashboardRoleLabel(isGovernor, governorScope, role);
+  const encoderDisplayName =
+    getFullNameFromSession(session) || getNavDisplayNameFromSession(session) || "—";
   const isAdmin = String(role || "").toLowerCase().trim() === "admin";
   const navItems = getAppNavItems({ isAdmin });
   const { data: paymentSummary } = useGetPaymentSummary();
@@ -482,7 +487,7 @@ export default function Payments({ onNavigate, onLogout }) {
         transactionCode: response?.transactionCode || response?.receiptNo || makeReceiptNumber(),
         receiptNo: response?.transactionCode || response?.receiptNo || makeReceiptNumber(),
         createdAt: new Date().toISOString(),
-        encodedBy: roleLabel || "CSG/Governor",
+        encodedBy: response?.encodedBy || encoderDisplayName,
         studentId: selectedRow.studentId,
         studentName: selectedRow.studentName,
         department: payFlowStudent.departmentDisplay || payFlowStudent.department || "—",
@@ -502,7 +507,9 @@ export default function Payments({ onNavigate, onLogout }) {
 
   const printReceipt = (receipt) => {
     if (!receipt) return;
-    const logoUrl = `${window.location.origin}/logo.png`;
+    const logoUrl = String(csgLogo).startsWith("http")
+      ? csgLogo
+      : new URL(csgLogo, window.location.origin).href;
     const w = window.open("", "_blank", "width=900,height=900");
     if (!w) return;
     w.document.open();
@@ -773,7 +780,7 @@ export default function Payments({ onNavigate, onLogout }) {
                         className="border-b border-[#07713c]/15 hover:bg-[#07713c]/[0.08] cursor-pointer"
                       >
                         <td className="px-3 py-1.5 font-mono text-xs leading-snug text-black">{row.transactionCode}</td>
-                        <td className="px-3 py-1.5 leading-snug text-black whitespace-nowrap">{formatDateTimeShort(row.paidAt)}</td>
+                        <td className="px-3 py-1.5 leading-snug text-black whitespace-nowrap">{formatEventDateForDisplay(row.paidAt)}</td>
                         <td className="px-3 py-1.5 leading-snug text-black">{row.studentId}</td>
                         <td className="px-3 py-1.5 leading-snug text-black truncate" title={row.studentName}>{row.studentName}</td>
                         <td className="px-3 py-1.5 text-center tabular-nums leading-snug text-black">{formatPhp(row.amountPaid)}</td>
@@ -1168,7 +1175,7 @@ export default function Payments({ onNavigate, onLogout }) {
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
                 <div>
                   <dt className="text-xs text-black/60">Date</dt>
-                  <dd className="font-medium">{formatDateTimeShort(selectedTransaction.paidAt)}</dd>
+                  <dd className="font-medium">{formatEventDateForDisplay(selectedTransaction.paidAt)}</dd>
                 </div>
                 <div>
                   <dt className="text-xs text-black/60">Status</dt>

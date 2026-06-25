@@ -39,3 +39,17 @@ export function useDeleteUser() {
     },
   });
 }
+
+export const DEPARTMENTS_QUERY_KEY = ["departments-list"];
+
+export function useDepartmentsList(enabled = true) {
+  return useQuery({
+    queryKey: DEPARTMENTS_QUERY_KEY,
+    enabled,
+    queryFn: async () => {
+      const response = await axios.get("/departments");
+      return response.data?.departments ?? [];
+    },
+    staleTime: 60_000,
+  });
+}

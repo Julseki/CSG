@@ -1,12 +1,16 @@
 export const STUDENT_CSV_OPTIONAL_LEGACY_HEADERS = [
+  "Student Number",
+  "RFID",
+  "Full Name",
+  "Year Level",
+  "Department",
+  "Semester",
+  "School Year",
   "First Name",
   "Middle Name",
   "Last Name",
-  "School Year",
-  "Semester",
   "Course",
   "Major",
-  "Department",
 ];
 
 export function normalizeCsvHeader(name) {
@@ -22,7 +26,11 @@ function headerSet(headers) {
 }
 
 function hasStudentIdColumn(set) {
-  return set.has("id number") || set.has("student id");
+  return (
+    set.has("student number") ||
+    set.has("id number") ||
+    set.has("student id")
+  );
 }
 
 export function detectStudentCsvFormat(headers) {
